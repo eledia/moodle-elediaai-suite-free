@@ -26,7 +26,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026092300;
+$plugin->version = 2026092301;
 $plugin->requires = 2023041800;
 $plugin->component = 'webservice_elediamcp';
 $plugin->maturity = MATURITY_STABLE;
