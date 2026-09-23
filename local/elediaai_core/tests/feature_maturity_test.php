@@ -44,9 +44,11 @@ final class feature_maturity_test extends advanced_testcase {
     /**
      * Die vier freigegebenen Komponenten tragen keine Marke.
      *
-     * Betreiberentscheidung 19.09.2026: alles ausser Tutor, MCP, Uebersetzung
-     * und Quellen ist Beta. Wer diese Liste aendert, aendert sie in der
-     * version.php des Plugins -- und dieser Test sagt, dass er es gemerkt hat.
+     * Betreiberentscheidung 23.09.2026: die oeffentlich ausgelieferten Komponenten
+     * sind freigegeben, auch der Kern und die Chat-Engine -- sie werden als
+     * "eLeDia.ai Suite free" veroeffentlicht und duerfen sich nicht selbst als
+     * unfertig ausweisen. Wer das aendert, aendert es in der version.php des
+     * Plugins -- und dieser Test sagt, dass er es gemerkt hat.
      */
     public function test_the_released_components_are_the_agreed_four(): void {
         $freigegeben = [
@@ -69,11 +71,14 @@ final class feature_maturity_test extends advanced_testcase {
     }
 
     /**
-     * Der Kern selbst ist Beta und sagt es.
+     * Der Kern ist freigegeben und sagt es.
+     *
+     * Er wird mit dem freien Paket ausgeliefert; ein Beta-Vermerk auf seiner
+     * Kachel wuerde der Veroeffentlichung widersprechen.
      */
-    public function test_the_core_calls_itself_beta(): void {
-        $this->assertSame(MATURITY_BETA, registry::maturity('local_elediaai_core'));
-        $this->assertFalse(registry::is_released('local_elediaai_core'));
+    public function test_the_core_calls_itself_released(): void {
+        $this->assertSame(MATURITY_STABLE, registry::maturity('local_elediaai_core'));
+        $this->assertTrue(registry::is_released('local_elediaai_core'));
     }
 
     /**
