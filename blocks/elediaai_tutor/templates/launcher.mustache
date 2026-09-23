@@ -1,0 +1,378 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_elediaai_tutor/launcher
+
+    The chat shell for the eLeDia.ai Tutor block.
+
+    For the "embedded" display mode the panel is shown inline; for docked, modal
+    and fullscreen modes only the launch button is shown inline and the panel is
+    portalled to the document body when opened (see the chat AMD module), which
+    keeps it clear of any block-container overflow/z-index clipping.
+
+    Classes prefixed "elediaai-chat-" so nothing leaks into surrounding markup.
+
+    Example context (json):
+    {
+        "uniqid": "elediaai_tutor_abc123",
+        "instanceid": 7,
+        "displaymode": "embedded",
+        "embedded": true,
+        "persona": "eLeDia.ai Tutor",
+        "welcome": "<p>Hi! How can I help?</p>",
+        "historyenabled": true,
+        "launchlabel": "Open the eLeDia.ai Tutor",
+        "logourl": "https://example.com/pix/logo.svg",
+        "avatarurl": "https://example.com/pix/avatar.svg",
+        "consented": true,
+        "dashboardmode": false,
+        "dashboardgreeting": "Have you moodled today?",
+        "briefing": false,
+        "briefinglabel": "Daily briefing",
+        "showchips": true,
+        "starters": [
+            {"label": "What is due?", "prompt": "What is due this week?", "hasicon": true, "iconsvg": "<svg class=\"lucide\">...</svg>"}
+        ],
+        "hasstarters": true
+    }
+}}
+{{#customcss}}
+    <style>{{{customcss}}}</style>
+{{/customcss}}
+<div class="elediaai-chat-root" data-region="elediaai_tutor" id="{{uniqid}}"
+     data-mode="{{displaymode}}" style="{{brandvars}}">
+
+    <script type="application/json" data-region="chatengine-config">{{{configjson}}}</script>
+
+    {{^embedded}}
+        <button type="button"
+                class="btn btn-primary elediaai-chat-launch elediaai-chat-launch--{{launcherstyle}}"
+                data-action="launch" aria-haspopup="dialog" aria-expanded="false"
+                style="{{brandvars}}"
+                {{#launchfab}}aria-label="{{launchlabel}}" title="{{launchlabel}}"{{/launchfab}}>
+            <span class="elediaai-chat-launch-icon" aria-hidden="true">
+                <img class="elediaai-chat-launch-img" src="{{logourl}}" alt="" width="20" height="20">
+            </span>
+            {{#launchcompact}}
+                <span class="elediaai-chat-launch-copy">
+                    <span class="elediaai-chat-launch-kicker">{{persona}}</span>
+                    <span class="elediaai-chat-launch-text">{{launchlabel}}</span>
+                </span>
+                <span class="elediaai-chat-launch-arrow" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></svg>
+                </span>
+            {{/launchcompact}}
+            {{^launchfab}}{{^launchcompact}}<span class="elediaai-chat-launch-text">{{launchlabel}}</span>{{/launchcompact}}{{/launchfab}}
+        </button>
+    {{/embedded}}
+
+    <div class="elediaai-chat-panel {{#embedded}}elediaai-chat-embedded{{/embedded}}{{#dashboardmode}} elediaai-chat-panel--hero{{/dashboardmode}}"
+         style="{{brandvars}}"
+         data-region="panel"
+         role="region"
+         aria-label="{{persona}}"
+         {{^embedded}}hidden{{/embedded}}>
+
+        <div class="elediaai-chat-backdrop" data-action="close" hidden></div>
+
+        <div class="elediaai-chat-window" role="document">
+            <header class="elediaai-chat-header{{#dashboardmode}} elediaai-chat-header--hero{{/dashboardmode}}">
+                {{^dashboardmode}}
+                    <div class="elediaai-chat-identity">
+                        <a class="elediaai-chat-avatar" href="https://eledia.ai"
+                           target="_blank" rel="noopener"
+                           title="{{#str}}eledialink, block_elediaai_tutor{{/str}}"
+                           aria-label="{{#str}}eledialink, block_elediaai_tutor{{/str}}">
+                            <img class="elediaai-chat-avatar-img" src="{{logourl}}" alt="" width="34" height="34">
+                            <span class="elediaai-chat-status-dot"></span>
+                        </a>
+                        <span class="elediaai-chat-identity-text">
+                            <span class="elediaai-chat-title">{{persona}}</span>
+                            <span class="elediaai-chat-presence">{{#str}}online, block_elediaai_tutor{{/str}}</span>
+                        </span>
+                    </div>
+                {{/dashboardmode}}
+                <div class="elediaai-chat-actions">
+                    {{! Not on the dashboard: there the block already fills the
+                        page, so enlarging it has nothing to do. Left out of the
+                        markup rather than hidden in CSS, so it is not a button
+                        the keyboard can still reach and press to no effect. }}
+                    {{^dashboardmode}}
+                    {{#showexpand}}
+                        <button type="button" class="btn btn-icon elediaai-chat-iconbtn"
+                                data-action="expand" aria-label="{{expandlabel}}"
+                                title="{{expandlabel}}"
+                                data-label-expand="{{expandlabel}}"
+                                data-label-collapse="{{collapselabel}}"
+                                aria-pressed="false">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg>
+                        </button>
+                    {{/showexpand}}
+                    {{/dashboardmode}}
+                    {{#historyenabled}}
+                        <button type="button" class="btn btn-icon elediaai-chat-iconbtn"
+                                data-action="history" aria-label="{{#str}}history, block_elediaai_tutor{{/str}}"
+                                title="{{#str}}history, block_elediaai_tutor{{/str}}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        </button>
+                    {{/historyenabled}}
+                    {{^dashboardmode}}
+                        <button type="button" class="btn btn-icon elediaai-chat-iconbtn"
+                                data-action="newconversation" aria-label="{{#str}}newconversation, block_elediaai_tutor{{/str}}"
+                                title="{{#str}}newconversation, block_elediaai_tutor{{/str}}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                        </button>
+                    {{/dashboardmode}}
+                    {{! On the dashboard this moves to the foot of the hero as a
+                        named link: a lone shield in a corner of a wide card
+                        reads as an ornament, and a privacy notice should not
+                        depend on somebody guessing what a symbol means. }}
+                    {{^dashboardmode}}
+                    <button type="button" class="btn btn-icon elediaai-chat-iconbtn"
+                            data-action="privacy" aria-label="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}"
+                            title="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}"
+                            aria-haspopup="dialog">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                    </button>
+                    {{/dashboardmode}}
+                    {{^embedded}}
+                        <button type="button" class="btn btn-icon elediaai-chat-iconbtn"
+                                data-action="close" aria-label="{{#str}}close, block_elediaai_tutor{{/str}}"
+                                title="{{#str}}close, block_elediaai_tutor{{/str}}">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                        </button>
+                    {{/embedded}}
+                </div>
+            </header>
+
+            {{^dashboardmode}}
+                {{#llmonly}}
+                    <div class="elediaai-chat-modenote" role="note">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+                        {{#str}}llmonly_banner, block_elediaai_tutor{{/str}}
+                    </div>
+                {{/llmonly}}
+            {{/dashboardmode}}
+
+            {{#dashboardmode}}
+                <div class="elediaai-chat-hero" data-region="hero">
+                    {{! A greeting is optional. Without one the brand mark stands
+                        alone: a heading with no words in it is an empty heading,
+                        which is worse than no heading for anyone navigating by
+                        them. The wide logo is used here rather than the round
+                        conversation avatar, because at this size the lockup is
+                        legible and the avatar is not. }}
+                    {{#dashboardgreeting}}
+                        {{! The mark stands beside the text, not inside the
+                            heading. Inside it, the line under the greeting
+                            began at the container's edge while the greeting
+                            began after the mark, and the two never lined up. }}
+                        <img class="elediaai-chat-hero-avatar" src="{{avatarurl}}" alt="" width="34" height="34">
+                        <div class="elediaai-chat-hero-text">
+                            <h2 class="elediaai-chat-hero-title">
+                                {{! The marked-up form, so the name can be set
+                                    apart. Both halves were escaped in PHP
+                                    before they were joined. }}
+                                <span>{{{dashboardgreetinghtml}}}</span>
+                            </h2>
+                            {{> block_elediaai_tutor/hero_privacy }}
+                        </div>
+                    {{/dashboardgreeting}}
+                    {{^dashboardgreeting}}
+                        <img class="elediaai-chat-hero-mark" src="{{logourl}}" alt="{{persona}}">
+                        {{! Same partial as the branch above: with the greeting
+                            switched off the shield was dropped here too. }}
+                        {{> block_elediaai_tutor/hero_privacy }}
+                    {{/dashboardgreeting}}
+                </div>
+            {{/dashboardmode}}
+
+            {{#historyenabled}}
+                <div class="elediaai-chat-history" data-region="history" hidden
+                     role="region" aria-label="{{#str}}history, block_elediaai_tutor{{/str}}">
+                    <div class="elediaai-chat-history-empty" data-region="history-empty">
+                        {{#str}}nohistory, block_elediaai_tutor{{/str}}
+                    </div>
+                    <div class="elediaai-chat-history-listwrap" data-region="history-list"></div>
+                </div>
+            {{/historyenabled}}
+
+            <div class="elediaai-chat-log" data-region="log"
+                 role="log" aria-live="polite" aria-atomic="false"
+                 aria-label="{{#str}}conversation, block_elediaai_tutor{{/str}}" tabindex="0">
+                {{^dashboardmode}}
+                    <div class="elediaai-chat-message elediaai-chat-assistant elediaai-chat-welcome">
+                        <div class="elediaai-chat-meta">
+                            <span class="elediaai-chat-msg-avatar" aria-hidden="true">
+                                <img class="elediaai-chat-msg-avatar-img" src="{{avatarurl}}" alt="" width="20" height="20">
+                            </span>
+                            <span class="elediaai-chat-sender">{{persona}}</span>
+                        </div>
+                        <div class="elediaai-chat-bubble">{{{welcome}}}</div>
+                    </div>
+                {{/dashboardmode}}
+                {{^dashboardmode}}
+                    {{#hasstarters}}
+                        <div class="elediaai-chat-starters" data-region="starters" role="group"
+                             aria-label="{{#str}}starters_label, block_elediaai_tutor{{/str}}">
+                            {{#starters}}
+                                <button type="button" class="elediaai-chat-starter"
+                                        data-action="starter" data-prompt="{{prompt}}">
+                                    {{#hasicon}}{{{iconsvg}}} {{/hasicon}}{{label}}
+                                </button>
+                            {{/starters}}
+                        </div>
+                    {{/hasstarters}}
+                {{/dashboardmode}}
+                {{#preview}}{{{previewmessages}}}{{/preview}}
+            </div>
+
+            <div class="elediaai-chat-status" data-region="status" role="status" aria-live="polite"></div>
+
+                <div class="elediaai-chat-consent" data-region="consent" {{#consented}}hidden{{/consented}}>
+                    <p class="elediaai-chat-consent-text">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                        {{#str}}consent_intro, block_elediaai_tutor{{/str}}
+                    </p>
+                    <button type="button" class="btn btn-link p-0 elediaai-chat-consent-link" data-action="privacy">
+                        {{#str}}privacyguidelines, block_elediaai_tutor{{/str}}
+                    </button>
+                    <div class="form-check elediaai-chat-consent-check">
+                        <input type="checkbox" class="form-check-input" id="{{uniqid}}_consent"
+                               data-region="consent-checkbox">
+                        <label class="form-check-label" for="{{uniqid}}_consent">
+                            {{#str}}consent_checkbox, block_elediaai_tutor{{/str}}
+                        </label>
+                    </div>
+                    <button type="button" class="btn btn-primary elediaai-chat-consent-accept"
+                            data-action="consent-accept" disabled>
+                        {{#str}}consent_accept, block_elediaai_tutor{{/str}}
+                    </button>
+                </div>
+
+            {{#stylechoice}}
+                <div class="elediaai-chat-styles" data-region="styles" role="radiogroup"
+                     aria-label="{{#str}}answerstyle, block_elediaai_tutor{{/str}}">
+                    {{#styles}}
+                        <button type="button" class="elediaai-chat-stylechip{{#active}} elediaai-chat-stylechip-active{{/active}}"
+                                role="radio" aria-checked="{{#active}}true{{/active}}{{^active}}false{{/active}}"
+                                data-action="style" data-style="{{key}}">{{label}}</button>
+                    {{/styles}}
+                </div>
+            {{/stylechoice}}
+            {{#stylelocked}}
+                <div class="elediaai-chat-styles">
+                    <span class="elediaai-chat-stylechip elediaai-chat-stylechip-locked"
+                          title="{{#str}}answerstyle, block_elediaai_tutor{{/str}}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> {{lockedlabel}}
+                    </span>
+                </div>
+            {{/stylelocked}}
+
+            {{#dashboardmode}}<div class="elediaai-chat-hero-footer" data-region="hero-footer">{{/dashboardmode}}
+            <form class="elediaai-chat-composer" data-region="composer"
+                  aria-label="{{#str}}messagelabel, block_elediaai_tutor{{/str}}">
+                <label class="sr-only" for="{{uniqid}}_input">
+                    {{#str}}messagelabel, block_elediaai_tutor{{/str}}
+                </label>
+                <textarea id="{{uniqid}}_input" class="elediaai-chat-input" data-region="input"
+                          rows="1" autocomplete="off" {{^consented}}disabled{{/consented}}{{#preview}} disabled{{/preview}}
+                          placeholder="{{#str}}inputplaceholder, block_elediaai_tutor{{/str}}"></textarea>
+                <button type="submit" class="elediaai-chat-send" data-action="send"
+                        {{^consented}}disabled{{/consented}}{{#preview}} disabled{{/preview}}
+                        aria-label="{{#str}}send, block_elediaai_tutor{{/str}}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
+                </button>
+            </form>
+
+            {{#dashboardmode}}
+                {{#showchips}}
+                    <div class="elediaai-chat-starters elediaai-chat-starters--hero"
+                         data-region="starters" role="group"
+                         aria-label="{{#str}}starters_label, block_elediaai_tutor{{/str}}">
+                        {{#briefing}}
+<button type="button" class="elediaai-chat-starter elediaai-chat-briefing"
+                                    data-action="briefing">
+                                <span class="elediaai-chat-starter__icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></span>
+                                <span class="elediaai-chat-starter__text">
+                                    <span class="elediaai-chat-starter__label">{{briefinglabel}}</span>
+                                    {{#briefingsubtitle}}<span class="elediaai-chat-starter__sub">{{briefingsubtitle}}</span>{{/briefingsubtitle}}
+                                </span>
+                            </button>
+                        {{/briefing}}
+                        {{#starters}}
+                            <button type="button" class="elediaai-chat-starter"
+                                    data-action="starter" data-prompt="{{prompt}}"
+                                    {{#intent}}data-intent="{{intent}}"{{/intent}}>
+                                {{#hasicon}}<span class="elediaai-chat-starter__icon" aria-hidden="true">{{{iconsvg}}}</span>{{/hasicon}}
+                                <span class="elediaai-chat-starter__text">
+                                    <span class="elediaai-chat-starter__label">{{label}}</span>
+                                    {{#hassubtitle}}<span class="elediaai-chat-starter__sub">{{subtitle}}</span>{{/hassubtitle}}
+                                </span>
+                            </button>
+                        {{/starters}}
+                    </div>
+                {{/showchips}}
+                {{! The quiet corner: what the open conversation needs, once
+                    the greeting has gone. The bin deletes the conversation that
+                    is open and nothing else -- this dashboard needs no way to
+                    begin a second one, there is one and it is the page, but it
+                    had no way to end this one. Beside it the shield, which is
+                    the same shield as the one under the greeting: the hero's
+                    copy leaves with the hero, and a privacy notice that is
+                    reachable only before the first message is not reachable.
+                    The two are never on screen at once -- one row shows exactly
+                    when the other is hidden.
+
+                    Down here, and not where the shield is, because the hero is
+                    hidden with the first message: a control placed beside the
+                    shield would exist only while there was nothing to delete.
+                    Not in the header either, which on this surface is empty on
+                    purpose -- a single symbol in the corner of a wide card
+                    reads as decoration. The footer is sticky, so this row is
+                    the one piece of chrome that is there throughout, and the
+                    chips sit between the bin and the send button so the two
+                    never become neighbours.
+
+                    The row keeps its height while the bin is hidden. Letting it
+                    collapse would move the composer up by its height the moment
+                    somebody sends a first message, and the composer is the one
+                    thing on this page that should not move. }}
+                <div class="elediaai-chat-herotools" data-region="herotools">
+                    <button type="button" class="elediaai-chat-herotool"
+                            data-action="privacy" data-region="privacy-tool" hidden
+                            aria-haspopup="dialog"
+                            aria-label="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}"
+                            title="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                    </button>
+                    <button type="button" class="elediaai-chat-herotool"
+                            data-action="delete-current" data-region="delete-current" hidden
+                            aria-label="{{#str}}deletecurrent, block_elediaai_tutor{{/str}}"
+                            title="{{#str}}deletecurrent, block_elediaai_tutor{{/str}}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                    </button>
+                </div>
+                </div>
+            {{/dashboardmode}}
+
+            {{#showfooter}}
+                <div class="elediaai-chat-footer">{{footertext}}</div>
+            {{/showfooter}}
+        </div>
+    </div>
+</div>

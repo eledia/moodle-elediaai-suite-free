@@ -1,0 +1,38 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_elediaai_tutor/copilot_section
+
+    Teacher-Copilot card on the question analytics report: a button that asks
+    the AI for an analysis of the logged questions and renders the returned
+    Markdown (server-sanitised HTML) inline.
+
+    Example context (json):
+    {
+        "courseid": 42
+    }
+}}
+<div class="eat-report-card eat-copilot" data-region="copilot" data-courseid="{{courseid}}">
+    <h3 class="eat-report-title">{{#str}}copilot_title, block_elediaai_tutor{{/str}}</h3>
+    <p class="eat-copilot-intro">{{#str}}copilot_intro, block_elediaai_tutor{{/str}}</p>
+    <button type="button" class="btn btn-primary" data-action="copilot-generate">
+        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+        {{#str}}copilot_generate, block_elediaai_tutor{{/str}}
+    </button>
+    <div class="eat-copilot-status" data-region="copilot-status" role="status" aria-live="polite"></div>
+    <div class="eat-copilot-result elediaai-chat-markdown" data-region="copilot-result" hidden></div>
+</div>

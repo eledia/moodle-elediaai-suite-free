@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/elediaai_chatengine/db" VERSION="20260827" COMMENT="Shared chat engine schema: one thread store for every chat placement."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_elediaai_chateng_thread" COMMENT="One conversation, whichever placement it was started from. Replaces the four per-plugin thread tables (tutor, chat block, aichat, elli): a single schema is the only way the privacy provider, the history limit and the retention task can be written once instead of four times. The row is site-local bookkeeping; a stateful backend additionally owns its own transcript, addressed here through convkey.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="placement" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Frankenstyle component of the placement that owns the conversation, e.g. block_elediaai_tutor or mod_elli. Scopes every read so two placements can never see each other's threads."/>
+        <FIELD NAME="instanceid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The placement's own instance id (block instance, activity instance), or 0 for a site-wide conversation."/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Context the conversation happens in. Drives the privacy provider's context lookup and Markdown rendering."/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Course the conversation belongs to, or 0 for a site-wide conversation."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Owning Moodle user, or 0 when the conversation belongs to an unauthenticated visitor identified by guestkey."/>
+        <FIELD NAME="guestkey" TYPE="char" LENGTH="40" NOTNULL="false" SEQUENCE="false" COMMENT="Opaque per-visitor key for guest conversations. Never derived from personal data; the only handle an unauthenticated visitor has on their own thread."/>
+        <FIELD NAME="backend" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Adapter id the thread was created against, matching the sink id in local_elediaai_sources. Recorded because a site that switches destination must not continue a conversation whose transcript lives in the old backend."/>
+        <FIELD NAME="convkey" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Opaque conversation identifier issued by the backend, or null while the backend has not issued one. Never parsed here."/>
+        <FIELD NAME="personahash" TYPE="char" LENGTH="40" NOTNULL="false" SEQUENCE="false" COMMENT="sha1 over the effective persona. A changed persona starts a new thread rather than continuing one whose earlier turns followed different instructions."/>
+        <FIELD NAME="mode" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="Answer mode the thread runs in: grounded or ungrounded."/>
+        <FIELD NAME="title" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Optional display title for a conversation list."/>
+        <FIELD NAME="lastpreview" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Truncated preview of the last user message, for conversation lists. Not a transcript."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Creation timestamp."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last-modified timestamp; also the retention clock."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="placeinstuser" UNIQUE="false" FIELDS="placement, instanceid, userid" COMMENT="The hot path: resume this user's thread in this placement."/>
+        <INDEX NAME="userid" UNIQUE="false" FIELDS="userid" COMMENT="Privacy export and erasure by user."/>
+        <INDEX NAME="guestkey" UNIQUE="false" FIELDS="guestkey" COMMENT="Resolve a guest visitor's own thread."/>
+        <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid" COMMENT="Privacy provider context lookups and context deletion."/>
+        <INDEX NAME="timemodified" UNIQUE="false" FIELDS="timemodified" COMMENT="Retention task scans by age."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_chateng_msg" COMMENT="Turns of a conversation, oldest first. Held site-side even when the backend keeps its own transcript, so the history limit, the privacy export and the teacher-visible record do not depend on an external service staying reachable.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="threadid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The conversation this turn belongs to."/>
+        <FIELD NAME="role" TYPE="char" LENGTH="16" NOTNULL="true" SEQUENCE="false" COMMENT="Author role: user, assistant or system."/>
+        <FIELD NAME="content" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Message text as Markdown. Stored raw; rendered through the Markdown renderer on output, never trusted as HTML."/>
+        <FIELD NAME="sources" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="JSON-encoded citations the backend returned for an assistant turn, or null. Kept so a reloaded conversation still shows what it was grounded in."/>
+        <FIELD NAME="origin" TYPE="char" LENGTH="16" NOTNULL="false" SEQUENCE="false" COMMENT="Where an assistant turn came from: grounded, mcp or general. Null for turns recorded before this was stored, and for user turns. Kept alongside the citations because an answer read out of Moodle through the connector carries no citations and would otherwise be indistinguishable from the model talking to itself once the page is reloaded."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the turn was recorded."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="threadid" TYPE="foreign" FIELDS="threadid" REFTABLE="local_elediaai_chateng_thread" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="threadtime" UNIQUE="false" FIELDS="threadid, timecreated" COMMENT="Read a conversation in order, and trim the oldest turns."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_chateng_usage" COMMENT="Per-user daily message counters for cost governance. Separate from the turns table because the question it answers - how many messages has this person sent today - must stay cheap enough to ask before every turn, and must survive a user clearing their conversations.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The chatting user."/>
+        <FIELD NAME="daykey" TYPE="int" LENGTH="8" NOTNULL="true" SEQUENCE="false" COMMENT="Day as YYYYMMDD in the server timezone."/>
+        <FIELD NAME="messagecount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Messages sent that day."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userday" TYPE="unique" FIELDS="userid, daykey" COMMENT="One counter row per user per day."/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="local_elediaai_chateng_design" COMMENT="A named chat design: a bundle of design-token values an administrator can point any chat surface at. Kept apart from the placements so one look can be defined once and used by the tutor block, the chat activity and the learning scenario alike - which is the difference between a suite and three plugins that happen to resemble each other.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Human-readable name, shown wherever a design is picked."/>
+        <FIELD NAME="shortname" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Stable machine name, unique; what an export refers to."/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Optional note describing where the design is meant to be used."/>
+        <FIELD NAME="tokens" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="JSON map of design token => value. A token that is absent falls back to the built-in default, so a design only states what it changes."/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Display order in the selection list."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="shortname" TYPE="unique" FIELDS="shortname"/>
+      </KEYS>
+    </TABLE>
+  </TABLES>
+</XMLDB>

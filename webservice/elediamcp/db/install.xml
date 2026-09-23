@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="webservice/elediamcp/db" VERSION="20260805" COMMENT="MCP web service plugin database schema."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="webservice_elediamcp_token" COMMENT="Lifecycle and audit metadata for MCP web service tokens. Authentication is delegated to the core external_tokens row referenced by externaltokenid; this table tracks the MCP-specific scope, label, expiry and revocation state, and survives deletion of the core token so a revoked token stays auditable.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="externaltokenid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Reference to the backing external_tokens.id while the token is live; nulled when the core token is deleted on revocation."/>
+        <FIELD NAME="tokenhash" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="SHA-256 hex digest of the token value, used to correlate without persisting the secret."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Owner of the token (the Moodle user the token authenticates as)."/>
+        <FIELD NAME="externalserviceid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The MCP external service the token is scoped to."/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Human-readable token label."/>
+        <FIELD NAME="creatorid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="User who created the token (the authenticated user for UI-created tokens, or the user on whose behalf a first-party plugin acted)."/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="Frankenstyle component of the first-party plugin that provisioned the token via the internal API, or null for self-service tokens."/>
+        <FIELD NAME="validuntil" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Expiry timestamp mirrored from the core token, retained for display after revocation. 0 or null means no expiry."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Creation timestamp."/>
+        <FIELD NAME="lastaccess" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Snapshot of the last-used timestamp, taken at revocation so it survives deletion of the core token."/>
+        <FIELD NAME="revoked" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when the token has been revoked, 0 otherwise."/>
+        <FIELD NAME="timerevoked" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Revocation timestamp."/>
+        <FIELD NAME="revokedby" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="User who revoked the token, or null when revoked programmatically."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+        <KEY NAME="externalserviceid" TYPE="foreign" FIELDS="externalserviceid" REFTABLE="external_services" REFFIELDS="id"/>
+        <KEY NAME="creatorid" TYPE="foreign" FIELDS="creatorid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="tokenhash" UNIQUE="false" FIELDS="tokenhash" COMMENT="Used to correlate a presented token value with its metadata row."/>
+        <INDEX NAME="externaltokenid" UNIQUE="false" FIELDS="externaltokenid"/>
+        <INDEX NAME="userid-revoked" UNIQUE="false" FIELDS="userid,revoked" COMMENT="Used to list a user's active or revoked tokens."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="webservice_elediamcp_oauth_client" COMMENT="OAuth 2.1 client registrations for the MCP authorization server. A client is a public (PKCE-only) MCP client, either dynamically registered (RFC 7591) or provisioned by an administrator. No client secret is stored: every client authenticates with PKCE.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="clientid" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Public, opaque OAuth client identifier issued to the client."/>
+        <FIELD NAME="clientname" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Human-readable client name shown on the consent screen."/>
+        <FIELD NAME="redirecturis" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Newline-separated list of exact, pre-registered redirect URIs the client may use."/>
+        <FIELD NAME="granttypes" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="authorization_code" SEQUENCE="false" COMMENT="Space-separated OAuth grant types the client is allowed to use."/>
+        <FIELD NAME="responsetypes" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="code" SEQUENCE="false" COMMENT="Space-separated OAuth response types the client is allowed to request."/>
+        <FIELD NAME="tokenendpointauthmethod" TYPE="char" LENGTH="40" NOTNULL="true" DEFAULT="none" SEQUENCE="false" COMMENT="Token endpoint authentication method; always 'none' (public PKCE client)."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated scopes the client requested at registration, advisory only."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Registration timestamp."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last modification timestamp."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="clientid" UNIQUE="true" FIELDS="clientid" COMMENT="Unique lookup of a client by its issued identifier."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="webservice_elediamcp_oauth_code" COMMENT="Short-lived, single-use OAuth 2.1 authorization codes bound to a user, client, redirect URI and PKCE challenge. Only the SHA-256 hash of the code value is stored; the plaintext code exists only in the redirect to the client. Rows are deleted on successful exchange and pruned once expired.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="codehash" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="SHA-256 hex digest of the authorization code value; the plaintext is never stored."/>
+        <FIELD NAME="clientid" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="OAuth client the code was issued to."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The Moodle user who authorised the request; the token minted from this code authenticates as this user."/>
+        <FIELD NAME="redirecturi" TYPE="char" LENGTH="1333" NOTNULL="true" SEQUENCE="false" COMMENT="Exact redirect URI presented in the authorization request; must be replayed identically at the token endpoint."/>
+        <FIELD NAME="codechallenge" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="PKCE code challenge (base64url of SHA-256 of the verifier)."/>
+        <FIELD NAME="codechallengemethod" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="S256" SEQUENCE="false" COMMENT="PKCE challenge method; only S256 is accepted."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Scopes approved for this code, advisory only."/>
+        <FIELD NAME="expires" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Expiry timestamp; the code is invalid at or after this time."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Issuance timestamp."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="codehash" UNIQUE="true" FIELDS="codehash" COMMENT="Unique lookup of an authorization code by hash."/>
+        <INDEX NAME="expires" UNIQUE="false" FIELDS="expires" COMMENT="Used to prune expired codes."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

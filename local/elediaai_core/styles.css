@@ -1,0 +1,1507 @@
+/*
+ * Die Design-System-Schicht der KI-Suite (adr05).
+ *
+ * Hier stehen die Token, denen jedes Suite-Plugin folgt. Sie stehen in Core
+ * und nicht im Theme, weil ein Theme abwaehlbar ist und eine Abhaengigkeit
+ * nicht: jedes Suite-Plugin haengt an `local_elediaai_core`, also gibt es
+ * keine Installation, in der diese Werte fehlen koennten. Plugins lesen sie
+ * deshalb ohne Rueckfallwert -- ein `var(--eai-line)` ohne zweites Argument
+ * ist Absicht. Faellt ein Token aus, soll das auffallen und nicht still in
+ * eine Kopie laufen.
+ *
+ * Das Theme ist eine Haut: es ueberschreibt Werte, es definiert keine. Was
+ * es ueberschreibt, sind die drei Toene, die eine Installation einstellen
+ * kann (Akzent, Grund, Marke) und die Schrift, die es selbst ausliefert.
+ *
+ * Die Vorgaben sind das eLeDia-Hell. Ohne unser Theme sieht die Suite aus
+ * wie mit -- nur der Moodle-Rahmen drumherum ist ein anderer. Das ist die
+ * Grenze, die wir ziehen: wir gestalten unsere Flaechen, nicht die Leiste
+ * des Kunden.
+ *
+ * Einen Namen zu aendern bricht, was ihn liest. Diese Liste ist eine API.
+ */
+
+:root {
+    /* --- Flaechen. ---------------------------------------------------- */
+    --eai-bg: #f7f8fb;
+    --eai-surface: #ffffff;
+    --eai-raised: #ffffff;
+    --eai-line: #e6e9f0;
+    --eai-line-soft: #eef0f5;
+
+    /* --- Schrift auf den Flaechen. ------------------------------------ */
+    --eai-fg: #1f2430;
+    --eai-fg-dim: #3d4453;
+    --eai-muted: #6b7280;
+    --eai-faint: #8b93a1;
+
+    /* --- Akzent und Marke. -------------------------------------------- */
+    /* Zwei Toene, kein Widerspruch: --eai-accent traegt (Symbole, Raender,
+       Marker) und haelt 3:1 nach WCAG 1.4.11; --eai-accent-text ist die
+       Firmenfarbe #f98012 und steht auf Weiss bei 2,58:1. Das ist eine
+       bewusste Entscheidung des Auftraggebers, kein Versehen. */
+    --eai-accent: #eb7306;
+    --eai-accent-hover: #cf6404;
+    --eai-accent-ink: #ffffff;
+    /* Die Fuellung fuer ein Bedienelement, dessen Beschriftung Fliesstext ist.
+       Weiss auf --eai-accent haelt 3,01:1 -- das genuegt einem Symbol oder
+       einem Rand (WCAG 1.4.11), aber nicht einem Wort (1.4.3 verlangt 4,5:1).
+       Diese beiden Toene sind derselbe Farbton, eine Stufe tiefer, und tragen
+       Weiss mit 4,52:1 beziehungsweise 5,42:1. Gemessen am 06.09.2026 an der
+       gewaehlten Filterpille des Dashboards, die genau in diese Luecke fiel. */
+    --eai-accent-strong: #bb5c05;
+    --eai-accent-strong-hover: #a85205;
+    --eai-accent-text: #f98012;
+    --eai-accent-wash: rgba(235, 115, 6, 0.1);
+    --eai-brand: #f98012;
+
+    /* --- Zustaende. ---------------------------------------------------- */
+    /* Erfolg, Warnung, Gefahr -- die drei Aussagen, die eine Oberflaeche
+       ueber einen Zustand macht. Sie gehoeren nicht zum Akzent: der Akzent
+       sagt "hier entlang", ein Zustand sagt "so steht es".
+
+       Die Werte sind nicht frei gewaehlt. Bis zum 05.09.2026 fuehrten die
+       Plugin-Huellen eigene: Erfolg war ein Tuerkis (#3aadaa, 2,71:1 auf
+       Weiss) und Warnung war die Markenfarbe selbst (#f98012, 2,58:1) --
+       beides zu schwach fuer Text nach WCAG 1.4.3, und eine Warnung, die
+       aussieht wie der Akzent, ist keine. Die Nachfolger stammen aus dem
+       Bestand der Suite (feature_info.mustache) und tragen:
+
+         Erfolg  5,07:1 auf Weiss, 4,84:1 auf seinem Wash
+         Warnung 7,09:1 auf Weiss, 6,37:1 auf seinem Wash
+         Gefahr  6,60:1 auf Weiss, 5,41:1 auf seinem Wash
+
+       Der Wash ist die Flaeche, die starke Farbe der Text darauf. */
+    --eai-success: #157f3f;
+    --eai-success-wash: #e8fff3;
+    --eai-warning: #92400e;
+    --eai-warning-wash: #fef3c7;
+    --eai-danger: #ab1d79;
+    --eai-danger-hover: #a31449;
+    --eai-danger-wash: #f5e4ef;
+
+    /* --- Was von der KI kommt. ------------------------------------------ */
+    /* Ein Lavendel, das quer durch die Suite markiert "hier ist KI im
+       Spiel" -- an Funktionskacheln, Empfehlungsmarken, Bausteinen im
+       Strategieassistenten. Es ist kein Zustand und kein Akzent, sondern
+       eine Herkunftsangabe, und deshalb eine eigene Rolle.
+
+       Der Name --lh-pastel-ai gab es laengst; definiert war er nirgends,
+       sechs Stellen hielten ihn nur ueber ihren Rueckfallwert am Leben.
+       Text auf der Flaeche traegt 7,81:1. */
+    --eai-ai-wash: #eef2ff;
+    --eai-ai: #3740a0;
+
+    /* --- Schriftskala. ------------------------------------------------- */
+    /* Acht Stufen, benannt nach ihrer Rolle, nicht nach ihrer Groesse.
+       "display" und "h1" gehoeren den auffaelligen Flaechen -- Anmeldung,
+       Dashboard-Hero, Seitenkopf. Fuer Bedienoberflaechen beginnt die Skala
+       bei "body"; "caption" ist die Untergrenze, darunter faengt Text an,
+       unlesbar zu werden. */
+    --font-size-display: 2.5rem;
+    --font-size-h1: 2rem;
+    --font-size-h2: 1.5rem;
+    --font-size-h3: 1.25rem;
+    --font-size-h4: 1.125rem;
+    --font-size-body: 1rem;
+    --font-size-small: 0.875rem;
+    --font-size-caption: 0.75rem;
+
+    /* --- Abstaende. ---------------------------------------------------- */
+    /* Ein Achter-Rhythmus, benannt nach dem Zweck jeder Stufe, damit eine
+       Regel sagt, warum sie Abstand haelt, und nicht nur wie viel. Wo ein
+       Abstand nicht auf der Liste steht, ist das ein Hinweis auf das Layout
+       und nicht auf eine weitere Zahl. */
+    --eai-space-1: 0.5rem;   /* eng Zusammengehoeriges */
+    --eai-space-2: 1rem;     /* verwandte Bedienelemente */
+    --eai-space-3: 1.5rem;   /* Ueberschrift zu ihrem Inhalt */
+    --eai-space-4: 2rem;     /* innerhalb eines Abschnitts */
+    --eai-space-5: 2.5rem;
+    --eai-space-6: 3rem;     /* zwischen Abschnitten */
+    --eai-space-7: 3.5rem;
+    --eai-space-8: 4rem;     /* der Anfang des Seitengegenstands */
+
+    /* --- Form. --------------------------------------------------------- */
+    /* Vier Formen, nicht drei. Die Suite hatte 23 verschiedene Radien im
+       Umlauf, und die Haeufungen lagen bei 4, 10, 18 und der Pille -- eine
+       kleine Stufe fehlte also im Vokabular, nicht in der Praxis. Sie ist
+       fuer das, was in einer Karte liegt: Marken, Code-Bloecke, Symbolknoepfe. */
+    --eai-radius-sm: 0.25rem;
+    --eai-radius: 0.625rem;
+    --eai-radius-lg: 18px;
+    --eai-radius-pill: 999px;
+
+    /* --- Schatten. ------------------------------------------------------ */
+    /* Drei Stufen aus demselben Fast-Navy, damit die Toene als eine Familie
+       lesbar sind: die ruhende Karte, die Karte, die die Seite traegt, und
+       was tatsaechlich schwebt. */
+    --eai-shadow-card: 0 1px 2px rgba(15, 23, 42, 0.04), 0 4px 16px rgba(15, 23, 42, 0.06);
+    --eai-shadow-raised: 0 1px 3px rgba(15, 23, 42, 0.05), 0 10px 30px rgba(15, 23, 42, 0.07);
+    --eai-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+
+    /* Ohne unser Theme steht keine Manrope zur Verfuegung -- die liefert das
+       Theme aus. Der Systemstapel ist hier die ehrliche Vorgabe; das Theme
+       setzt Manrope davor. */
+    --eai-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+
+    /* --- Die Token der stillgelegten LernHive-Shell. -------------------- */
+    /* Mehrere Suite-Stylesheets lesen noch --lh-*. Eine Verwaltungsoberflaeche
+       dafuer gibt es nicht mehr, und bisher fuellte sie das Theme -- also eine
+       Haut, die eine Aufgabe von Core uebernahm. Unter Boost waren sie damit
+       undefiniert und die Seiten fielen auf fremde Farben zurueck. Sie zeigen
+       jetzt auf die Suite-Token; die alten Namen bleiben, damit nichts bricht,
+       was sie liest. */
+    --lh-primary: var(--eai-accent);
+    --lh-primary-dark: var(--eai-accent-hover);
+    --lh-primary-light: var(--eai-accent-wash);
+    --lh-text: var(--eai-fg);
+    --lh-text-secondary: var(--eai-fg-dim);
+    --lh-text-light: var(--eai-muted);
+    --lh-muted: var(--eai-muted);
+    --lh-border: var(--eai-line);
+    --lh-border-light: var(--eai-line-soft);
+    --lh-radius-btn: var(--eai-radius);
+    --lh-radius-sm: var(--eai-radius);
+    --lh-radius-pill: var(--eai-radius-pill);
+    --lh-shadow-card: none;
+    /* Diese neun wurden bisher nur von ihrem Rueckfallwert am Leben gehalten
+       -- definiert waren sie nirgends. Sie stehen jetzt hier, damit die
+       Plugins sie ohne Rueckfall lesen koennen wie jeden anderen Token. */
+    --lh-surface: var(--eai-surface);
+    --lh-bg-white: var(--eai-surface);
+    --lh-bg-soft: var(--eai-bg);
+    --lh-accent: var(--eai-brand);
+    --lh-radius: var(--eai-radius);
+    --lh-shadow-hover: var(--eai-shadow-raised);
+    --lh-page-max-default: 72rem;
+    /* Rot als Signal ist eine eigene Achse, keine Markenfarbe -- deshalb
+       stehen die Werte hier ausgeschrieben und nicht als --eai-*. Ein
+       Marken-Token dafuer waere falsch: eine Warnung soll nicht mit dem
+       Akzent verwechselt werden koennen. */
+    --lh-pastel-ai: var(--eai-ai-wash);
+    --lh-success: var(--eai-success);
+    --lh-success-light: var(--eai-success-wash);
+    --lh-warning: var(--eai-warning);
+    --lh-warning-light: var(--eai-warning-wash);
+    --lh-danger: var(--eai-danger);
+    --lh-danger-light: var(--eai-danger-wash);
+    --lh-danger-dark: var(--eai-danger-hover);
+
+    /* Die Hoehe des Umgebungsbandes, damit alles, was am Fenster klebt, es
+       freihalten kann. Null, solange kein Band auf der Seite ist. */
+    --eai-banner-height: 0px;
+}
+
+/*
+ * Course-bound Elli teacher dashboard additions.
+ *
+ * Core owns its complete page shell and UI primitives so it can run without
+ * another local plugin.
+ */
+
+.elediaai-core-shell {
+    margin: 0 auto;
+    max-width: 72rem;
+    padding: 1rem;
+}
+
+.elediaai-core-shell--reading {
+    max-width: 56rem;
+}
+
+.elediaai-core-shell--wide {
+    max-width: 88rem;
+}
+
+.elediaai-core-shell__header {
+    align-items: flex-start;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.elediaai-core-shell__title {
+    font-size: clamp(var(--font-size-h2), 3vw, var(--font-size-h1));
+    margin: 0;
+}
+
+.elediaai-core-shell__separator {
+    color: var(--eai-faint);
+    margin: 0 0.55rem;
+}
+
+.elediaai-core-shell__subtitle {
+    color: var(--eai-muted);
+    margin: 0.35rem 0 0;
+}
+
+.elediaai-core-shell__actions,
+.path-local-elediaai_core .lh-plugin-card__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.elediaai-core-shell__icon-action,
+.path-local-elediaai_core .lh-icon-action {
+    align-items: center;
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius-sm);
+    color: inherit;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 2.5rem;
+    min-width: 2.5rem;
+    padding: 0.45rem;
+}
+
+.path-local-elediaai_core .lh-icon-action.is-primary {
+    background: var(--eai-accent);
+    border-color: var(--eai-accent);
+    color: var(--eai-accent-ink);
+}
+
+/*
+ * Vier Klassen, die die Huelle seit jeher ausgibt und niemand gestylt hat.
+ * Aufgefallen erst beim Zusammenlegen: die Forks in questiongen und tactics
+ * hatten sie, Core nicht -- also lief auf Cores eigenen Seiten der Heimatlink
+ * in der Linkfarbe des Wirtsthemes und der Zusatz im Titel in der Textfarbe
+ * des Fliesstextes. Die Werte stammen aus dem Fork, nur der tote
+ * `--lh-text`-Rueckfall ist durch die Rolle ersetzt, die Core selbst setzt.
+ */
+.elediaai-core-shell__content,
+.elediaai-core-shell__heading {
+    min-width: 0;
+}
+
+.elediaai-core-shell__home {
+    color: inherit;
+    text-decoration: none;
+}
+
+.elediaai-core-shell__tagline {
+    color: var(--eai-fg);
+}
+
+.elediaai-core-shell__navigation {
+    margin-bottom: 1.25rem;
+}
+
+.path-local-elediaai_core .lh-plugin-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+}
+
+.path-local-elediaai_core .lh-plugin-card {
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+}
+
+.path-local-elediaai_core .lh-plugin-card__top {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.path-local-elediaai_core .lh-plugin-card__icon svg,
+.path-local-elediaai_core .lh-icon-action svg,
+.elediaai-core-shell__icon-action svg {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+/* Ohne Pfad-Scope: die Plugin-Karte ist ein Baustein der geteilten Shell und
+   steht auch auf Seiten anderer Suite-Plugins. Dort griff die Regel nicht,
+   und die Ueberschrift fiel auf Moodles h3-Vorgabe zurueck -- gemessen 28px
+   auf der Teachertools-Seite, die groesste Schrift ausser dem Seitentitel.
+   Als Karten-Ueberschrift ist sie eine Stufe, keine Schlagzeile. */
+.lh-plugin-card__title {
+    font-size: var(--font-size-h4);
+    margin: 0;
+}
+
+.path-local-elediaai_core .lh-plugin-tag {
+    border-radius: var(--eai-radius-pill);
+    display: inline-block;
+    font-size: var(--font-size-caption);
+    padding: 0.15rem 0.55rem;
+}
+
+/* Statusfarben, kein Markenton: verfuegbar, Hinweis, neutral. Sie liegen auf
+   einer anderen Achse als die Suite-Token und bekamen deshalb lange bewusst
+   keinen -- ein --eai-* dafuer waere ein Token mit genau einem Leser gewesen.
+
+   Seit es Zustandsrollen gibt (task27), stimmt das nur noch fuer eine der
+   drei. "Aktiv" ist ein Erfolg und liest jetzt die Rolle; "neutral" ist eine
+   ruhende Flaeche mit gedaempftem Text und ebenfalls. "Hinweis" bleibt
+   woertlich: ein Blau, fuer das es keine Rolle gibt und das neben Erfolg,
+   Warnung und Gefahr eine vierte Aussage macht. */
+.path-local-elediaai_core .lh-plugin-tag--active { background: var(--eai-success-wash); color: var(--eai-success); }
+.path-local-elediaai_core .lh-plugin-tag--info { background: #dbeafe; color: #1e40af; }
+.path-local-elediaai_core .lh-plugin-tag--neutral { background: var(--eai-bg); color: var(--eai-muted); }
+
+/* Die Reifemarke auf einer Kachel.
+ *
+ * Sechzehn von zwanzig Kacheln tragen sie -- das ist naeher an einer Textur
+ * als an einem Signal, und entsprechend leise gesetzt: gedaempfte Flaeche,
+ * gedaempfter Text, kein Warnton. Wer die vier fertigen Werkzeuge sucht,
+ * findet sie daran, dass dort nichts steht.
+ *
+ * Oben rechts in der Kachel, ueber der Klickflaeche: die Karte ist als Ganzes
+ * ein Link (::after ueber der ganzen Flaeche), und ohne z-index laege die
+ * Marke darunter und waere nicht lesbar fuer den Mauszeiger, der ihren
+ * Titeltext zeigen soll. */
+.path-local-elediaai_core .lh-ai-suite-card {
+    position: relative;
+}
+
+.path-local-elediaai_core .lh-ai-suite-card__maturity {
+    background: var(--eai-bg);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius-pill);
+    color: var(--eai-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.5rem;
+    position: absolute;
+    right: 0.75rem;
+    text-transform: uppercase;
+    top: 0.75rem;
+    z-index: 2;
+}
+
+.path-local-elediaai_core .lh-plugin-empty-state {
+    align-items: center;
+    background: var(--eai-bg);
+    border: 1px dashed var(--eai-line);
+    border-radius: var(--eai-radius);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 1.25rem;
+}
+
+.path-local-elediaai_core .lh-support-doc {
+    display: block;
+}
+
+@media (min-width: 768px) {
+    .path-local-elediaai_core .lh-plugin-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .path-local-elediaai_core .lh-plugin-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+@media (max-width: 575.98px) {
+    .elediaai-core-shell__header { flex-direction: column; }
+}
+
+.path-local-elediaai_core .lh-elli-wizard-steps {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.path-local-elediaai_core .lh-elli-wizard-steps .nav-item,
+.path-local-elediaai_core .lh-elli-wizard-steps .nav-link {
+    width: 100%;
+}
+
+@media (min-width: 768px) {
+    .path-local-elediaai_core .lh-elli-wizard-steps {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1200px) {
+    .path-local-elediaai_core .lh-elli-wizard-steps {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+/*
+ * The suite's own tab strip.
+ *
+ * section_nav emits `.lh-plugin-section-nav`, but the rules for it live in
+ * block_elediaai_tutor and local_literag, each scoped to that plugin's own
+ * page path. On the suite's pages the strip therefore arrived with no rules at
+ * all: three links running into each other with no spacing and no current-page
+ * marker. In tokens, so the strip follows theme_elediaai where it publishes a
+ * palette and stays legible under Boost where it does not.
+ */
+
+.elediaai-core-shell__navigation {
+    margin-bottom: var(--eai-space-4);
+}
+
+/* Umbrechen statt schieben. Die Reiter heissen jetzt wie ihre Seiten ("Was
+   die Lernenden gefragt haben" statt "Kurs-Einblicke"), und damit passten
+   fuenf davon nicht mehr in eine Zeile: die letzten beiden standen ausserhalb
+   des Sichtfelds, angezeigt nur durch eine duenne Bildlaufleiste. Ein Reiter,
+   den man nicht sieht, ist kein Reiter. */
+.lh-plugin-section-nav {
+    border-bottom: 1px solid var(--eai-line);
+    column-gap: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    row-gap: 0.15rem;
+}
+
+.lh-plugin-section-nav__item {
+    align-items: center;
+    border-bottom: 3px solid transparent;
+    color: var(--eai-muted);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-weight: 600;
+    gap: 0.45rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    text-decoration: none;
+}
+
+.lh-plugin-section-nav__item:hover,
+.lh-plugin-section-nav__item:focus-visible {
+    background: var(--eai-accent-wash);
+    color: var(--eai-fg);
+    text-decoration: none;
+}
+
+.lh-plugin-section-nav__item:focus-visible {
+    outline: 2px solid var(--eai-accent);
+    outline-offset: -2px;
+}
+
+.lh-plugin-section-nav__item[aria-current="page"] {
+    border-bottom-color: var(--eai-accent);
+    color: var(--eai-fg);
+}
+
+.lh-plugin-section-nav__item svg {
+    height: 1rem;
+    width: 1rem;
+}
+
+/* =====================================================================
+   Entwicklerseite (developer.php, task24).
+
+   Die Seite zeigt das Design-System -- sie darf sich also nicht selbst
+   danebenbenehmen. Alles hier liest Token; freie Werte gaebe es nur an
+   der Stelle, an der die Seite ueber freie Werte spricht.
+   ===================================================================== */
+
+.path-local-elediaai_core .lh-dev__section {
+    margin-bottom: var(--eai-space-6);
+}
+
+.path-local-elediaai_core .lh-dev__heading {
+    font-size: var(--font-size-h2);
+    margin: 0 0 var(--eai-space-1);
+}
+
+.path-local-elediaai_core .lh-dev__subheading {
+    color: var(--eai-muted);
+    font-size: var(--font-size-h4);
+    margin: var(--eai-space-4) 0 var(--eai-space-1);
+}
+
+.path-local-elediaai_core .lh-dev__intro {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+    margin: 0 0 var(--eai-space-3);
+}
+
+.path-local-elediaai_core .lh-dev__facts {
+    display: grid;
+    gap: var(--eai-space-1) var(--eai-space-3);
+    grid-template-columns: max-content 1fr;
+    margin: 0;
+}
+
+.path-local-elediaai_core .lh-dev__facts dt {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+.path-local-elediaai_core .lh-dev__facts dd {
+    font-size: var(--font-size-small);
+    margin: 0;
+    max-width: 80ch;
+}
+
+/* Breite Tabellen scrollen in sich selbst, nicht die Seite. */
+.path-local-elediaai_core .lh-dev__table {
+    border-collapse: collapse;
+    display: block;
+    font-size: var(--font-size-small);
+    overflow-x: auto;
+    width: 100%;
+}
+
+.path-local-elediaai_core .lh-dev__table th,
+.path-local-elediaai_core .lh-dev__table td {
+    border-bottom: 1px solid var(--eai-line-soft);
+    padding: var(--eai-space-1) var(--eai-space-2) var(--eai-space-1) 0;
+    text-align: left;
+    vertical-align: top;
+}
+
+.path-local-elediaai_core .lh-dev__table th {
+    color: var(--eai-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.path-local-elediaai_core .lh-dev__swatch {
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    display: inline-block;
+    height: 1rem;
+    margin-right: var(--eai-space-1);
+    vertical-align: -0.15rem;
+    width: 1rem;
+}
+
+.path-local-elediaai_core .lh-dev__origin {
+    color: var(--eai-muted);
+}
+
+.path-local-elediaai_core .lh-dev__sample {
+    border-bottom: 1px solid var(--eai-line-soft);
+    padding: var(--eai-space-2) 0;
+}
+
+.path-local-elediaai_core .lh-dev__samplemeta {
+    color: var(--eai-muted);
+    display: flex;
+    font-size: var(--font-size-caption);
+    gap: var(--eai-space-2);
+}
+
+.path-local-elediaai_core .lh-dev__sampletext {
+    margin-top: var(--eai-space-1);
+}
+
+.path-local-elediaai_core .lh-dev__blocks {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--eai-space-2);
+    margin-bottom: var(--eai-space-3);
+}
+
+.path-local-elediaai_core .lh-dev__contract {
+    max-width: 70ch;
+}
+
+/*
+ * Der Zustandsbericht. Der Status steht als Wort vorn, nicht nur als Farbe:
+ * wer Rot und Gruen nicht unterscheidet, soll die Seite trotzdem lesen
+ * koennen, und ein Ausdruck in Graustufen auch.
+ */
+.lh-health {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+}
+
+.lh-health__row {
+    align-items: baseline;
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-left: 4px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: .9rem 1rem;
+}
+
+.lh-health__row--ok { border-left-color: var(--eai-success); }
+.lh-health__row--warning { border-left-color: var(--eai-warning); }
+.lh-health__row--error { border-left-color: var(--eai-danger); }
+
+.lh-health__status {
+    flex: 0 0 9rem;
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
+.lh-health__body { flex: 1 1 20rem; min-width: 0; }
+
+.lh-health__label {
+    font-size: var(--font-size-h4);
+    margin: 0;
+}
+
+.lh-health__component {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+    margin: .1rem 0 .4rem;
+}
+
+.lh-health__detail {
+    margin: 0 0 .5rem;
+    max-width: 70ch;
+}
+
+/* ---------------------------------------------------------------------------
+ * Audit: Verbrauch nach Feature.
+ *
+ * Neue Flaechen tragen den Praefix eai- und ihre Abstaende kommen aus den
+ * Token. Der Design-Lint prueft Schriftgroesse, Farbe und Radius, aber nicht
+ * die Abstaende -- deshalb stehen sie hier ausdruecklich als var() und nicht
+ * als freie rem-Werte, wie sie der aeltere lh-ai-audit-Block noch fuehrt.
+ * ------------------------------------------------------------------------- */
+
+.eai-audit-panel {
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    box-shadow: var(--eai-shadow-card);
+    padding: var(--eai-space-3);
+}
+
+.eai-audit-panel__eyebrow {
+    color: var(--eai-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    letter-spacing: .08em;
+    margin-bottom: var(--eai-space-1);
+    text-transform: uppercase;
+}
+
+.eai-audit-panel__title {
+    color: var(--eai-fg);
+    font-size: var(--font-size-h3);
+    font-weight: 700;
+    margin: 0 0 var(--eai-space-1);
+}
+
+.eai-audit-panel__body {
+    color: var(--eai-muted);
+    margin: 0 0 var(--eai-space-3);
+    max-width: 78ch;
+}
+
+.eai-audit-panel__empty {
+    color: var(--eai-muted);
+    margin: 0;
+}
+
+.eai-audit-panel__note {
+    color: var(--eai-faint);
+    font-size: var(--font-size-small);
+    margin: var(--eai-space-3) 0 0;
+    max-width: 78ch;
+}
+
+.eai-audit-components {
+    display: flex;
+    flex-direction: column;
+    gap: var(--eai-space-2);
+}
+
+/* Label, Balken, Zahl, Anzahl. Auf schmalen Flaechen bricht der Balken auf
+   die ganze Breite, damit das Label lesbar bleibt statt zu zerquetschen. */
+.eai-audit-component {
+    align-items: center;
+    display: grid;
+    gap: var(--eai-space-1) var(--eai-space-2);
+    grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 40rem) {
+    .eai-audit-component {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .eai-audit-component__track {
+        grid-column: 1 / -1;
+    }
+}
+
+.eai-audit-component__label {
+    color: var(--eai-fg-dim);
+    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.eai-audit-component__track {
+    background: var(--eai-line-soft);
+    border-radius: var(--eai-radius-pill);
+    height: .5rem;
+    overflow: hidden;
+}
+
+.eai-audit-component__fill {
+    background: var(--eai-accent-strong);
+    border-radius: var(--eai-radius-pill);
+    height: .5rem;
+}
+
+.eai-audit-component__value {
+    color: var(--eai-fg);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    text-align: right;
+}
+
+.eai-audit-component__meta {
+    color: var(--eai-faint);
+    font-size: var(--font-size-small);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
+ * Abzeichen im Audit. Die Farben bedeuten etwas und nur das: gelb heisst
+ * Aufmerksamkeit (Luecke, Schreibhandlung), gruen gedeckt, indigo von der KI
+ * erzeugt, still heisst "nur gelesen". Eine Luecke ist kein Fehler und deshalb
+ * nicht rot.
+ * ------------------------------------------------------------------------- */
+
+.eai-badge {
+    border-radius: var(--eai-radius-pill);
+    display: inline-block;
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    letter-spacing: .02em;
+    padding: .2rem .55rem;
+    white-space: nowrap;
+}
+
+.eai-badge--ok {
+    background: var(--eai-success-wash);
+    color: var(--eai-success);
+}
+
+.eai-badge--warn {
+    background: var(--eai-warning-wash);
+    color: var(--eai-warning);
+}
+
+.eai-badge--ai {
+    background: var(--eai-ai-wash);
+    color: var(--eai-ai);
+}
+
+.eai-badge--quiet {
+    background: var(--eai-bg);
+    color: var(--eai-muted);
+}
+
+/* Ein Personenbezug, der nach Ablauf der Frist entfernt wurde, sagt das --
+   eine leere Zelle liest sich als Fehler und nicht als Entscheidung. */
+.eai-audit__actor-none {
+    color: var(--eai-faint);
+    font-style: italic;
+}
+
+.eai-audit__errorcode {
+    color: var(--eai-danger);
+    font-size: var(--font-size-small);
+    margin-left: var(--eai-space-1);
+}
+
+/* ---------------------------------------------------------------------------
+ * Kennzahlen-Kacheln.
+ *
+ * Eine Zahl allein laesst den Leser vergleichen; ein Balken tut es fuer ihn.
+ * Deshalb traegt jede Kachel entweder einen Hinweis oder ein kleines Bild --
+ * und nie beides, sonst wird die Kachel zum Absatz.
+ * ------------------------------------------------------------------------- */
+
+.eai-metrics {
+    display: grid;
+    gap: var(--eai-space-2);
+    /* Alle drei Zahlenblocks der Suite haben genau vier Kacheln. Mit auto-fit
+       passten in der Inhaltsbreite mal drei, mal vier nebeneinander, und die
+       uebriggebliebene stand allein in der zweiten Reihe -- was aussieht wie
+       ein Versehen. Feste Spalten: zwei mal zwei auf schmalen Schirmen, vier
+       nebeneinander ab Tablettbreite. */
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 48rem) {
+    .eai-metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.eai-metric {
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    box-shadow: var(--eai-shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    padding: var(--eai-space-2) var(--eai-space-3);
+}
+
+.eai-metric__label {
+    color: var(--eai-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.eai-metric__value {
+    color: var(--eai-fg);
+    font-size: var(--font-size-display);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    line-height: 1.05;
+}
+
+.eai-metric__unit {
+    color: var(--eai-muted);
+    font-size: var(--font-size-h3);
+    font-weight: 700;
+}
+
+.eai-metric__hint {
+    color: var(--eai-faint);
+    font-size: var(--font-size-small);
+}
+
+/* Der Ton faerbt die Zahl, nicht die Kachel: eine ganze Flaeche einzufaerben
+   macht aus einem Hinweis ein Alarmsignal. */
+.eai-metric--warn .eai-metric__value { color: var(--eai-warning); }
+.eai-metric--ok .eai-metric__value { color: var(--eai-fg); }
+.eai-metric--quiet .eai-metric__value { color: var(--eai-fg-dim); }
+
+/* ---------------------------------------------------------------------------
+ * Aufteilungsbalken: gedeckt gegen ungedeckt in einer Spur.
+ * ------------------------------------------------------------------------- */
+
+.eai-splitbar {
+    background: var(--eai-line-soft);
+    border-radius: var(--eai-radius-pill);
+    display: flex;
+    height: .375rem;
+    overflow: hidden;
+    width: 100%;
+}
+
+.eai-splitbar--wide { height: .5rem; }
+
+.eai-splitbar__covered {
+    background: var(--eai-success);
+    height: 100%;
+}
+
+.eai-splitbar__open {
+    background: var(--eai-brand);
+    height: 100%;
+}
+
+/* ---------------------------------------------------------------------------
+ * Kurs-Einblicke: Luecken, Unklares, Verlauf, Wortlaut.
+ * ------------------------------------------------------------------------- */
+
+.eai-insights-head { margin-bottom: var(--eai-space-1); }
+
+.eai-insights-heading {
+    color: var(--eai-fg);
+    font-size: var(--font-size-h1);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin: 0 0 var(--eai-space-1);
+}
+
+.eai-insights-gaps,
+.eai-insights-unclears,
+.eai-insights-questions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--eai-space-1);
+}
+
+.eai-insights-gap {
+    align-items: center;
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line-soft);
+    border-radius: var(--eai-radius);
+    display: grid;
+    gap: var(--eai-space-1) var(--eai-space-3);
+    grid-template-columns: minmax(11rem, 20rem) minmax(6rem, 1fr) auto;
+    padding: var(--eai-space-2);
+}
+
+/* Ueber der Haelfte ungedeckt: warnender Grund. Gelb heisst Aufmerksamkeit,
+   nicht Fehler -- eine Luecke ist kein Defekt. */
+.eai-insights-gap--open {
+    background: var(--eai-warning-wash);
+    border-color: transparent;
+}
+
+.eai-insights-gap__label {
+    color: var(--eai-fg);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.eai-insights-gap__meta,
+.eai-insights-gap__askers,
+.eai-insights-gap__share {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+}
+
+.eai-insights-gap__share { margin-top: .35rem; }
+
+.eai-insights-gap__numbers { text-align: right; }
+
+.eai-insights-gap__count {
+    color: var(--eai-fg);
+    font-size: var(--font-size-h3);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    line-height: 1.1;
+}
+
+.eai-insights-tools {
+    align-items: center;
+    border-top: 1px solid var(--eai-line-soft);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--eai-space-1);
+    margin-top: var(--eai-space-3);
+    padding-top: var(--eai-space-2);
+    scroll-margin-top: var(--eai-space-4);
+}
+
+.eai-insights-tools__hint {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+    margin-right: var(--eai-space-1);
+}
+
+.eai-insights-tool {
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius-sm);
+    color: var(--eai-fg-dim);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    padding: .3rem .6rem;
+    text-decoration: none;
+}
+
+.eai-insights-tool:hover {
+    border-color: var(--eai-accent-strong);
+    color: var(--eai-accent-strong);
+    text-decoration: none;
+}
+
+.eai-insights-unclear + .eai-insights-unclear {
+    border-top: 1px solid var(--eai-line-soft);
+    padding-top: var(--eai-space-2);
+}
+
+.eai-insights-unclear__head {
+    align-items: baseline;
+    display: flex;
+    gap: var(--eai-space-2);
+    justify-content: space-between;
+}
+
+.eai-insights-unclear__label {
+    color: var(--eai-fg);
+    font-weight: 700;
+}
+
+.eai-insights-unclear__source,
+.eai-insights-unclear__meta {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+}
+
+.eai-insights-unclear__share {
+    color: var(--eai-warning);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.eai-insights-unclear__track {
+    background: var(--eai-line-soft);
+    border-radius: var(--eai-radius-pill);
+    height: .375rem;
+    margin: var(--eai-space-1) 0 .3rem;
+    overflow: hidden;
+}
+
+.eai-insights-unclear__fill {
+    background: var(--eai-brand);
+    border-radius: var(--eai-radius-pill);
+    height: .375rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Saeulendiagramm. Jede Saeule traegt ihren Wert in der Hoehe, die hoechste
+ * zusaetzlich als Zahl -- alle zu beschriften macht die Flaeche unruhig, keine
+ * macht sie unlesbar.
+ * ------------------------------------------------------------------------- */
+
+.eai-chart { margin-top: var(--eai-space-1); }
+
+.eai-chart__plot {
+    align-items: flex-end;
+    display: flex;
+    gap: .3rem;
+    height: 7rem;
+}
+
+.eai-chart__column {
+    align-items: flex-end;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    height: 100%;
+    justify-content: flex-end;
+    min-width: 0;
+}
+
+.eai-chart__fill {
+    background: var(--eai-line);
+    border-radius: var(--eai-radius-sm) var(--eai-radius-sm) 0 0;
+    width: 100%;
+}
+
+.eai-chart__fill--peak { background: var(--eai-brand); }
+
+.eai-chart__value {
+    color: var(--eai-fg);
+    font-size: var(--font-size-caption);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800;
+    margin-bottom: .2rem;
+}
+
+.eai-chart__baseline {
+    background: var(--eai-line);
+    height: 1px;
+}
+
+.eai-chart__axis {
+    color: var(--eai-faint);
+    display: flex;
+    font-size: var(--font-size-caption);
+    justify-content: space-between;
+    margin-top: .35rem;
+}
+
+.eai-chart__note {
+    align-items: center;
+    color: var(--eai-muted);
+    display: flex;
+    font-size: var(--font-size-small);
+    gap: var(--eai-space-1);
+    margin-top: var(--eai-space-2);
+}
+
+.eai-chart__key {
+    background: var(--eai-brand);
+    border-radius: var(--eai-radius-pill);
+    display: inline-block;
+    height: .5rem;
+    width: .5rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * Wortlaut.
+ * ------------------------------------------------------------------------- */
+
+.eai-insights-verbatim__badge { margin-bottom: var(--eai-space-2); }
+
+.eai-insights-question {
+    align-items: center;
+    border-top: 1px solid var(--eai-line-soft);
+    display: grid;
+    gap: var(--eai-space-2);
+    grid-template-columns: 8.5rem minmax(0, 1fr) auto;
+    padding: .55rem 0;
+}
+
+.eai-insights-question__when {
+    color: var(--eai-faint);
+    font-size: var(--font-size-small);
+    font-variant-numeric: tabular-nums;
+}
+
+.eai-insights-question__text {
+    color: var(--eai-fg-dim);
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 48rem) {
+    .eai-insights-gap {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .eai-insights-gap__bar { grid-column: 1 / -1; }
+
+    .eai-insights-question {
+        grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .eai-insights-question__when { grid-column: 1 / -1; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Kursauswahl. Jede Zeile ist ein Link, keine Zeile mit einem Link darin --
+ * sonst trifft man beim Klicken die Luecke zwischen den Woertern.
+ * ------------------------------------------------------------------------- */
+
+.eai-chooser {
+    display: flex;
+    flex-direction: column;
+}
+
+.eai-chooser__row {
+    align-items: center;
+    border-top: 1px solid var(--eai-line-soft);
+    color: inherit;
+    display: grid;
+    gap: var(--eai-space-1) var(--eai-space-3);
+    grid-template-columns: minmax(12rem, 2fr) minmax(6rem, 1fr) auto;
+    padding: var(--eai-space-2) var(--eai-space-1);
+    text-decoration: none;
+}
+
+.eai-chooser__row:hover,
+.eai-chooser__row:focus {
+    background: var(--eai-bg);
+    color: inherit;
+    text-decoration: none;
+}
+
+.eai-chooser__name {
+    color: var(--eai-fg);
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.eai-chooser__meta,
+.eai-chooser__share {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+}
+
+.eai-chooser__share {
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+    .eai-chooser__row { grid-template-columns: minmax(0, 1fr) auto; }
+    .eai-chooser__bar { grid-column: 1 / -1; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Einstiegskarten der Audit-Uebersicht und die Wegzeile.
+ *
+ * Die ganze Karte ist der Link. Ein Titel-Link in einer Karte laesst die
+ * Flaeche daneben tot wirken, und man klickt zweimal.
+ * ------------------------------------------------------------------------- */
+
+.eai-entries {
+    display: grid;
+    gap: var(--eai-space-2);
+    /* Etwas breiter als das uebliche Kartenmass: die Karten tragen jetzt den
+       vollen Namen der Flaeche, und bei 15rem brach "Was die Lernenden
+       gefragt haben" auf drei Zeilen um. */
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+}
+
+.eai-entry {
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    box-shadow: var(--eai-shadow-card);
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+    padding: var(--eai-space-3);
+    text-decoration: none;
+    transition: border-color .12s ease-in-out;
+}
+
+.eai-entry:hover,
+.eai-entry:focus {
+    border-color: var(--eai-accent-strong);
+    color: inherit;
+    text-decoration: none;
+}
+
+.eai-entry__icon {
+    color: var(--eai-accent-strong);
+    margin-bottom: var(--eai-space-1);
+}
+
+.eai-entry__eyebrow {
+    color: var(--eai-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.eai-entry__title {
+    color: var(--eai-fg);
+    display: block;
+    font-size: var(--font-size-h3);
+    font-weight: 700;
+}
+
+.eai-entry__text {
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+}
+
+.eai-waypoints {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--eai-space-2);
+    margin-top: var(--eai-space-2);
+}
+
+.eai-waypoint {
+    color: var(--eai-accent-strong);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.eai-waypoint:hover { text-decoration: underline; }
+
+/* -------------------------------------------------------------------------
+ * Datentabellen der Suite: umbrechen, nicht schieben
+ *
+ * Gilt fuer jede Tabelle unter `.eai-datatable` -- die beiden Audit-Berichte
+ * und den Herkunftsbericht. Reportbuilder legt jede Tabelle in
+ * `.table-responsive`, und das heisst
+ * `overflow-x: auto`. Bei zehn Spalten -- Zeit, Feature, Herkunft, Ort,
+ * Thema, Frage, Antwort, Status, Modell, Tokens -- braucht die Tabelle
+ * gemessene 1093 Pixel in einer 718 Pixel breiten Spalte. Was uebrig
+ * bleibt, erreicht man nur seitlich, und eine Tabelle, die man seitlich
+ * schieben muss, liest man falsch: die Zeile, die man rechts sieht, ist
+ * nicht mehr die, deren Zeitstempel man links gelesen hat.
+ *
+ * Drei Schritte, in dieser Reihenfolge:
+ *   1. Der Inhalt darf umbrechen. Reportbuilder setzt `white-space: nowrap`
+ *      auf die Kopfzeile, und Bootstrap gibt der Tabelle eine Mindestbreite.
+ *   2. Die beiden Freitextspalten bekommen eine Obergrenze und zwei Zeilen.
+ *      Der ganze Text steht weiterhin hinter „Volltext anzeigen" -- den
+ *      Knopf gibt es seit dem ersten Entwurf, er war nur unter dem
+ *      abgeschnittenen Text nicht zu sehen.
+ *   3. Unter 62rem hoert die Tabelle auf, eine Tabelle zu sein: eine Karte
+ *      je Zeile, Spaltenname links, Wert rechts. Den Namen traegt
+ *      `data-eai-col`, gesetzt von amd/src/audit_table.js aus der Kopfzeile
+ *      der Tabelle selbst -- die Spaltenzahl haengt an den Einstellungen der
+ *      Website und steht deshalb nirgends fest geschrieben.
+ * ------------------------------------------------------------------------- */
+
+/* Zwei Behaelter, beide mit Bildlauf: `.table-responsive` kommt von
+   Bootstrap, `.reportbuilder-wrapper` aus dem Stilblock dieser Seite. Wer
+   nur einen von beiden aufmacht, hat nichts gewonnen. */
+.eai-datatable .table-responsive,
+.eai-datatable .reportbuilder-wrapper {
+    overflow-x: visible;
+}
+
+.eai-datatable table {
+    min-width: 0;
+    table-layout: auto;
+    width: 100%;
+}
+
+.eai-datatable table th,
+.eai-datatable table td {
+    /* `break-word`, nicht `anywhere`: `anywhere` zaehlt in die Mindestbreite
+       der Spalte hinein, und die Tabelle passte dann in 467 Pixel, indem sie
+       jedes Wort zu einer Buchstabensaeule brach („eLeDi a.ai | AI Suite").
+       Sie passte und war unlesbar. Mit `break-word` behaelt eine Spalte ihr
+       laengstes Wort als Untergrenze; gebrochen wird nur, was allein schon
+       zu breit ist. */
+    overflow-wrap: break-word;
+    white-space: normal;
+    vertical-align: top;
+}
+
+/* Ein Abzeichen laeuft ueblicherweise nicht um -- in einer Tabellenzelle
+   haelt es damit aber die ganze Spalte auf seiner Breite fest. Gemessen:
+   „From course material" hob die Herkunftsspalte auf 169 Pixel, ein Viertel
+   der verfuegbaren Breite fuer ein Wort. */
+.eai-datatable table td .eai-badge {
+    white-space: normal;
+}
+
+/* Die Zeitspalte bricht sonst auf drei Zeilen („Saturday, 19 September
+   2026, 4:41"), und das ist die Spalte, an der man sich orientiert. */
+.eai-datatable table td:first-child,
+.eai-datatable table th:first-child {
+    min-width: 7.5rem;
+}
+
+/* Frage und Antwort: zwei Zeilen, der Rest hinter dem Knopf, den es schon
+   gibt. Ohne Deckel nimmt eine einzige lange Frage die halbe Seite. */
+.eai-datatable table td[data-eai-col="Prompt"] > *,
+.eai-datatable table td[data-eai-col="Response"] > *,
+.eai-datatable table td[data-eai-col="Frage"] > *,
+.eai-datatable table td[data-eai-col="Antwort"] > * {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+}
+
+/* Der Umschaltpunkt ist gemessen, nicht geraten. Der Suite-Bericht mit zehn
+   Spalten braucht 1040 Pixel, um ohne Wortbruch zu stehen. Nachgemessen
+   bekommt er bei 1265 Pixeln Fensterbreite 1057 Pixel (passt), bei 1185
+   Pixeln nur noch 977 (passt nicht). 78rem = 1248 Pixel liegt dazwischen.
+   Darunter ist die Tabelle keine Tabelle mehr, sondern eine Karte je Zeile.
+
+   Vorbehalt: die 1040 Pixel haengen am laengsten Wort in den Daten. Ein
+   ungewoehnlich langer Kursname kann sie heben, und dann steht die Tabelle
+   knapp oberhalb des Umschaltpunkts wieder zu eng. Die Abhilfe waere, den
+   Punkt zu heben -- nicht, den Bildlauf zurueckzuholen. */
+@media (max-width: 78rem) {
+    /* Kopfzeile weg, Zeilen werden Karten. `display: block` auf
+       Tabellenteilen ist der uebliche Weg dafuer; die Semantik geht nicht
+       verloren, weil jede Zelle ihren Spaltennamen mitbekommt. */
+    .eai-datatable table thead {
+        border: 0;
+        clip: rect(0 0 0 0);
+        height: 1px;
+        overflow: hidden;
+        position: absolute;
+        width: 1px;
+    }
+
+    .eai-datatable table,
+    .eai-datatable table tbody,
+    .eai-datatable table tr {
+        display: block;
+        max-width: none;
+        width: 100%;
+    }
+
+    .eai-datatable table tr {
+        background: var(--eai-surface);
+        border: 1px solid var(--eai-line);
+        border-radius: var(--eai-radius);
+        margin-bottom: var(--eai-space-2);
+        padding: var(--eai-space-2);
+    }
+
+    /* Flex und nicht Grid, und mit ausdruecklicher Breite. Eine Zelle
+       behaelt sonst das Schrumpfverhalten der Tabellenzelle, obwohl sie als
+       Block gesetzt ist: gemessen 136 Pixel in einer 438 Pixel breiten
+       Zeile, was jedes Wort in eine Buchstabensaeule brach. */
+    .eai-datatable table td {
+        align-items: baseline;
+        border: 0;
+        display: flex;
+        gap: var(--eai-space-2);
+        max-width: none;
+        min-width: 0;
+        padding: 0.2rem 0;
+        width: 100%;
+    }
+
+    .eai-datatable table td > * {
+        min-width: 0;
+    }
+
+    .eai-datatable table td::before {
+        color: var(--eai-muted);
+        content: attr(data-eai-col);
+        /* Schrumpfbar: bei 8rem fest blieb fuer den Wert auf einem
+           375-Pixel-Schirm zu wenig uebrig, und die Karte schob die Seite
+           um 46 Pixel zur Seite. */
+        flex: 0 1 8rem;
+        font-size: var(--font-size-small);
+        font-weight: 600;
+        min-width: 0;
+    }
+
+    /* Auf dem Telefon nebeneinander zu setzen, was nicht nebeneinander
+       passt, ergibt zwei zu schmale Spalten. Dort steht der Name ueber dem
+       Wert. */
+    @media (max-width: 30rem) {
+        .eai-datatable table td {
+            display: block;
+        }
+
+        .eai-datatable table td::before {
+            display: block;
+            margin-bottom: 0.1rem;
+        }
+    }
+
+    /* Eine Zelle ohne Namen -- die Auswahlspalte etwa -- steht ueber die
+       ganze Breite, sonst klebte sie in der rechten Haelfte. */
+    .eai-datatable table td:not([data-eai-col]) {
+        display: block;
+    }
+
+    .eai-datatable table td:first-child {
+        min-width: 0;
+    }
+
+    /* Auf der Karte ist der Platz nicht knapp: hier darf der ganze Text
+       stehen, statt den Leser fuer jede Frage in einen Dialog zu schicken. */
+    .eai-datatable table td[data-eai-col] > * {
+        -webkit-line-clamp: none;
+        line-clamp: none;
+        display: block;
+        overflow: visible;
+    }
+}
+
+/* -------------------------------------------------------------------------
+ * Die drei Tabellenseiten duerfen die Lesebreite verlassen
+ *
+ * Boost deckelt `.main-inner` bei 830 Pixeln. Das ist die richtige Breite
+ * fuer Fliesstext und die falsche fuer einen Bericht: gemessen braucht der
+ * Suite-Bericht mit zehn Spalten 1040 Pixel, um ohne Wortbruch zu stehen,
+ * und bekam 718. Die eigene Huelle half nicht -- sie steht mit ihren 88rem
+ * *innerhalb* des Deckels.
+ *
+ * Aufgehoben wird er nur auf den drei Seiten, die eine Datentabelle tragen,
+ * adressiert ueber die Seiten-ID. Eine Regel auf `path-local-elediaai_core`
+ * haette jede Seite des Plugins mitgenommen, auch die, die von der
+ * Lesebreite leben.
+ * ------------------------------------------------------------------------- */
+
+/* `!important`, und zwar bewusst: Boosts eigene Regel traegt es selbst, und
+   ohne kommt man an ihr nicht vorbei -- nachgemessen bleibt der Deckel sonst
+   bei 830 Pixeln stehen, auch mit ID-Selektor. Die Alternative waere, die
+   Regel im Theme zu aendern, und damit fuer jede Seite der Website. */
+body#page-local-elediaai_core-audit_technical .main-inner,
+body#page-local-elediaai_core-audit_actions .main-inner,
+body#page-local-aitransparency-report .main-inner {
+    /* design-lint: erlaubt — Boosts eigene Regel traegt !important; ohne
+       kommt man an ihr auch mit ID-Selektor nicht vorbei (nachgemessen). */
+    max-width: none !important;
+}

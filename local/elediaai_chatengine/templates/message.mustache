@@ -1,0 +1,147 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_elediaai_chatengine/message
+
+    A single chat message bubble. Rendered client-side by the chat AMD module.
+
+    For user messages, the "text" value is escaped by Mustache (HTML-safe). For
+    assistant messages, the "html" value is server-sanitised Markdown output and
+    is intentionally rendered unescaped (triple-mustache).
+
+    Example context (json):
+    {
+        "isuser": false,
+        "isassistant": true,
+        "sendername": "eLeDia.ai Tutor",
+        "prefix": "elediaai-chat",
+        "avatarurl": "https://moodle.example.com/local/elediaai_chatengine/pix/logo.png",
+        "html": "<p>Here is your answer.</p>",
+        "failuretext": "",
+        "text": "",
+        "failed": false,
+        "sources": [
+            {"title": "Week 1 notes", "url": "https://example.com/n", "hasurl": true, "snippet": "..."}
+        ],
+        "hassources": true,
+        "copylabel": "Copy answer",
+        "retrylabel": "Retry"
+    }
+}}
+<div class="{{prefix}}-message {{#isuser}}{{prefix}}-user{{/isuser}}{{#isassistant}}{{prefix}}-assistant{{/isassistant}}{{#failed}} {{prefix}}-failed{{/failed}}"
+     data-region="message" role="article">
+    <div class="{{prefix}}-meta">
+        {{#isassistant}}<span class="{{prefix}}-msg-avatar" aria-hidden="true">
+            <img class="{{prefix}}-msg-avatar-img" src="{{avatarurl}}" alt="" width="20" height="20">
+        </span>{{/isassistant}}
+        <span class="{{prefix}}-sender">{{sendername}}</span>
+        {{#showmcpbadge}}
+            <span class="{{prefix}}-grounding {{prefix}}-mcp"
+                  title="{{#str}}mcpbadge_title, local_elediaai_chatengine{{/str}}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
+                MCP
+            </span>
+        {{/showmcpbadge}}
+        {{#showgrounding}}
+            {{#grounded}}
+                <span class="{{prefix}}-grounding {{prefix}}-grounded"
+                      title="{{#str}}groundedbadge_title, local_elediaai_chatengine{{/str}}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></svg>
+                    {{#str}}groundedbadge, local_elediaai_chatengine{{/str}}
+                </span>
+            {{/grounded}}
+            {{^grounded}}
+                <span class="{{prefix}}-grounding {{prefix}}-ungrounded"
+                      title="{{#str}}ungroundedbadge_title, local_elediaai_chatengine{{/str}}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                    {{#str}}ungroundedbadge, local_elediaai_chatengine{{/str}}
+                </span>
+            {{/grounded}}
+        {{/showgrounding}}
+    </div>
+    <div class="{{prefix}}-bubble">
+        {{! A restored turn arrives as HTML the server already escaped
+            (format_text with FORMAT_PLAIN); a turn just typed arrives as plain
+            text. Rendering only the latter dropped every one of a person's own
+            messages when a conversation was reopened. }}
+        {{#isuser}}{{#html}}{{{html}}}{{/html}}{{^html}}{{text}}{{/html}}{{/isuser}}
+        {{#isassistant}}
+            <div class="{{prefix}}-markdown">
+                {{#failuretext}}<p>{{failuretext}}</p>{{/failuretext}}
+                {{^failuretext}}{{{html}}}{{/failuretext}}
+            </div>
+            {{#hasconfirmation}}
+                {{! Generic confirmation card: facts from the tool preview,
+                    danger styling when the tool is annotated destructive.
+                    Buttons resolve the pending action with an explicit
+                    decision flag — never via yes/no text matching. }}
+                <div class="{{prefix}}-confirmation{{#confirmation.destructive}} {{prefix}}-confirmation--destructive{{/confirmation.destructive}}"
+                     data-region="confirmation-actions" role="group">
+                    {{#confirmation.hastooltitle}}
+                        <div class="{{prefix}}-confirmation__title">
+                            {{#confirmation.destructive}}<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> {{/confirmation.destructive}}{{confirmation.tooltitle}}
+                        </div>
+                    {{/confirmation.hastooltitle}}
+                    {{#confirmation.hassummary}}
+                        <div class="{{prefix}}-confirmation__summary">{{confirmation.summary}}</div>
+                    {{/confirmation.hassummary}}
+                    <div class="{{prefix}}-confirmation__actions">
+                        <button type="button"
+                                class="btn btn-sm {{#confirmation.destructive}}btn-danger{{/confirmation.destructive}}{{^confirmation.destructive}}btn-primary{{/confirmation.destructive}}"
+                                data-action="confirm-resume"
+                                data-message="{{confirmation.yesmessage}}">{{confirmation.yeslabel}}</button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                data-action="confirm-decline"
+                                data-message="{{confirmation.nomessage}}">{{confirmation.nolabel}}</button>
+                    </div>
+                </div>
+            {{/hasconfirmation}}
+            {{#hassources}}
+                <div class="{{prefix}}-sources">
+                    <div class="{{prefix}}-sources-title">{{#str}}sources, local_elediaai_chatengine{{/str}}</div>
+                    <ul class="{{prefix}}-sources-list">
+                        {{#sources}}
+                            <li class="{{prefix}}-source">
+                                {{#num}}<span class="{{prefix}}-source-num">[S{{num}}]</span> {{/num}}
+                                {{#hasurl}}
+                                    {{! url is server-normalised with PARAM_URL before it reaches this template. }}
+                                    <a href="{{url}}">{{title}}</a>
+                                {{/hasurl}}
+                                {{^hasurl}}<span>{{title}}</span>{{/hasurl}}
+                                {{#snippet}}<span class="{{prefix}}-source-snippet">{{snippet}}</span>{{/snippet}}
+                            </li>
+                        {{/sources}}
+                    </ul>
+                </div>
+            {{/hassources}}
+        {{/isassistant}}
+    </div>
+    {{#isassistant}}
+        <div class="{{prefix}}-message-actions">
+            <button type="button" class="btn btn-icon btn-sm {{prefix}}-iconbtn"
+                    data-action="copy" aria-label="{{copylabel}}" title="{{copylabel}}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            </button>
+        </div>
+    {{/isassistant}}
+    {{#failed}}
+        <div class="{{prefix}}-message-actions">
+            <button type="button" class="btn btn-sm btn-outline-secondary"
+                    data-action="retry">{{retrylabel}}</button>
+        </div>
+    {{/failed}}
+</div>

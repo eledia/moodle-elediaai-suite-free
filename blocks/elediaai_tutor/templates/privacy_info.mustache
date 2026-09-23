@@ -1,0 +1,77 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_elediaai_tutor/privacy_info
+
+    Body of the privacy guidelines modal: AI accuracy warning, what is sent,
+    what is stored, the long-term memory opt-in, and data deletion controls.
+    All visible text comes from language strings; the JS module wires up the
+    toggle and the delete button after the modal is created.
+
+    When "hascustom" is set, "customtext" holds admin-provided, server-side
+    formatted HTML (institution-specific privacy guidelines) that replaces the
+    built-in informational sections. The long-term memory opt-in and the
+    deletion controls are always rendered.
+
+    Example context (json):
+    {
+        "uniqid": "elediaai_tutor_abc123",
+        "ltmenabled": false,
+        "candelete": true,
+        "hascustom": false,
+        "customtext": ""
+    }
+}}
+<div class="elediaai-chat-privacy" data-region="privacy-info">
+    {{#hascustom}}
+        <div class="elediaai-chat-privacy-custom">{{{customtext}}}</div>
+    {{/hascustom}}
+    {{^hascustom}}
+    <p>{{#str}}privacy_intro, block_elediaai_tutor{{/str}}</p>
+
+    <div class="elediaai-chat-callout" role="note">
+        <strong>{{#str}}privacy_accuracy_title, block_elediaai_tutor{{/str}}</strong><br>
+        {{#str}}privacy_accuracy_body, block_elediaai_tutor{{/str}}
+    </div>
+
+    <h3 class="elediaai-chat-privacy-heading">{{#str}}privacy_sent_title, block_elediaai_tutor{{/str}}</h3>
+    <p>{{#str}}privacy_sent_body, block_elediaai_tutor{{/str}}</p>
+
+    <h3 class="elediaai-chat-privacy-heading">{{#str}}privacy_storage_title, block_elediaai_tutor{{/str}}</h3>
+    <p>{{#str}}privacy_storage_body, block_elediaai_tutor{{/str}}</p>
+    {{/hascustom}}
+
+    <h3 class="elediaai-chat-privacy-heading">{{#str}}privacy_ltm_title, block_elediaai_tutor{{/str}}</h3>
+    <p>{{#str}}privacy_ltm_body, block_elediaai_tutor{{/str}}</p>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="{{uniqid}}_ltm"
+               data-region="ltm-toggle" {{#ltmenabled}}checked{{/ltmenabled}}>
+        <label class="form-check-label" for="{{uniqid}}_ltm">
+            {{#str}}ltm_optin, block_elediaai_tutor{{/str}}
+        </label>
+    </div>
+    <div class="small text-muted mb-3" data-region="ltm-status" role="status" aria-live="polite"></div>
+
+    <h3 class="elediaai-chat-privacy-heading">{{#str}}privacy_deletion_title, block_elediaai_tutor{{/str}}</h3>
+    <p>{{#str}}privacy_deletion_body, block_elediaai_tutor{{/str}}</p>
+    {{#candelete}}
+        <button type="button" class="btn btn-outline-danger" data-action="delete-all">
+            {{#str}}deletealldata, block_elediaai_tutor{{/str}}
+        </button>
+        <div class="small text-muted mt-2" data-region="delete-status" role="status" aria-live="polite"></div>
+    {{/candelete}}
+</div>

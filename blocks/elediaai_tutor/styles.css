@@ -1,0 +1,4313 @@
+/*
+ * This file is part of Moodle - http://moodle.org/
+ *
+ * Moodle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Moodle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * What only the tutor block has.
+ *
+ * The chat surface itself - panel, header, message log, composer, bubbles -
+ * is styled by local_elediaai_chatengine, under the same .elediaai-chat-*
+ * prefix. What is left here is the block's own chrome: its launcher and
+ * overlay display modes, the dashboard hero, the starter pills, the answer
+ * style chips, the consent gate, the conversation list, and the management
+ * screens under .eat-admin.
+ *
+ * The design tokens read below are declared by the engine's stylesheet.
+ *
+ * @package   block_elediaai_tutor
+ * @copyright 2026 eLeDia GmbH, Berlin
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/* --- Schrift. -----------------------------------------------------------
+   Die Skala steht im Theme (--font-size-*), nicht hier: eine Skala, die
+   jedes Plugin fuer sich noch einmal festlegt, ist keine. Jede Stelle liest
+   sie mit Rueckfallwert, das Plugin laeuft also auch unter Boost weiter.
+
+   Frueher standen hier eigene --eac-text-* mit sieben Stufen, darunter 13
+   und 15 Pixel. Beide sind entfallen: 13 gegen 14 war nie eine
+   Unterscheidung, und 15 war Fliesstext, der sich nicht dazu bekannte. */
+
+
+/* --- Launch button (overlay modes). ----------------------------------- */
+/*
+ * Scoped under .elediaai-chat-root so the flex layout beats Bootstrap's
+ * `.btn { display: inline-block }` (equal specificity would otherwise leave the
+ * icon and label baseline-aligned instead of centred).
+ */
+.elediaai-chat-root .elediaai-chat-launch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-radius: var(--eai-radius-pill);
+    font-weight: 600;
+    line-height: 1;
+    padding: 0.55rem 1.1rem;
+    background: var(--eac-surface);
+    border: 1px solid var(--eac-line);
+    color: var(--eac-accent);
+    box-shadow: var(--eac-shadow-md);
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.elediaai-chat-root .elediaai-chat-launch:hover,
+.elediaai-chat-root .elediaai-chat-launch:focus-visible {
+    background: var(--eac-surface);
+    border-color: var(--eac-accent);
+    color: var(--eac-accent);
+    box-shadow: var(--eac-shadow-lg);
+    transform: translateY(-1px);
+}
+
+/* Mouse press / non-keyboard focus: keep the themed look instead of Bootstrap's
+   blue .btn-primary pressed background and focus ring. */
+.elediaai-chat-root .elediaai-chat-launch:focus,
+.elediaai-chat-root .elediaai-chat-launch:active {
+    background: var(--eac-surface);
+    border-color: var(--eac-accent);
+    color: var(--eac-accent);
+    box-shadow: var(--eac-shadow-md);
+    outline: none;
+}
+
+.elediaai-chat-root .elediaai-chat-launch:active {
+    transform: translateY(1px);
+}
+
+/* Keyboard focus gets a clear accent ring (adjustable via --eac-focus-ring). */
+.elediaai-chat-root .elediaai-chat-launch:focus-visible {
+    box-shadow: 0 0 0 0.2rem var(--eac-focus-ring), var(--eac-shadow-lg);
+}
+
+/* Solid variant: accent-filled pill. */
+.elediaai-chat-root .elediaai-chat-launch--solid {
+    background: var(--eac-accent);
+    border-color: var(--eac-accent);
+    color: var(--eac-accent-contrast);
+}
+
+.elediaai-chat-root .elediaai-chat-launch--solid:hover,
+.elediaai-chat-root .elediaai-chat-launch--solid:focus,
+.elediaai-chat-root .elediaai-chat-launch--solid:focus-visible,
+.elediaai-chat-root .elediaai-chat-launch--solid:active {
+    background: var(--eac-accent-dark);
+    border-color: var(--eac-accent-dark);
+    color: var(--eac-accent-contrast);
+}
+
+.elediaai-chat-root .elediaai-chat-launch--compact {
+    width: 100%;
+    min-height: 4.25rem;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: 8px;
+    box-shadow: none;
+    background: transparent;
+    border-color: transparent;
+    color: var(--eac-ink);
+}
+
+.elediaai-chat-root .elediaai-chat-launch--compact:hover,
+.elediaai-chat-root .elediaai-chat-launch--compact:focus,
+.elediaai-chat-root .elediaai-chat-launch--compact:focus-visible,
+.elediaai-chat-root .elediaai-chat-launch--compact:active {
+    background: var(--eac-tint);
+    border-color: var(--eac-line);
+    color: var(--eac-ink);
+    box-shadow: none;
+    transform: none;
+}
+
+.elediaai-chat-launch--compact .elediaai-chat-launch-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 4px;
+    border-radius: 50%;
+    background: var(--eai-surface);
+    border: 1px solid var(--eac-line);
+    box-shadow: var(--eac-shadow-sm);
+}
+
+.elediaai-chat-launch-copy {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    text-align: left;
+    line-height: 1.2;
+}
+
+.elediaai-chat-launch-kicker {
+    color: var(--eac-ink);
+    font-weight: 700;
+    font-size: var(--font-size-body);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.elediaai-chat-launch--compact .elediaai-chat-launch-text {
+    color: var(--eac-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+}
+
+.elediaai-chat-launch-arrow {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    color: var(--eac-accent);
+    background: var(--eac-overlay);
+}
+
+.elediaai-chat-fab-shell-hidden {
+    display: none !important;
+}
+
+/* Floating launcher (FAB): a themed, accent-filled circular button fixed in the
+   bottom-right corner, offset above the host theme's own corner controls via the
+   --eac-fab-* tokens (default tuned for Boost's "?" help button). The launch
+   button is portalled to <body> by the JS so it stays visible regardless of the
+   block drawer; it carries the brand vars inline (see launcher.mustache) and is
+   itself a token root, so it is fully theme-coloured wherever it lives. The logo
+   sits on a small light disc so any logo reads on the accent fill. */
+/* The FAB is portalled to <body> by the JS, so it lives OUTSIDE .elediaai-chat-root
+   and cannot rely on the root-scoped base launch rules above. It must therefore be
+   fully self-contained, and its selector doubles the class (specificity 0,2,0) so it
+   beats Bootstrap's `.btn-primary` (0,1,0) regardless of stylesheet order — otherwise
+   it falls back to a blue inline-block square with an off-centre icon. */
+.elediaai-chat-launch.elediaai-chat-launch--fab {
+    position: fixed;
+    right: var(--eac-fab-right, 2rem);
+    bottom: var(--eac-fab-bottom, 5.5rem);
+    z-index: var(--eac-z);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    padding: 0;
+    gap: 0;
+    line-height: 1;
+    border-radius: 50%;
+    background: var(--eac-accent);
+    border: 0;
+    color: var(--eac-accent-contrast);
+    box-shadow: var(--eac-shadow-lg);
+    transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.elediaai-chat-launch.elediaai-chat-launch--fab:hover,
+.elediaai-chat-launch.elediaai-chat-launch--fab:focus,
+.elediaai-chat-launch.elediaai-chat-launch--fab:focus-visible {
+    background: var(--eac-accent-dark);
+    transform: translateY(-2px) scale(1.04);
+    box-shadow: var(--eac-shadow-lg);
+    border: 0;
+    color: var(--eac-accent-contrast);
+    outline: none;
+}
+
+/* Keyboard focus gets the accent ring; mouse press stays accent, never blue. */
+.elediaai-chat-launch.elediaai-chat-launch--fab:focus-visible {
+    box-shadow: 0 0 0 0.25rem var(--eac-focus-ring), var(--eac-shadow-lg);
+}
+
+.elediaai-chat-launch.elediaai-chat-launch--fab:active {
+    background: var(--eac-accent-dark);
+    transform: translateY(0) scale(0.98);
+    box-shadow: var(--eac-shadow-md);
+    color: var(--eac-accent-contrast);
+}
+
+.elediaai-chat-launch--fab .elediaai-chat-launch-icon {
+    width: 2.3rem;
+    height: 2.3rem;
+    background: var(--eai-surface);
+    border-radius: 50%;
+    padding: 4px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+    /* Clip any non-square uploaded logo to the disc so its corners never spill
+       past the circle. object-fit:contain on the img keeps the whole logo visible. */
+    overflow: hidden;
+}
+
+/* On phones, sit closer to the corner (host help buttons are smaller / hidden). */
+@media (max-width: 576px) {
+    .elediaai-chat-launch--fab {
+        right: 1rem;
+        bottom: 1rem;
+    }
+}
+
+.elediaai-chat-launch-icon,
+.elediaai-chat-launch-text {
+    vertical-align: middle;
+}
+
+.elediaai-chat-launch-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    background: transparent;
+    flex: 0 0 auto;
+}
+
+.elediaai-chat-launch-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* --- Prompt starters (suggested questions under the welcome message). --- */
+.elediaai-chat-starters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    max-width: 90%;
+    align-self: flex-start;
+}
+
+.elediaai-chat-starter {
+    border: 1px solid var(--eac-line);
+    background: var(--eac-surface);
+    color: var(--eac-accent);
+    border-radius: var(--eai-radius-pill);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    padding: 0.35rem 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.elediaai-chat-starter:hover,
+.elediaai-chat-starter:focus-visible {
+    border-color: var(--eac-accent);
+    background: var(--eac-tint);
+}
+
+.elediaai-chat-starter:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.18rem var(--eac-focus-ring);
+}
+
+.elediaai-chat-starter:active {
+    background: var(--eac-tint);
+}
+
+/* --- Dashboard hero (/my/): Claude-style start surface. -----------------
+
+   Alle Regeln hier tragen beide Klassen des Elements, nicht nur den
+   Modifier. Der Grund ist keine Kosmetik: die Basisregeln stehen in der
+   Chat-Engine und sind gleich spezifisch, es entscheidet also die
+   Ladereihenfolge -- und im gebuendelten Theme-Stylesheet steht die Engine
+   HINTER dem Block. Der Hero sah nur deshalb richtig aus, weil
+   admin_launcher.js das Block-Stylesheet nachlaedt, und das laeuft nur fuer
+   Administratoren. Fuer alle anderen gewannen die Engine-Werte: weisse
+   Kopfzeile mit Trennlinie statt keiner, und 60vh feste Hoehe statt einer
+   Hoehe nach Inhalt. Ein Modifier muss seine Basis durch Bau schlagen, nicht
+   durch Dateireihenfolge. */
+.elediaai-chat-header.elediaai-chat-header--hero {
+    justify-content: flex-end;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 0;
+    background: transparent;
+}
+
+/* The hero panel sizes to its content: no fixed conversation height, the
+   log stays collapsed until the first exchange and then grows (capped). */
+/* Der Zustimmungs-Hinweis ist das Erste, was jemand vom Tutor sieht -- und
+   im Hero lief er als randlose weisse Flaeche quer durch die Karte, ueber
+   das Muster hinweg, mit eckigen Ecken und einer Trennlinie darueber. Er
+   bekommt dieselbe Spalte wie das Eingabefeld darunter, damit die beiden
+   zusammen eine Kolumne bilden statt zweier Ebenen.
+
+   Beide Klassen am Panel, aus dem Grund im Kommentar weiter unten. */
+.elediaai-chat-panel.elediaai-chat-panel--hero .elediaai-chat-consent {
+    background: var(--eac-assistant-bg, var(--eac-surface));
+    border-radius: var(--eac-radius, 16px);
+    border-top: 0;
+    margin: 0 1.25rem;
+    max-width: 58rem;
+    padding: 1rem 1.25rem;
+}
+
+.elediaai-chat-panel.elediaai-chat-panel--hero .elediaai-chat-window {
+    height: auto;
+    min-height: 0;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-log {
+    flex: 0 1 auto;
+    max-height: 55vh;
+    /* No own surface or vertical padding: an empty log collapses invisibly
+       (no grey strip on first open); the first/last message carry the gap. */
+    background: transparent;
+    padding: 0 1rem;
+}
+
+/* On the Dashboard the conversation and the field are one column: an answer
+   should begin where the question was typed. The log sat four pixels left of
+   the input pill, which reads as two columns that nearly agree -- worse than
+   two that plainly differ. The inset is the composer's own, so the two stay
+   together if either moves. */
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-log {
+    /* The same column as the field below it, on both edges: the inset, and the
+       width. Without the cap the conversation ran nearly 300px wider than the
+       input that produced it, so an answer and its question shared neither
+       edge. The cap adds the padding back, because the box sizes by its border
+       box and it is the content that has to measure the field's width. */
+    margin-inline-end: auto;
+    max-width: calc(58rem + 2.5rem);
+    padding-inline: 1.25rem;
+    /* Full width up to the cap, not as wide as its widest message: without it
+       the column is whatever has been said so far, and a right-aligned
+       question ends short of the field it was typed in. */
+    width: 100%;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-message:first-child {
+    margin-top: 0.75rem;
+}
+
+/* --- Textmasse im Gespraech des Hero -------------------------------------
+   Gemessen stand hier Moodles Seitentypografie: eine Ueberschrift in einer
+   Antwort kam auf 28px, also fast das Mass der Begruessung darueber -- eine
+   Antwort rief damit lauter als die Ueberschrift der Seite. Dazu 32px
+   Listeneinzug und ein voller Zeilenabstand zwischen den Absaetzen, beides
+   fuer eine Textseite gedacht und nicht fuer eine Sprechblase.
+
+   Eine Antwort ist gesprochener Text, keine Publikation. Sie braucht genau
+   zwei Stufen: die Zeile und, etwas fester, ihre Zwischenueberschrift.
+
+   Die Token wirken in jeder Platzierung, nicht nur im Hero. Zuerst hingen
+   sie an --hero, und damit zeigte die Live-Vorschau der Verwaltung keine
+   Wirkung: sie rendert das Panel ohne diese Klasse, der Token lief also ins
+   Leere. Ein Regler, der in der Vorschau nichts tut, ist kein Regler.
+
+   Ohne Einstellung aendert sich trotzdem nichts: die Rueckfallwerte sind
+   genau die heutigen Masse. Ausserhalb des Hero sind das Moodles eigene --
+   Zeile 16px/1.55 und die Ueberschriftenskala 2.5/2/1.75/1.5/1.25/1 em,
+   nachgemessen auf einer Kursseite. Der Hero traegt seine eigenen Werte als
+   Custom Properties auf dem Panel; setzt jemand den Token, kommt er als
+   Inline-Style auf dasselbe Element und gewinnt. */
+.elediaai-chat-panel--hero {
+    // Die Groesse steht nicht mehr hier: ein Gespraech ist Fliesstext, und
+    // Fliesstext ist ueberall 1rem. Frueher 0.9375rem, also 15px -- eine
+    // Groesse, die sich weder zu Fliesstext noch zu Beilaeufigem bekannte.
+    // Was den Hero unterscheidet, ist die offenere Zeile.
+    --eac-bubble-line-height: 1.6;
+}
+
+/* Zwei Klassen tief, damit die Regel unabhaengig von der Ladereihenfolge
+   ueber der Zeilenhoehe der Chat-Engine liegt -- deren Regel ist eine
+   Klasse tief, und welche Datei zuerst kommt, haengt am Ausspielweg. */
+.elediaai-chat-panel .elediaai-chat-bubble {
+    font-size: var(--eac-bubble-font-size, var(--font-size-body));
+    line-height: var(--eac-bubble-line-height, 1.55);
+}
+
+/* Die Rueckfallwerte sind Moodles Skala in em, also ohne Einstellung
+   unveraendert. Ist der Token gesetzt, fallen alle Stufen auf ein Mass
+   zusammen -- gewollt: in einer Antwort ist eine Ueberschrift eine Stufe,
+   und sechs Groessen sind eine Gliederung, die gesprochener Text nicht hat. */
+.elediaai-chat-panel .elediaai-chat-bubble h1 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-h3));
+}
+
+.elediaai-chat-panel .elediaai-chat-bubble h2 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-h4));
+}
+
+.elediaai-chat-panel .elediaai-chat-bubble h3 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-body));
+}
+
+.elediaai-chat-panel .elediaai-chat-bubble h4 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-body));
+}
+
+.elediaai-chat-panel .elediaai-chat-bubble h5 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-body));
+}
+
+.elediaai-chat-panel .elediaai-chat-bubble h6 {
+    font-size: var(--eac-bubble-heading-size, var(--font-size-body));
+}
+
+/* Zeilenhoehe und Abstaende der Ueberschrift bleiben eine Entscheidung des
+   Hero. Sie sind kein Markenwert, den eine Website einstellen wollen wuerde,
+   und ausserhalb des Hero gilt weiter, was Moodle setzt. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble h1,
+.elediaai-chat-panel--hero .elediaai-chat-bubble h2,
+.elediaai-chat-panel--hero .elediaai-chat-bubble h3,
+.elediaai-chat-panel--hero .elediaai-chat-bubble h4,
+.elediaai-chat-panel--hero .elediaai-chat-bubble h5,
+.elediaai-chat-panel--hero .elediaai-chat-bubble h6 {
+    font-weight: 600;
+    line-height: 1.4;
+    margin-block: 1.15em 0.4em;
+}
+
+/* Die erste Zeile der Blase beginnt am Innenrand, ohne Vorlauf. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble > :first-child {
+    margin-block-start: 0;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-bubble > :last-child {
+    margin-block-end: 0;
+}
+
+/* Zwei Drittel einer Zeile trennt Absaetze hoerbar, ohne die Antwort in
+   Bloecke zu zerlegen. Ein voller Zeilenabstand tat genau das. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble p {
+    margin-block-end: 0.65em;
+}
+
+/* 32px Einzug schiebt eine Liste in einer 835px breiten Blase sichtbar aus
+   der Spalte des Fliesstexts. Der Aufzaehlungspunkt darf haengen, der Text
+   soll bei den Absaetzen bleiben. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble ul,
+.elediaai-chat-panel--hero .elediaai-chat-bubble ol {
+    margin-block-end: 0.65em;
+    padding-inline-start: 1.35em;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-bubble li {
+    margin-block-end: 0.2em;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-bubble li:last-child {
+    margin-block-end: 0;
+}
+
+/* 700 ist in Manrope ein Schriftschnitt, der neben 400 springt. 600 hebt
+   hervor, ohne die Zeile zu zerreissen. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble strong,
+.elediaai-chat-panel--hero .elediaai-chat-bubble b {
+    font-weight: 600;
+}
+
+/* Code steht schon durch seine Schrift heraus und braucht die Groesse der
+   Zeile nicht zusaetzlich. */
+.elediaai-chat-panel--hero .elediaai-chat-bubble code,
+.elediaai-chat-panel--hero .elediaai-chat-bubble pre {
+    font-size: 0.875em;
+}
+
+.elediaai-chat-panel--hero .elediaai-chat-message:last-child {
+    margin-bottom: 0.75rem;
+}
+
+/*
+ * A hero that has the whole panel to itself centres in it, rather than sitting
+ * at the top of a tall empty box. This is what a full-width placement — the
+ * dashboard — needs, and it changes nothing for the docked panel, which is not
+ * tall enough for the difference to show.
+ */
+.elediaai-chat-hero {
+    /* The mark in one column, the greeting and its line in the other. Both
+       lines of text then share a left edge because they share a column, rather
+       than because someone matched an indent to the mark's width by hand. */
+    align-items: start;
+    column-gap: 0.9rem;
+    display: flex;
+    /* No padding above: on the Dashboard the card around this owns the space
+       between the header and the greeting, and two of them stacked is what
+       made the block look adrift. The bottom is the greeting's distance to the
+       field below it. */
+    padding: 0 1.25rem 1.5rem;
+    text-align: left;
+}
+
+.elediaai-chat-hero-text {
+    min-width: 0;
+}
+
+/* On a wide card the greeting, the field and the tiles keep to one column on
+   the left. Letting them run the full width would push the tiles far away from
+   the field they belong to, and leave the decoration nothing to occupy. */
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-hero,
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-starters--hero {
+    max-width: 62rem;
+}
+.elediaai-chat-inline .elediaai-chat-window:has(.elediaai-chat-hero) {
+    justify-content: center;
+}
+
+/*
+ * The mark sits above the greeting rather than beside it, and the greeting is
+ * sized against the panel it is in. A line of text with a small avatar glued to
+ * its left reads as a caption; stacked and larger, it reads as the question the
+ * page is asking.
+ *
+ * The face falls back to the widget's own font instead of a serif. That default
+ * predates the token system: a site that configured --eac-font now gets a hero
+ * matching the rest of its chat, and one that set --eac-hero-font is unaffected.
+ */
+.elediaai-chat-hero-title {
+    display: block;
+    gap: 0.9rem;
+    font-family: var(--eac-hero-font, inherit);
+    color: var(--eac-ink);
+    /* Der Dashboard-Hero ist eine der Flaechen, denen ein grosses Mass
+     zusteht. Die Enden sind Stufen der Skala; dazwischen waechst er mit
+     der Breite, damit die Begruessung auf dem Telefon nicht umbricht. */
+    font-size: clamp(var(--font-size-h2), 1.1rem + 1.6vw, var(--font-size-h1));
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0 0 0.35rem;
+    text-wrap: balance;
+}
+
+/* The name is the one warm word in the sentence. */
+.elediaai-chat-hero-name {
+    color: var(--eac-accent);
+}
+
+/* The lockup when the hero carries no greeting. Height-bound rather than
+   width-bound, so any logo an institution uploads keeps its proportions. */
+.elediaai-chat-hero-mark {
+    display: block;
+    max-width: min(300px, 72%);
+    height: auto;
+    max-height: 54px;
+    margin: 0 auto 0.25rem;
+    object-fit: contain;
+}
+
+/* Optically level with the greeting's cap height rather than with the top of
+   its line box, which sits a little higher. */
+.elediaai-chat-hero-avatar {
+    margin-top: 0.15rem;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    flex: 0 0 auto;
+}
+
+/* Auf dem Telefon bekommt der Gruss die Spalte fuer sich.
+   Die Marke daneben kostet 44px plus 14px Spaltenabstand, und die fehlen
+   genau dort, wo es darauf ankommt. Gemessen bei 360px Fensterbreite:
+   262px stehen der Unterzeile zur Verfuegung, der Satz "Wie kann ich Ihnen
+   heute helfen?" braucht 239px, das Schild dahinter 30px -- sieben zu wenig.
+   Der Satz passt also noch auf seine Zeile, das Schild nicht mehr, und
+   rutschte allein in die naechste.
+   Das Fenster ist schmal: unter etwa 330px bricht der Satz ohnehin um und
+   das Schild reitet am Zeilenende mit, ueber etwa 375px passt beides. Genau
+   dazwischen liegen die gaengigen Telefone.
+   Nachgemessen bei 320, 340, 360 und 393px: ohne die Marke traegt es
+   ueberall, bei voller Schriftgroesse. Kleinere Schrift allein reichte bei
+   340px nicht, und eine Flex-Zeile brach dafuer den Satz um und schob das
+   Schild an den rechten Rand.
+   Die Marke fehlt hier nicht: dieselbe Bildmarke steht in der Kopfzeile
+   direkt darueber. */
+@media (max-width: 576px) {
+    .elediaai-chat-hero {
+        column-gap: 0;
+    }
+
+    .elediaai-chat-hero-avatar {
+        display: none;
+    }
+}
+
+.elediaai-chat-hero-sub {
+    text-align: left;
+    color: var(--eac-muted);
+    font-size: var(--font-size-body);
+}
+
+/* Moodle's format_text wraps its output in a div whose class depends on the
+   text format -- .text_to_html for plain text, .no-overflow elsewhere -- and
+   the wrapper being a block is what pushed the shield onto a line of its own.
+   Both are named, rather than every child, so nothing else the welcome text
+   may contain is flattened by accident. */
+.elediaai-chat-hero-sub .text_to_html,
+.elediaai-chat-hero-sub .no-overflow,
+.elediaai-chat-hero-sub p:last-child {
+    display: inline;
+    margin-bottom: 0;
+}
+
+/* The composer becomes the central card (rounded, framed, floating). */
+.elediaai-chat-panel--hero .elediaai-chat-composer {
+    border-top: 0;
+    border: 1px solid var(--eac-line);
+    border-radius: 24px;
+    margin: 0.25rem 1.25rem 0;
+    padding: 0.7rem 0.7rem 0.7rem 1.15rem;
+    box-shadow: var(--eac-shadow-sm);
+}
+
+/* Pills live under the composer, centred (Claude-style action row). */
+.elediaai-chat-starters--hero {
+    align-self: auto;
+    display: grid;
+    gap: 0.75rem;
+    /* Four equal columns, deterministically: auto-fit sizes each track to its
+       content first and left the row narrower than the card, which squeezed
+       two-word names onto two lines with space going spare beside them. */
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    justify-content: stretch;
+    margin: 0;
+    max-width: 100%;
+    /* One step above: the tiles belong to the field, not to whatever ends the
+       card. What ends the card is the card's own padding. */
+    padding: 1rem 1.25rem 0;
+}
+
+/* Below the width four tiles need, two; below what two need, one. These come
+   after the base rule on purpose: they carry the same weight, so order is what
+   decides, and standing before it they did nothing at all. */
+@media (max-width: 900px) {
+    .elediaai-chat-starters--hero {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .elediaai-chat-starters--hero {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* In the hero the starters are suggestions, not the primary action: an outline
+   on the panel's own ground, so the input below stays the one filled thing. */
+/* A starter is a card once it carries two lines: the icon on the left, the
+   name over what it does. Without a subtitle the same card holds one line and
+   keeps its shape, so a site that never writes subtitles still gets a row of
+   equal tiles rather than a mix of pills and cards. */
+.elediaai-chat-starters--hero .elediaai-chat-starter {
+    align-items: center;
+    /* Its own ground rather than transparent: the tile sits over the card's
+       artwork, and a transparent tile lets the pattern run through the label. */
+    background: var(--eac-surface);
+    border-radius: 14px;
+    color: var(--eac-ink);
+    display: flex;
+    font-size: var(--font-size-small);
+    font-weight: 500;
+    gap: 0.55rem;
+    max-width: none;
+    min-width: 0;
+    /* Tight, because the text column is what is scarce here: every millimetre
+       taken by padding is one the name has to wrap around. */
+    padding: 0.7rem 0.8rem;
+    text-align: left;
+    white-space: normal;
+}
+
+.elediaai-chat-starter__icon {
+    align-items: center;
+    color: var(--eac-accent);
+    display: flex;
+    flex: 0 0 auto;
+    font-size: var(--font-size-body);
+    justify-content: center;
+}
+
+.elediaai-chat-starter__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+}
+
+.elediaai-chat-starter__label {
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    line-height: 1.3;
+    /* Wraps rather than truncates. A name cut to "Plattform-R…" tells the
+       reader nothing, and the tiles stretch to the tallest in the row anyway,
+       so a second line costs the layout nothing it was not already paying. */
+    overflow-wrap: anywhere;
+}
+
+.elediaai-chat-starter__sub {
+    color: var(--eac-muted);
+    font-size: var(--font-size-caption);
+    font-weight: 400;
+    line-height: 1.3;
+    /* Wraps to a second line rather than ending in an ellipsis: the subtitle
+       is the half that explains, and half an explanation is worse than a
+       taller tile. The row keeps equal heights because the tiles stretch. */
+    overflow-wrap: anywhere;
+}
+
+/* LernHive touch: tile icons pick up the brand orange. */
+.elediaai-chat-starters--hero .elediaai-chat-starter .fa {
+    color: var(--eac-brand);
+}
+
+/*
+ * One hue per tile, by position, each measured at 3:1 or better on white --
+ * 3.01, 6.3, 5.14, 5.33 -- because a symbol beside a label is still something
+ * the reader has to make out. Not by icon name: the icons are whatever an
+ * administrator wrote in the settings, and a colour bound to a name would be a
+ * mapping nobody maintains. Position gives a stable, quiet variety and costs
+ * no configuration. The colours carry no meaning — they are not a code the
+ * reader has to learn, which is why the label beside each one says everything.
+ */
+.elediaai-chat-starters--hero .elediaai-chat-starter:nth-child(1) .elediaai-chat-starter__icon {
+    color: #eb7306;
+}
+
+.elediaai-chat-starters--hero .elediaai-chat-starter:nth-child(2) .elediaai-chat-starter__icon {
+    color: #5a4ad1;
+}
+
+.elediaai-chat-starters--hero .elediaai-chat-starter:nth-child(3) .elediaai-chat-starter__icon {
+    color: #1f6fbf;
+}
+
+.elediaai-chat-starters--hero .elediaai-chat-starter:nth-child(4) .elediaai-chat-starter__icon {
+    color: #157a52;
+}
+
+.elediaai-chat-briefing {
+    border-color: var(--eac-accent-dark, var(--eac-accent));
+    background: var(--eac-accent);
+    color: var(--eac-accent-contrast, #fff);
+}
+
+.elediaai-chat-starters--hero .elediaai-chat-briefing .fa {
+    color: inherit;
+}
+
+.elediaai-chat-briefing:hover,
+.elediaai-chat-briefing:focus-visible {
+    border-color: var(--eac-accent-dark, var(--eac-accent));
+    background: var(--eac-accent-dark, var(--eac-accent));
+    color: var(--eac-accent-contrast, #fff);
+}
+
+.elediaai-chat-briefing:active {
+    background: var(--eac-accent-dark, var(--eac-accent));
+}
+
+/*
+ * In the hero the briefing is one tile among four, and it behaved like none of
+ * them: the filled-button treatment above kept its hover, so pointing at it
+ * flooded the tile with the accent while its neighbours only tinted. The mark
+ * that it is the first suggestion is its border; the rest follows the row.
+ */
+/* The briefing is the first suggestion, not a chosen one. It carried the
+   accent on its border at rest, which in a row of four outlined tiles reads as
+   "this one is selected" -- and nothing had selected it. The border is the
+   hover state now, the same as its neighbours. */
+.elediaai-chat-starters--hero .elediaai-chat-briefing,
+.elediaai-chat-starters--hero .elediaai-chat-briefing:active {
+    background: var(--eac-surface);
+    border-color: var(--eac-line);
+    color: var(--eac-ink);
+}
+
+.elediaai-chat-starters--hero .elediaai-chat-briefing:hover,
+.elediaai-chat-starters--hero .elediaai-chat-briefing:focus-visible {
+    background: var(--eac-tint);
+    border-color: var(--eac-accent);
+    color: var(--eac-ink);
+}
+
+/* --- AI-Home full page (home.php). -------------------------------------- */
+.elediaai-chat-home {
+    max-width: 860px;
+    margin: 0 auto;
+    padding-top: clamp(0.25rem, 3vh, 2rem);
+}
+
+/* No block drawer on the home page: the page shows no blocks, so the
+   Boost drawer toggle would only open an empty drawer. */
+.elediaai-chat-homebody .drawer-toggler {
+    display: none;
+}
+
+/* The whole page adopts the conversation tint (the --eac-body-bg default;
+   the tokens are widget-scoped, hence the literal), so the sticky composer
+   footer blends seamlessly instead of sitting on a white page as a grey band.
+   Boost renders the content inside a white rounded card (#page.drawers
+   .main-inner) — that selector needs the id to win the specificity contest. */
+.elediaai-chat-homebody,
+.elediaai-chat-homebody #page,
+.elediaai-chat-homebody #page.drawers .main-inner,
+.elediaai-chat-homebody .main-inner,
+.elediaai-chat-homebody #page-content,
+.elediaai-chat-homebody #region-main,
+.elediaai-chat-homebody #page-footer {
+    background: #f4f6f8;
+    box-shadow: none;
+}
+
+/* The page rule below pins a viewport height on embedded windows; the hero
+   sizes to content instead (also on the home page). */
+.elediaai-chat-page .elediaai-chat-panel--hero .elediaai-chat-window {
+    height: auto;
+    min-height: 0;
+}
+
+/* On the home page the window frame disappears: the page IS the surface,
+   only the composer card and the bubbles keep their chrome (Claude-style). */
+.elediaai-chat-home .elediaai-chat-window {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.elediaai-chat-home .elediaai-chat-hero-title {
+    font-size: var(--font-size-h1);
+}
+
+.elediaai-chat-home .elediaai-chat-hero-avatar {
+    width: 42px;
+    height: 42px;
+}
+
+.elediaai-chat-home .elediaai-chat-panel--hero .elediaai-chat-composer {
+    background: var(--eac-surface);
+}
+
+/* On the dashboard the panel is not a card. The window's own surface, border
+   and radius draw a box around the whole hero, which makes the block the
+   prominent thing; here the input field is meant to be, and nothing else. */
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-window {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+
+/* The dashboard hero: one prompt, one line. A raised fill and a full pill make
+   the field legible unselected, which a flush surface does not. */
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-composer {
+    background: var(--eac-surface);
+    border-radius: var(--eai-radius-pill);
+    box-shadow: 0 1px 3px rgb(15 23 42 / 0.06);
+    margin: 0.375rem 1.25rem 0;
+    max-width: 58rem;
+    padding: 0.5rem 0.5rem 0.5rem 1.35rem;
+    width: auto;
+}
+
+/* One focus indicator, not two. The engine rings the textarea, which inside a
+   pill draws a second rounded box around the same field. Here the pill *is* the
+   field, so the ring belongs on it — moved outward, not removed: the indicator
+   stays visible and gets stronger (2px of accent instead of a colour swap). */
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-composer:focus-within {
+    border-color: var(--eac-accent);
+    box-shadow: 0 0 0 1px var(--eac-accent);
+}
+
+.elediaai-chat-embedded.elediaai-chat-panel--hero .elediaai-chat-input:focus-visible {
+    outline: 0;
+}
+
+/* Full-page conversation: the page scrolls, not an inner box. Both axes must
+   be visible — a hidden x-axis would force the y-axis back to auto and
+   produce the double scrollbar. */
+.elediaai-chat-home .elediaai-chat-panel--hero .elediaai-chat-log {
+    max-height: none;
+    overflow: visible;
+}
+
+/* Composer + pills stick to the bottom of the viewport while the
+   conversation scrolls behind them (Claude-style). */
+.elediaai-chat-home .elediaai-chat-hero-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--eac-body-bg);
+    padding-top: 0.5rem;
+    /* Breathing room to the viewport edge (Claude-style); the footer's own
+       background fills the gap so nothing scrolls through underneath. */
+    padding-bottom: 1.25rem;
+}
+
+.elediaai-chat-home .elediaai-chat-starters--hero {
+    padding-bottom: 0;
+}
+
+/* The footer's quiet corner: conversation-level controls, right-aligned under
+   the chips. Muted at rest -- the composer is the action on this page and a
+   second control competing for attention beside it would be one too many -- and
+   it only gains contrast under the pointer or the focus ring.
+
+   The row keeps its height with nothing in it, so revealing the bin does not
+   push the composer up. 28px, not 24px: it is the lowest thing on the page and
+   sits closest to the edge of a phone's reach. */
+.elediaai-chat-herotools {
+    display: flex;
+    /* Close together: they are one group of quiet controls, not two separate
+       offers. Still far enough apart that the bin is not hit by accident. */
+    gap: 0.25rem;
+    justify-content: flex-end;
+    min-height: 28px;
+    padding: 0.35rem 1.25rem 0;
+}
+
+.elediaai-chat-herotool {
+    align-items: center;
+    background: none;
+    border: 0;
+    /* Round, like every other icon button in this file. */
+    border-radius: 50%;
+    color: var(--eac-muted-soft);
+    display: inline-flex;
+    justify-content: center;
+    min-height: 28px;
+    min-width: 28px;
+    padding: 0;
+}
+
+.elediaai-chat-herotool:hover,
+.elediaai-chat-herotool:focus-visible {
+    background: var(--eac-tint);
+    color: var(--eac-ink);
+}
+
+/* New messages scrolled into view clear the sticky footer. */
+.elediaai-chat-home .elediaai-chat-message {
+    scroll-margin-bottom: 9rem;
+}
+
+/* The "powered by" line sits directly on the page surface — no white box. */
+.elediaai-chat-panel--hero .elediaai-chat-footer {
+    background: transparent;
+    border-top: 0;
+}
+
+/* Already a full page: the enlarge control is meaningless on the home page. */
+.elediaai-chat-home [data-action="expand"] {
+    display: none;
+}
+
+.elediaai-chat-featuredock {
+    position: fixed;
+    top: 8rem;
+    right: 0;
+    z-index: 1031;
+}
+
+.elediaai-chat-featuredock__toggle {
+    align-items: center;
+    background: #172033;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 10px 0 0 10px;
+    box-shadow: 0 14px 32px rgba(20, 30, 48, 0.22);
+    color: var(--eai-accent-ink);
+    cursor: pointer;
+    display: inline-flex;
+    height: 3rem;
+    justify-content: center;
+    list-style: none;
+    position: fixed;
+    right: 0;
+    top: 8rem;
+    width: 2.75rem;
+}
+
+.elediaai-chat-featuredock__toggle::-webkit-details-marker,
+.elediaai-chat-featuredock__toggle::marker {
+    display: none;
+}
+
+.elediaai-chat-featuredock__toggle svg {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.elediaai-chat-featuredock[open] .elediaai-chat-featuredock__toggle {
+    right: min(22rem, calc(100vw - 3rem));
+}
+
+.elediaai-chat-featuredock__panel {
+    background: var(--eai-surface);
+    border-left: 1px solid rgba(15, 23, 42, 0.12);
+    bottom: 1.25rem;
+    box-shadow: -18px 0 44px rgba(20, 30, 48, 0.18);
+    display: none;
+    overflow: auto;
+    padding: 1.1rem;
+    position: fixed;
+    right: 0;
+    top: 5.5rem;
+    width: min(22rem, calc(100vw - 3rem));
+}
+
+.elediaai-chat-featuredock[open] .elediaai-chat-featuredock__panel {
+    display: block;
+}
+
+.elediaai-chat-featuredock__title {
+    color: #172033;
+    font-size: var(--font-size-body);
+    font-weight: 700;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.elediaai-chat-featuredock__intro {
+    color: #5f6b7a;
+    font-size: var(--font-size-small);
+    line-height: 1.45;
+    margin: 0.35rem 0 0.9rem;
+}
+
+.elediaai-chat-featuredock__list {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.elediaai-chat-featuredock__item {
+    align-items: flex-start;
+    border: 1px solid #d9e0e7;
+    border-radius: 8px;
+    color: #172033;
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: 2.1rem 1fr;
+    min-height: 3.75rem;
+    padding: 0.7rem;
+    text-decoration: none;
+}
+
+.elediaai-chat-featuredock__item:hover,
+.elediaai-chat-featuredock__item:focus-visible {
+    background: #f7fafc;
+    border-color: #aab7c4;
+    color: #111827;
+    text-decoration: none;
+}
+
+.elediaai-chat-featuredock__icon {
+    align-items: center;
+    background: #eef3f8;
+    border-radius: 8px;
+    color: #285f7f;
+    display: inline-flex;
+    height: 2.1rem;
+    justify-content: center;
+    width: 2.1rem;
+}
+
+.elediaai-chat-featuredock__icon svg {
+    height: 1.1rem;
+    width: 1.1rem;
+}
+
+.elediaai-chat-featuredock__icon-dot {
+    background: currentColor;
+    border-radius: var(--eai-radius-pill);
+    display: inline-block;
+    height: 0.55rem;
+    width: 0.55rem;
+}
+
+.elediaai-chat-featuredock__text {
+    min-width: 0;
+}
+
+.elediaai-chat-featuredock__name,
+.elediaai-chat-featuredock__desc {
+    display: block;
+}
+
+.elediaai-chat-featuredock__name {
+    font-size: var(--font-size-body);
+    font-weight: 700;
+    line-height: 1.25;
+}
+
+.elediaai-chat-featuredock__desc {
+    color: #667381;
+    font-size: var(--font-size-small);
+    line-height: 1.35;
+    margin-top: 0.12rem;
+}
+
+@media (max-width: 640px) {
+    .elediaai-chat-featuredock__toggle {
+        top: 5rem;
+    }
+
+    .elediaai-chat-featuredock[open] .elediaai-chat-featuredock__toggle {
+        right: calc(100vw - 3rem);
+    }
+
+    .elediaai-chat-featuredock__panel {
+        bottom: 0.75rem;
+        top: 4.25rem;
+        width: calc(100vw - 3rem);
+    }
+}
+
+/* --- Teacher-Copilot card on the analytics report. --------------------- */
+.eat-copilot .eat-copilot-intro {
+    color: var(--eac-muted);
+    margin: 0.25rem 0 0.75rem;
+}
+
+.eat-copilot .eat-copilot-status {
+    color: var(--eac-muted);
+    font-size: var(--font-size-body);
+    min-height: 1.2rem;
+    margin-top: 0.5rem;
+}
+
+.eat-copilot .eat-copilot-result {
+    border-top: 1px solid var(--eac-line);
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+}
+
+/* --- Standalone page (view.php; Moodle App embedding). ------------------ */
+.elediaai-chat-page {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+/* The Plugin Shell already owns the page width. Avoid applying the standalone
+   chat cap a second time when view.php renders inside that shell. */
+.lh-plugin-shell .elediaai-chat-page {
+    max-width: none;
+}
+
+.elediaai-chat-page .elediaai-chat-embedded .elediaai-chat-window {
+    height: clamp(420px, 72vh, 860px); /* stylelint-disable-line csstree/validator */
+}
+
+/* Inside the app/iframe (chrome-less embedded layout) fill the viewport. */
+.elediaai-chat-pagebody.pagelayout-embedded .elediaai-chat-page .elediaai-chat-embedded .elediaai-chat-window {
+    height: calc(100vh - 2rem);
+}
+
+/* --- LLM-only mode banner. ---------------------------------------------- */
+.elediaai-chat-modenote {
+    flex: 0 0 auto;
+    padding: 0.4rem 1rem;
+    font-size: var(--font-size-small);
+    color: var(--eac-muted);
+    background: var(--eac-tint);
+    border-bottom: 1px solid var(--eac-line);
+}
+
+.elediaai-chat-modenote .fa {
+    color: var(--eac-accent);
+    margin-right: 0.35rem;
+}
+
+/* --- First-use privacy consent gate. ------------------------------------ */
+.elediaai-chat-consent {
+    flex: 0 0 auto;
+    padding: 0.85rem 1rem;
+    background: var(--eac-surface);
+    border-top: 1px solid var(--eac-overlay);
+    color: var(--eac-ink);
+    font-size: var(--font-size-small);
+}
+
+.elediaai-chat-consent-text {
+    margin: 0 0 0.35rem;
+}
+
+.elediaai-chat-consent-text .fa {
+    color: var(--eac-accent);
+    margin-right: 0.35rem;
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-link {
+    font-size: var(--font-size-small);
+    color: var(--eac-accent);
+    text-decoration: underline;
+}
+
+.elediaai-chat-consent-check {
+    margin: 0.5rem 0;
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-accept {
+    background: var(--eac-accent);
+    border-color: var(--eac-accent);
+    color: var(--eac-accent-contrast);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    border-radius: var(--eai-radius-pill);
+    padding: 0.3rem 1rem;
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-accept:hover,
+.elediaai-chat-panel .elediaai-chat-consent-accept:focus,
+.elediaai-chat-panel .elediaai-chat-consent-accept:active {
+    background: var(--eac-accent-dark);
+    border-color: var(--eac-accent-dark);
+    color: var(--eac-accent-contrast);
+    box-shadow: none;
+    outline: none;
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-accept:focus-visible {
+    box-shadow: 0 0 0 0.2rem var(--eac-focus-ring);
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-accept:disabled {
+    opacity: 0.45;
+}
+
+/* The privacy link in the consent gate carries Bootstrap's btn-link (blue); keep
+   it on the brand accent in every state. */
+.elediaai-chat-panel .elediaai-chat-consent-link,
+.elediaai-chat-panel .elediaai-chat-consent-link:hover,
+.elediaai-chat-panel .elediaai-chat-consent-link:focus,
+.elediaai-chat-panel .elediaai-chat-consent-link:active {
+    color: var(--eac-accent);
+    box-shadow: none;
+    outline: none;
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-link:focus-visible {
+    box-shadow: 0 0 0 0.2rem var(--eac-focus-ring);
+    border-radius: 4px;
+}
+
+/* While the gate is shown the composer is disabled; make that visible. */
+.elediaai-chat-input:disabled,
+.elediaai-chat-send:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* --- Answer-style chips. ------------------------------------------------ */
+.elediaai-chat-styles {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.45rem 1rem 0;
+    background: var(--eac-surface);
+    border-top: 1px solid var(--eac-overlay);
+    flex: 0 0 auto;
+}
+
+.elediaai-chat-stylechip {
+    border: 1px solid var(--eac-line);
+    background: var(--eac-surface);
+    color: var(--eac-ink);
+    border-radius: var(--eai-radius-pill);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    padding: 0.25rem 0.8rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.elediaai-chat-stylechip:hover,
+.elediaai-chat-stylechip:focus-visible {
+    border-color: var(--eac-accent);
+}
+
+.elediaai-chat-stylechip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 0.18rem var(--eac-focus-ring);
+}
+
+.elediaai-chat-stylechip-active {
+    background: var(--eac-accent);
+    border-color: var(--eac-accent);
+    color: var(--eac-accent-contrast);
+}
+
+.elediaai-chat-stylechip-locked {
+    cursor: default;
+    color: var(--eac-muted);
+}
+
+/* The chips sit visually with the composer: remove its doubled top border. */
+.elediaai-chat-styles + .elediaai-chat-composer {
+    border-top: 0;
+}
+
+/* --- Footer. ----------------------------------------------------------- */
+.elediaai-chat-footer {
+    flex: 0 0 auto;
+    text-align: center;
+    padding: 0.45rem;
+    font-size: var(--font-size-caption);
+    color: var(--eac-muted);
+    background: var(--eac-surface);
+    border-top: 1px solid rgba(16, 24, 40, 0.04);
+}
+
+/* --- History panel. ---------------------------------------------------- */
+.elediaai-chat-history {
+    flex: 0 0 auto;
+    max-height: 40%;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--eac-line);
+    background: var(--eac-surface);
+    color: var(--eac-ink);
+    padding: 0.4rem;
+}
+
+.elediaai-chat-history-empty {
+    padding: 0.6rem;
+    color: var(--eac-muted-soft);
+    font-size: var(--font-size-small);
+}
+
+.elediaai-chat-history-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.elediaai-chat-history-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 8px;
+    padding: 0.15rem 0.3rem;
+}
+
+.elediaai-chat-history-item:hover {
+    background: var(--eac-overlay-strong);
+}
+
+.elediaai-chat-history-open {
+    flex: 1 1 auto;
+    text-align: left;
+    background: transparent;
+    border: 0;
+    padding: 0.35rem 0.4rem;
+    cursor: pointer;
+    min-width: 0;
+    color: var(--eac-ink);
+}
+
+.elediaai-chat-history-open:focus {
+    outline: none;
+}
+
+.elediaai-chat-history-open:focus-visible {
+    box-shadow: 0 0 0 2px var(--eac-focus-ring);
+    outline: none;
+}
+
+.elediaai-chat-history-title {
+    display: block;
+    font-weight: 600;
+    font-size: var(--font-size-small);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.elediaai-chat-privacy-heading {
+    font-size: var(--font-size-body);
+    font-weight: 700;
+    margin: 1rem 0 0.35rem;
+}
+
+.elediaai-chat-history-preview {
+    display: block;
+    font-size: var(--font-size-small);
+    color: var(--eac-muted-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Overlay: docked (bottom-right). ----------------------------------- */
+.elediaai-chat-docked {
+    position: fixed;
+    right: 1.25rem;
+    bottom: 1.25rem;
+    width: 380px;
+    max-width: calc(100vw - 2rem);
+    z-index: var(--eac-z);
+}
+
+.elediaai-chat-docked .elediaai-chat-window {
+    height: min(70vh, 560px); /* stylelint-disable-line csstree/validator */
+}
+
+/* --- Overlay: modal (centered + backdrop). ----------------------------- */
+.elediaai-chat-modal {
+    position: fixed;
+    inset: 0;
+    z-index: var(--eac-z);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+
+.elediaai-chat-modal .elediaai-chat-window {
+    width: min(640px, 100%); /* stylelint-disable-line csstree/validator */
+    height: min(80vh, 720px); /* stylelint-disable-line csstree/validator */
+    position: relative;
+    z-index: 1;
+}
+
+/* --- Overlay: fullscreen. ---------------------------------------------- */
+.elediaai-chat-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: var(--eac-z);
+}
+
+.elediaai-chat-fullscreen .elediaai-chat-window {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: 0;
+}
+
+/* Full-bleed chrome, but keep the conversation in a readable centred column. */
+.elediaai-chat-fullscreen .elediaai-chat-log,
+.elediaai-chat-fullscreen .elediaai-chat-composer,
+.elediaai-chat-fullscreen .elediaai-chat-status {
+    padding-left: max(1rem, calc(50% - 23rem)); /* stylelint-disable-line csstree/validator */
+    padding-right: max(1rem, calc(50% - 23rem)); /* stylelint-disable-line csstree/validator */
+}
+
+body.elediaai-chat-noscroll {
+    overflow: hidden;
+}
+
+/* =======================================================================
+ * Admin / management pages (Manage tutors, the per-instance tutor page).
+ * Scoped under .eat-admin so nothing here touches the chat widget or the
+ * surrounding Moodle theme. Uses neutral surfaces that sit well on the admin
+ * layout; the accent for primary actions is the eLeDia navy.
+ * ======================================================================= */
+.eat-admin {
+    --eat-a-accent: var(--lh-primary);
+    --eat-a-accent-dark: var(--lh-primary-dark);
+    --eat-a-accent-light: var(--lh-primary-light);
+    --eat-a-line: var(--lh-border);
+    --eat-a-line-light: var(--lh-border-light);
+    --eat-a-muted: var(--lh-text-secondary);
+    --eat-a-card: var(--lh-bg-white);
+    --eat-a-surface: var(--lh-bg-soft);
+    --eat-a-radius: var(--lh-radius-sm);
+    --eat-a-shadow: var(--lh-shadow-card);
+}
+
+.eat-admin-intro {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+    background: var(--eat-a-surface);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    padding: 0.9rem 1.1rem;
+    margin: 0 0 1.25rem;
+    color: var(--lh-text);
+}
+.eat-admin-intro .fa {
+    color: var(--eat-a-accent);
+    font-size: var(--font-size-h4);
+    margin-top: 0.1rem;
+}
+
+.eat-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin: 0 0 1.5rem;
+}
+.eat-toolbar .singlebutton {
+    margin: 0;
+}
+.eat-admin .btn,
+.eat-admin input[type="submit"].btn,
+.eat-admin button.btn,
+.eat-admin .singlebutton .btn {
+    align-items: center;
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-btn);
+    cursor: pointer;
+    display: inline-flex;
+    font-weight: 700;
+    gap: 0.4rem;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.8rem;
+    text-decoration: none;
+    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+}
+.eat-admin .btn-primary,
+.eat-admin input[type="submit"].btn-primary {
+    background: var(--lh-primary);
+    border-color: var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+.eat-admin .btn-primary:hover,
+.eat-admin .btn-primary:focus,
+.eat-admin input[type="submit"].btn-primary:hover,
+.eat-admin input[type="submit"].btn-primary:focus {
+    background: var(--lh-primary-dark);
+    border-color: var(--lh-primary-dark);
+    color: var(--eai-accent-ink);
+}
+.eat-admin .btn-secondary,
+.eat-admin .btn-outline-secondary {
+    background: var(--eai-surface);
+    border-color: var(--lh-border);
+    color: var(--lh-primary);
+}
+.eat-admin .btn-secondary:hover,
+.eat-admin .btn-secondary:focus,
+.eat-admin .btn-outline-secondary:hover,
+.eat-admin .btn-outline-secondary:focus {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary);
+}
+.eat-admin .btn-outline-danger {
+    background: var(--eai-surface);
+    border-color: var(--lh-danger);
+    color: var(--lh-danger);
+}
+.eat-admin .btn-outline-danger:hover,
+.eat-admin .btn-outline-danger:focus {
+    background: var(--lh-danger-light);
+    border-color: var(--lh-danger);
+    color: var(--lh-danger);
+}
+.eat-toolbar .singlebutton:first-child .btn {
+    background: var(--lh-primary);
+    border-color: var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+.eat-toolbar .singlebutton:first-child .btn:hover,
+.eat-toolbar .singlebutton:first-child .btn:focus {
+    background: var(--lh-primary-dark);
+    border-color: var(--lh-primary-dark);
+    color: var(--eai-accent-ink);
+}
+
+.eat-section-title {
+    font-size: var(--font-size-h4);
+    font-weight: 700;
+    margin: 1.75rem 0 0.85rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--eat-a-line);
+    color: var(--lh-text);
+}
+.eat-section-head {
+    align-items: center;
+    border-bottom: 1px solid var(--eat-a-line);
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    margin: 1.75rem 0 0.85rem;
+    padding-bottom: 0.4rem;
+}
+.eat-section-head .eat-section-title {
+    border-bottom: 0;
+    margin: 0;
+    padding-bottom: 0;
+}
+.eat-section-actions {
+    flex: 0 0 auto;
+}
+.eat-section-title--form {
+    margin-top: 0.9rem;
+}
+.eat-form-nav {
+    margin-bottom: 0.85rem;
+}
+.eat-back-link .fa {
+    margin-right: 0.35rem;
+}
+.eat-form-card {
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    box-shadow: var(--eat-a-shadow);
+    padding: 1rem;
+}
+.eat-form-card .mform {
+    margin: 0;
+}
+.eat-form-card .collapsible-actions {
+    display: none;
+}
+
+/* Tutor card grid. */
+.eat-tutor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: start;
+}
+.eat-tutor-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    overflow: hidden;
+    box-shadow: var(--eat-a-shadow);
+    min-width: 0;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.eat-tutor-card:hover {
+    box-shadow: var(--lh-shadow-hover);
+    border-color: var(--lh-border);
+}
+
+/* Mini chat-mockup preview rendered from the tutor's own palette. */
+.eat-preview {
+    height: 116px;
+    display: flex;
+    flex-direction: column;
+    border-bottom: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius) var(--eat-a-radius) 0 0;
+    overflow: hidden;
+}
+.eat-preview-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.45rem 0.7rem;
+    font-weight: 600;
+    font-size: var(--font-size-small);
+}
+.eat-preview-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--eai-success);
+    flex: 0 0 auto;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
+}
+.eat-preview-body {
+    flex: 1;
+    padding: 0.55rem 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    overflow: hidden;
+}
+.eat-preview-bubble {
+    font-size: var(--font-size-caption);
+    line-height: 1;
+    padding: 0.35rem 0.55rem;
+    border-radius: var(--lh-radius);
+    max-width: 78%;
+}
+.eat-preview-bot {
+    align-self: flex-start;
+    border: 1px solid rgba(16, 24, 40, 0.08);
+}
+.eat-preview-user {
+    align-self: flex-end;
+}
+
+.eat-tutor-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 1rem;
+    flex: 1;
+}
+.eat-tutor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.eat-tutor-name {
+    font-weight: 800;
+    font-size: var(--font-size-body);
+    color: var(--lh-text);
+    overflow-wrap: anywhere;
+}
+.eat-tutor-persona {
+    font-size: var(--font-size-body);
+    line-height: 1.45;
+    color: var(--eat-a-muted);
+}
+.eat-badge {
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--eai-radius-pill);
+    white-space: nowrap;
+}
+.eat-badge-preset {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary);
+}
+.eat-badge-custom {
+    background: var(--eai-success-wash);
+    color: var(--eai-success);
+}
+.eat-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: auto;
+    padding-top: 0.15rem;
+}
+.eat-actions .lh-row-actions {
+    margin: 0;
+}
+.eat-actions .eat-card-icons {
+    gap: 0.25rem;
+}
+.eat-admin .lh-icon-action {
+    align-items: center;
+    background: var(--eai-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: 50%;
+    color: var(--lh-primary);
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 2rem;
+    justify-content: center;
+    min-width: 2rem;
+    padding: 0;
+    position: relative;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+/* 44x44 hit-area overlay: keep the tap target accessible even though the
+   visual button is smaller (ADR-P14 D1, WCAG 2.5.5). */
+.eat-admin .lh-icon-action::after {
+    content: "";
+    height: 44px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+}
+.eat-admin .lh-icon-action:hover,
+.eat-admin .lh-icon-action:focus {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary);
+    text-decoration: none;
+    transform: scale(1.06);
+}
+.eat-admin .lh-icon-action:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+}
+.eat-admin .lh-icon-action--danger {
+    color: var(--lh-danger);
+}
+.eat-admin .lh-icon-action--danger:hover,
+.eat-admin .lh-icon-action--danger:focus {
+    background: var(--lh-danger-light);
+    border-color: var(--lh-danger);
+    color: var(--lh-danger);
+}
+.eat-applysite-action {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.4rem;
+}
+.eat-admin .eat-actions .btn {
+    font-size: var(--font-size-small);
+    min-height: 1.875rem;
+    padding: 0.3rem 0.7rem;
+}
+
+/* Per-instance cards. */
+.eat-instance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+.eat-instance-card {
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    box-shadow: var(--eat-a-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+}
+.eat-instance-loc {
+    font-weight: 600;
+    color: var(--lh-text);
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.eat-instance-loc .fa {
+    color: var(--eat-a-muted);
+}
+.eat-instance-id {
+    font-size: var(--font-size-caption);
+    color: var(--eat-a-muted);
+    font-weight: 400;
+}
+.eat-instance-apply {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.eat-instance-apply .lh-plugin-select-wrap {
+    display: inline-flex;
+    flex: 1 1 14rem;
+    min-width: min(18rem, 100%); /* stylelint-disable-line csstree/validator */
+    position: relative;
+}
+.eat-instance-apply .lh-plugin-select-wrap::after {
+    border-bottom: 2px solid var(--lh-text-secondary);
+    border-right: 2px solid var(--lh-text-secondary);
+    content: "";
+    height: 0.45rem;
+    pointer-events: none;
+    position: absolute;
+    right: 0.85rem;
+    top: 50%;
+    transform: translateY(-65%) rotate(45deg);
+    width: 0.45rem;
+}
+.eat-instance-apply select {
+    appearance: none;
+    background: var(--lh-bg-white);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    color: var(--lh-text);
+    cursor: pointer;
+    min-height: 2.5rem;
+    padding: 0.55rem 2.3rem 0.55rem 0.8rem;
+    width: 100%;
+}
+.eat-instance-apply select:focus-visible {
+    border-color: var(--lh-primary);
+    box-shadow: 0 0 0 3px rgba(25, 72, 102, 0.12);
+    outline: none;
+}
+.eat-instance-apply .eat-applyinstance-action {
+    cursor: pointer;
+}
+.eat-instance-icons {
+    gap: 0.25rem;
+    margin-top: 0;
+}
+
+/* Card layout for the per-instance teacher page sections. */
+.eat-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+.eat-card {
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    padding: 1.1rem 1.2rem;
+    box-shadow: var(--eat-a-shadow);
+}
+.eat-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: var(--font-size-body);
+    margin: 0 0 0.5rem;
+    color: var(--lh-text);
+}
+.eat-card h3 .fa {
+    color: var(--eat-a-accent);
+}
+.eat-card p {
+    color: var(--eat-a-muted);
+    font-size: var(--font-size-small);
+}
+
+/* A small inline note/callout used on the settings page heading. */
+.eat-settings-callout {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    background: var(--eat-a-surface);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eat-a-radius);
+    padding: 0.7rem 0.9rem;
+    margin-top: 0.5rem;
+}
+.eat-settings-callout .fa {
+    color: var(--eat-a-accent);
+}
+
+/* LernHive-style treatment for Moodle's native admin settings form. The
+   settings remain Moodle admin_setting controls; this layer only changes the
+   surface so the operator page sits more naturally next to Plugin Shell pages. */
+#page-admin-setting-blocksettingelediaai_tutor {
+    --eac-settings-primary: var(--lh-primary);
+    --eac-settings-primary-light: var(--lh-primary-light);
+    --eac-settings-border: var(--lh-border);
+    --eac-settings-muted: var(--lh-text-secondary);
+    --eac-settings-text: var(--lh-text);
+    --eac-settings-radius: var(--lh-radius-sm);
+    --eac-settings-shadow: var(--lh-shadow-card);
+    /* The card surface. It was written as a literal #fff in a dozen rules,
+       which is why this skin had no way to be anything but light. */
+    --eac-settings-surface: var(--lh-surface);
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings {
+    max-width: var(--lh-page-max-default);
+}
+body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-pending #adminsettings {
+    min-height: 24rem;
+    opacity: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-ready #adminsettings {
+    opacity: 1;
+    transition: opacity 0.1s ease;
+}
+.eat-admin-settings-shell #adminsettings {
+    max-width: none;
+    width: 100%;
+}
+.eat-admin-settings-shell-page #page-header,
+.eat-admin-settings-shell-page .secondary-navigation,
+.eat-admin-settings-shell-page #region-main > div[role="main"] > h1:first-child,
+.eat-admin-settings-shell-page #region-main > div[role="main"] > h2:first-child,
+.eat-admin-settings-shell #adminsettings > h1,
+.eat-admin-settings-shell #adminsettings > h2 {
+    display: none;
+}
+body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page #theme_boost-drawers-blocks,
+body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page #block-region-side-pre,
+body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page .drawer-toggles .drawer-right-toggle,
+body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page #page .drawer-right-toggle {
+    display: none !important; /* stylelint-disable-line declaration-no-important */
+}
+.eat-admin-settings-shell-page #region-main {
+    background: transparent;
+    border: 0;
+    padding-top: 0;
+}
+.eat-settings-hub {
+    margin-bottom: 0.85rem;
+}
+.eat-settings-hub__head {
+    display: none;
+}
+.eat-settings-hub__head h2 {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-body);
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0;
+}
+.eat-settings-hub__head p {
+    display: none;
+}
+.eat-settings-hub__grid {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
+    margin-bottom: 0.55rem;
+}
+.eat-settings-hub-card {
+    align-items: center;
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    box-shadow: var(--eac-settings-shadow);
+    color: var(--eac-settings-text);
+    cursor: pointer;
+    display: flex;
+    gap: 0.7rem;
+    min-height: 4.1rem;
+    padding: 0.75rem;
+    position: relative;
+    text-align: left;
+    transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.18s ease, transform 0.15s ease;
+    width: 100%;
+}
+.eat-settings-hub-card:hover,
+.eat-settings-hub-card:focus {
+    border-color: var(--eac-settings-primary);
+    box-shadow: 0 4px 12px rgba(25, 72, 102, 0.14);
+    outline: none;
+    transform: translateY(-1px);
+}
+.eat-settings-hub-card:focus-visible {
+    outline: 2px solid var(--eac-settings-primary);
+    outline-offset: 2px;
+}
+.eat-settings-hub-card--active {
+    background: var(--eac-settings-surface);
+    border-color: var(--eac-settings-primary);
+    box-shadow: inset 0 0 0 1px var(--eac-settings-primary), 0 2px 8px rgba(25, 72, 102, 0.08);
+}
+.eat-settings-hub-card__icon {
+    align-items: center;
+    background: var(--eac-settings-primary-light);
+    border-radius: var(--eac-settings-radius);
+    color: var(--eac-settings-primary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2.25rem;
+    justify-content: center;
+    width: 2.25rem;
+}
+.eat-settings-hub-card__text {
+    min-width: 0;
+}
+.eat-settings-hub-card__title {
+    display: block;
+    font-size: var(--font-size-body);
+    font-weight: 800;
+    line-height: 1.25;
+}
+.eat-settings-backnav {
+    margin: 0.35rem 0 1.15rem;
+    text-align: left;
+}
+.eat-settings-actionbar {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    justify-content: center;
+}
+.eat-settings-actionbar .eat-settings-backnav {
+    margin: 0;
+}
+.eat-settings-backnav__button {
+    align-items: center;
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    color: var(--eac-settings-primary);
+    cursor: pointer;
+    display: inline-flex;
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    gap: 0.35rem;
+    line-height: 1.2;
+    padding: 0.34rem 0.62rem;
+}
+.eat-settings-backnav__button:hover,
+.eat-settings-backnav__button:focus {
+    background: var(--eac-settings-primary-light);
+    border-color: var(--eac-settings-primary);
+    outline: none;
+}
+.eat-settings-backnav__button:focus-visible {
+    outline: 2px solid var(--eac-settings-primary);
+    outline-offset: 2px;
+}
+.eat-settings-hub-card__body {
+    display: none;
+}
+.eat-settings-topics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: 0;
+}
+.eat-settings-topic {
+    align-items: center;
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eai-radius-pill);
+    color: var(--eac-settings-primary);
+    cursor: pointer;
+    display: inline-flex;
+    min-height: 1.95rem;
+    padding: 0.28rem 0.68rem;
+    text-align: left;
+}
+.eat-settings-topic__title {
+    display: block;
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    line-height: 1.2;
+    min-width: 0;
+}
+.eat-settings-topic:hover,
+.eat-settings-topic:focus {
+    background: var(--eac-settings-primary-light);
+    border-color: var(--eac-settings-primary);
+    box-shadow: none;
+    outline: none;
+}
+.eat-settings-topic--active {
+    background: var(--eac-settings-surface);
+    border-color: var(--eac-settings-primary);
+    box-shadow: inset 0 0 0 1px var(--eac-settings-primary);
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings h3.main {
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--eac-settings-border);
+    border-radius: 0;
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-h3);
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 1.1rem 0 0.55rem;
+    padding: 0 0 0.45rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings h3.main[data-eat-major-heading="1"] {
+    display: none !important; /* stylelint-disable-line declaration-no-important */
+}
+.eat-settings-group {
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    box-shadow: none;
+    margin: 0 0 0.65rem;
+    overflow: hidden;
+    padding-bottom: 0;
+}
+.eat-settings-group--untitled {
+    padding-top: 0.15rem;
+}
+.eat-admin-settings-shell-page #adminsettings .formsettingheading {
+    display: none;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading:not([data-eat-info-hidden="1"]) {
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    box-shadow: var(--eac-settings-shadow);
+    color: var(--eac-settings-muted);
+    font-size: var(--font-size-body);
+    line-height: 1.5;
+    margin: 0;
+    padding: 1rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading p:last-child {
+    margin-bottom: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-infocards {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+    margin-top: 0.9rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-infocard {
+    align-items: flex-start;
+    background: var(--eac-settings-primary-light);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    display: flex;
+    gap: 0.65rem;
+    padding: 0.75rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-infocard__icon {
+    align-items: center;
+    background: var(--eac-settings-surface);
+    border-radius: var(--eac-settings-radius);
+    color: var(--eac-settings-primary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2rem;
+    justify-content: center;
+    width: 2rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-infocard__title {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-small);
+    font-weight: 800;
+    line-height: 1.25;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-infocard__body {
+    color: var(--eac-settings-muted);
+    font-size: var(--font-size-small);
+    font-weight: 500;
+    line-height: 1.35;
+    margin-top: 0.18rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-callout {
+    background: var(--eac-settings-primary-light);
+    border-color: var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    margin-top: 0.85rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-callout .btn {
+    background: var(--eac-settings-primary);
+    border-color: var(--eac-settings-primary);
+    border-radius: var(--lh-radius-btn);
+    color: var(--eai-accent-ink);
+    font-weight: 700;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item {
+    align-items: flex-start;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid rgba(219, 231, 238, 0.72);
+    border-radius: 0;
+    box-shadow: none;
+    column-gap: 1.35rem;
+    display: grid;
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+    margin: 0;
+    padding: 0.85rem 1.75rem 0.8rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-group > .form-item:last-child {
+    border-bottom: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-target-highlight {
+    background: rgba(249, 128, 18, 0.08);
+    transition: background 0.35s ease;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose {
+    column-gap: 1.35rem;
+    display: grid;
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose > .form-label {
+    grid-column: 1;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose > .form-setting {
+    grid-column: 2;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    column-gap: 0.45rem;
+    display: flex;
+    grid-column: 2;
+    justify-self: start;
+    margin: 0.55rem 0 0;
+    max-width: 100%;
+    padding: 0;
+    width: auto;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline .form-label {
+    display: none;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline .form-setting {
+    align-items: center;
+    display: flex;
+    flex: 0 0 auto !important; /* stylelint-disable-line declaration-no-important */
+    gap: 0.5rem;
+    max-width: none !important; /* stylelint-disable-line declaration-no-important */
+    padding: 0;
+    white-space: nowrap;
+    width: auto !important; /* stylelint-disable-line declaration-no-important */
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline input[type="checkbox"] {
+    margin: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline .form-defaultinfo {
+    margin: 0 0 0 0.25rem;
+    padding: 0.15rem 0.55rem;
+    white-space: nowrap;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-label {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-small);
+    font-weight: 800;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item + .form-item {
+    padding-top: 0.35rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label {
+    flex: none;
+    grid-column: 1;
+    justify-self: stretch;
+    max-width: none;
+    padding-top: 0.2rem;
+    text-align: right !important; /* stylelint-disable-line declaration-no-important */
+    width: 100%;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label label {
+    color: var(--eac-settings-text);
+    display: block;
+    font-size: var(--font-size-small);
+    font-weight: 500;
+    line-height: 1.25;
+    max-width: none;
+    overflow-wrap: normal;
+    width: 100%;
+    word-break: normal;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-setting {
+    flex: 1 1 auto;
+    grid-column: 2;
+    max-width: none;
+    min-width: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-shortname {
+    color: var(--eac-settings-muted) !important; /* stylelint-disable-line declaration-no-important */
+    display: block;
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    line-height: 1.35;
+    margin-top: 0.3rem;
+    max-width: none;
+    overflow-wrap: normal !important; /* stylelint-disable-line declaration-no-important */
+    white-space: normal;
+    word-break: normal !important; /* stylelint-disable-line declaration-no-important */
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-control,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .custom-select,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings select,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings textarea {
+    border-color: var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    color: var(--eac-settings-text);
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-control:focus,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .custom-select:focus,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings select:focus,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings textarea:focus {
+    border-color: var(--eac-settings-primary);
+    box-shadow: 0 0 0 3px rgba(25, 72, 102, 0.12);
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-defaultinfo {
+    background: var(--eac-settings-primary-light);
+    border-radius: var(--eai-radius-pill);
+    color: var(--eac-settings-muted) !important; /* stylelint-disable-line declaration-no-important */
+    display: inline-block;
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    margin: 0.2rem 0 0;
+    padding: 0.15rem 0.55rem;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-text {
+    color: var(--eac-settings-muted);
+    font-size: var(--font-size-small);
+    line-height: 1.45;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-text p:last-child {
+    margin-bottom: 0;
+}
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings input[type="checkbox"] {
+    accent-color: var(--eac-settings-primary);
+    min-height: 1.1rem;
+    min-width: 1.1rem;
+}
+
+@media (max-width: 700px) {
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item {
+        display: block;
+    }
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label {
+        flex-basis: auto;
+        max-width: none;
+        padding-bottom: 0.45rem;
+    }
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline {
+        grid-column: 1;
+        margin-left: 0;
+    }
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose {
+        display: block;
+    }
+}
+
+/* --- The admin skin in a dark colour mode. ------------------------------
+   The settings pages are painted from the --eac-settings-* set above, which
+   resolves from the shared --lh-* design tokens with light fallbacks. On a
+   dark page those fallbacks are what applies -- the shared tokens are only
+   defined on .lh-plugin-shell -- so the skin stayed white and inherited the
+   theme's light ink on top of it: 42 places below 3:1, measured.
+
+   Redefining the set is enough because every rule already reads it; the one
+   thing that was not a token, the card fill, is one now. The values come from
+   the theme's published --eai-* contract where a theme offers it, and fall
+   back to a neutral dark palette so the page is readable under any dark theme
+   that sets data-bs-theme without publishing tokens. */
+[data-bs-theme="dark"] #page-admin-setting-blocksettingelediaai_tutor,
+[data-bs-theme="dark"] .eat-instance-shell {
+    --eac-settings-surface: var(--eai-surface);
+    --eac-settings-border: var(--eai-line);
+    --eac-settings-muted: var(--eai-muted);
+    --eac-settings-text: var(--eai-fg);
+    --eac-settings-primary: var(--eai-accent);
+    --eac-settings-primary-light: var(--eai-raised);
+    --eac-settings-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+
+    /* A few rules in this skin read the shared tokens straight, without going
+       through --eac-settings-*. Setting them here keeps those in step rather
+       than leaving a handful of dark-on-dark labels behind. */
+    --lh-text: var(--eai-fg);
+    /* Palette an die Suite-Token gehaengt (task27, 05.09.2026). Vorher stand
+       hier eine eigene Kopie der LernHive-Palette; weil eine Klasse
+       spezifischer ist als :root, ueberschattete sie die Token der Suite und
+       diese Oberflaeche blieb LernHive-Navy. Abstaende, Seitenbreiten,
+       Radien und Schatten darunter sind Layout und bleiben unberuehrt.
+       Erfolg, Warnung und Gefahr haengen seit dem 05.09.2026 ebenfalls an
+       Rollen (--eai-success/-warning/-danger). Die alten Werte waren zu
+       schwach fuer Text -- Tuerkis 2,71:1, und "Warnung" war die
+       Markenfarbe selbst. */
+    --lh-text-secondary: var(--eai-fg-dim);
+    --lh-muted: var(--eai-muted);
+    --lh-text-light: var(--eai-muted);
+    --lh-border: var(--eai-line);
+    --lh-border-light: var(--eai-line-soft);
+    --lh-bg-white: var(--eai-surface);
+    --lh-bg: var(--eai-bg);
+    --lh-bg-soft: var(--eai-bg);
+    --lh-primary: var(--eai-accent);
+    --lh-primary-light: var(--eai-accent-wash);
+}
+
+/* === lh-core BEGIN (generated from design/lh-core.css - run php scripts/sync-design.php; do not edit inside this block) === */
+
+.lh-plugin-shell {
+    --lh-primary: var(--eai-accent);
+    --lh-primary-dark: var(--eai-accent-hover);
+    --lh-primary-light: var(--eai-accent-wash);
+    --lh-accent: var(--eai-brand);
+    --lh-accent-dark: var(--eai-accent-hover);
+    --lh-accent-light: var(--eai-accent-wash);
+    --lh-bg-white: var(--eai-surface);
+    --lh-bg: var(--eai-bg);
+    --lh-bg-soft: var(--eai-bg);
+    --lh-text: var(--eai-fg);
+    --lh-text-secondary: var(--eai-fg-dim);
+    --lh-muted: var(--eai-muted);
+    --lh-text-light: var(--eai-muted);
+    --lh-border: var(--eai-line);
+    --lh-border-light: var(--eai-line-soft);
+    --lh-success: var(--eai-success);
+    --lh-success-light: var(--eai-success-wash);
+    --lh-danger: var(--eai-danger);
+    --lh-danger-light: var(--eai-danger-wash);
+    --lh-warning: var(--eai-warning);
+    --lh-warning-light: var(--eai-warning-wash);
+    --lh-radius-sm: 8px;
+    --lh-radius-btn: 8px;
+    --lh-radius-pill: 999px;
+    --lh-spacing-xs: 4px;
+    --lh-spacing-sm: 8px;
+    --lh-spacing-md: 16px;
+    --lh-spacing-lg: 24px;
+    --lh-spacing-xl: 32px;
+    --lh-shadow-card: 0 2px 8px rgba(15, 23, 42, 0.05);
+    --lh-page-max-default: 72rem;
+    --lh-page-max-reading: 58rem;
+    --lh-page-max-wide: 88rem;
+    --lh-page-max-full: none;
+}
+
+.lh-plugin-shell {
+    margin: 0 auto;
+    max-width: var(--lh-page-max-default);
+    width: 100%;
+}
+
+.lh-plugin-shell--reading {
+    max-width: var(--lh-page-max-default);
+}
+
+.lh-plugin-shell--wide {
+    max-width: var(--lh-page-max-wide);
+}
+
+.lh-plugin-shell--full {
+    max-width: var(--lh-page-max-full);
+}
+
+.lh-plugin-shell .lh-filter-toolbar {
+    border-bottom: 1px solid var(--lh-border);
+    margin: 0 0 var(--lh-spacing-md);
+    padding: 0 0 var(--lh-spacing-md);
+}
+
+.lh-plugin-shell .lh-filter-toolbar .mform {
+    align-items: end;
+    display: grid;
+    gap: var(--lh-spacing-sm) var(--lh-spacing-md);
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    margin: 0;
+}
+
+.lh-plugin-shell .lh-filter-toolbar .fitem,
+.lh-plugin-shell .lh-filter-toolbar .form-group {
+    display: block;
+    margin: 0;
+    min-width: 0;
+}
+
+.lh-plugin-shell .lh-filter-toolbar .fitem > .col-md-3,
+.lh-plugin-shell .lh-filter-toolbar .fitem > .col-md-9,
+.lh-plugin-shell .lh-filter-toolbar .form-group > .col-md-3,
+.lh-plugin-shell .lh-filter-toolbar .form-group > .col-md-9 {
+    flex: 0 0 100%;
+    max-width: 100%;
+    padding-left: 0;
+    padding-right: 0;
+}
+
+.lh-plugin-shell .lh-filter-toolbar .col-form-label,
+.lh-plugin-shell .lh-filter-toolbar label {
+    display: block;
+    margin: 0;
+    padding-bottom: var(--lh-spacing-xs);
+    width: 100%;
+}
+
+.lh-plugin-shell .lh-filter-toolbar .felement,
+.lh-plugin-shell .lh-filter-toolbar .form-control,
+.lh-plugin-shell .lh-filter-toolbar select,
+.lh-plugin-shell .lh-filter-toolbar input[type="search"] {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+}
+
+.lh-plugin-shell .lh-filter-toolbar .form-control,
+.lh-plugin-shell .lh-filter-toolbar select,
+.lh-plugin-shell .lh-filter-toolbar input[type="search"] {
+    min-height: 2.35rem;
+}
+
+.lh-plugin-shell .lh-filter-toolbar #fitem_id_submitbutton {
+    align-self: end;
+    display: flex;
+    grid-column: -1;
+    justify-content: flex-end;
+    margin: 0;
+}
+
+.lh-plugin-shell .lh-filter-toolbar #fitem_id_submitbutton input,
+.lh-plugin-shell .lh-filter-toolbar #fitem_id_submitbutton button {
+    width: auto;
+}
+
+.lh-plugin-shell .lh-table-card {
+    background: var(--lh-bg-white);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    box-shadow: 0 2px 8px rgba(22, 78, 115, 0.05);
+    overflow-x: visible;
+    padding: 0;
+}
+
+.lh-plugin-shell .lh-table-card > .lh-plugin-card__top {
+    margin-bottom: 0;
+    padding: 1rem;
+}
+
+.lh-plugin-shell .lh-table-card > .lh-table-card__body {
+    margin: 0;
+}
+
+@media (max-width: 767.98px) {
+    .lh-plugin-shell .lh-table-card {
+        overflow-x: auto;
+    }
+}
+
+.lh-plugin-shell .lh-plugin-header {
+    background: var(--lh-bg-white);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    margin: 0 0 0.75rem;
+    min-height: 6.5rem;
+    padding: 1rem;
+}
+
+.lh-plugin-shell .lh-plugin-header__row {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+}
+
+.lh-plugin-shell .lh-plugin-header__title-block {
+    min-width: 0;
+}
+
+.lh-plugin-shell .lh-plugin-header__name {
+    align-items: center;
+    color: var(--lh-primary);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--font-size-h3);
+    font-weight: 800;
+    gap: 0.6rem;
+    line-height: 1.25;
+}
+
+.lh-plugin-shell .lh-plugin-header__name-text {
+    color: inherit;
+    display: inline;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    margin: 0;
+}
+
+.lh-plugin-shell .lh-plugin-header__home {
+    color: inherit;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__home:hover,
+.lh-plugin-shell .lh-plugin-header__home:focus-visible {
+    color: var(--lh-primary);
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__home:focus-visible {
+    outline: 2px solid var(--lh-primary);
+    outline-offset: 2px;
+}
+
+.lh-plugin-shell .lh-plugin-header__sep {
+    color: #9aa7b3;
+    margin: 0 0.45rem;
+}
+
+.lh-plugin-shell .lh-plugin-header__tagline {
+    color: var(--lh-text);
+}
+
+.lh-plugin-shell .lh-plugin-header__actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.lh-plugin-shell .lh-plugin-header__action {
+    align-items: center;
+    background: var(--eai-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-pill);
+    color: var(--lh-primary);
+    display: inline-flex;
+    height: 2.25rem;
+    justify-content: center;
+    min-width: 2.25rem;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__action:hover,
+.lh-plugin-shell .lh-plugin-header__action:focus-visible {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary-dark);
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__action:focus-visible {
+    outline: 2px solid var(--lh-primary);
+    outline-offset: 2px;
+}
+
+.lh-plugin-shell .lh-plugin-header__action--current {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary);
+    cursor: default;
+}
+
+.lh-plugin-shell .lh-plugin-header__subtitle {
+    color: var(--lh-muted);
+    margin: 0.35rem 0 0;
+}
+
+.lh-plugin-shell .lh-plugin-header__tags {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0;
+}
+
+.lh-plugin-shell .lh-icon-action {
+    align-items: center;
+    background: rgba(25, 72, 102, 0.08);
+    border: none;
+    border-radius: 50%;
+    color: var(--lh-text-secondary);
+    cursor: pointer;
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 36px;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.18s ease, background 0.15s ease, color 0.15s ease;
+    width: 36px;
+}
+
+.lh-plugin-shell .lh-icon-action::after {
+    content: "";
+    height: 44px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+}
+
+.lh-plugin-shell .lh-icon-action:hover,
+.lh-plugin-shell .lh-icon-action:focus-visible {
+    background: rgba(25, 72, 102, 0.15);
+    box-shadow: 0 2px 8px rgba(25, 72, 102, 0.15);
+    color: var(--lh-primary);
+    text-decoration: none;
+    transform: scale(1.1);
+}
+
+.lh-plugin-shell .lh-icon-action:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 3px;
+}
+
+.lh-plugin-shell .lh-icon-action--primary {
+    background: var(--lh-primary);
+    border-color: var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+
+.lh-plugin-shell .lh-icon-action--primary:hover,
+.lh-plugin-shell .lh-icon-action--primary:focus-visible {
+    background: var(--lh-primary-dark);
+    color: var(--eai-accent-ink);
+}
+
+/* Umbrechen statt schieben. Die Reiter dieser Zeile sind Ziele, keine Liste:
+   was nicht ins Sichtfeld passt, ist fuer den Leser nicht da, und eine duenne
+   Bildlaufleiste ist kein Hinweis darauf, dass rechts noch etwas steht. Vier
+   Plugins trugen je eine eigene Kopie dieser Regel, drei davon mit
+   `overflow-x: auto` -- und weil Moodle alle Plugin-Stylesheets zu einem
+   zusammenlegt, entschied die Reihenfolge, welche galt. Jetzt brechen alle um.
+   (19.09.2026) */
+.lh-plugin-shell .lh-plugin-section-nav {
+    background: transparent;
+    border-top: 1px solid var(--lh-border);
+    column-gap: 0.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    margin: 1rem -1rem -1rem;
+    padding: 0 1rem;
+    row-gap: 0.15rem;
+}
+
+.lh-plugin-shell .lh-plugin-section-nav__item {
+    align-items: center;
+    border-bottom: 3px solid transparent;
+    color: var(--lh-text-secondary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    font-weight: 750;
+    gap: 0.45rem;
+    min-height: 3rem;
+    padding: 0.1rem 0.75rem 0;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-section-nav__item:hover,
+.lh-plugin-shell .lh-plugin-section-nav__item:focus-visible {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary);
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-section-nav__item:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: -2px;
+}
+
+.lh-plugin-shell .lh-plugin-section-nav__item[aria-current=page] {
+    border-bottom-color: var(--lh-accent);
+    color: var(--lh-primary-dark);
+}
+
+.lh-plugin-shell .lh-plugin-infobar {
+    align-items: center;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: var(--lh-radius-sm);
+    color: #7c2d12;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin: 0 0 1rem;
+    padding: 0.75rem 1rem;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__stats {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__stat {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.45rem;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress {
+    align-items: center;
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: auto minmax(8rem, 1fr) auto auto;
+    width: 100%;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress-label,
+.lh-plugin-shell .lh-plugin-infobar__stat {
+    color: var(--lh-text-secondary);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress-track {
+    background: var(--lh-bg-soft);
+    border-radius: var(--lh-radius-pill);
+    height: 0.45rem;
+    overflow: hidden;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress-fill {
+    background: var(--lh-primary);
+    height: 100%;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress-count {
+    color: var(--lh-primary);
+    font-size: var(--font-size-small);
+    font-weight: 800;
+}
+
+.lh-plugin-shell .lh-plugin-infobar__progress-count--muted {
+    color: var(--lh-text-secondary);
+}
+
+.lh-plugin-shell .lh-plugin-content-area {
+    margin: 0 auto;
+    max-width: 100%;
+}
+
+.lh-plugin-shell--reading .lh-plugin-content-area {
+    max-width: var(--lh-page-max-reading);
+}
+
+.lh-plugin-shell .lh-plugin-grid {
+    align-items: start;
+    display: grid;
+    gap: 1rem;
+}
+
+.lh-plugin-shell .lh-plugin-grid--cols-2 {
+    grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.lh-plugin-shell .lh-plugin-grid--cols-3 {
+    grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.lh-plugin-shell .lh-plugin-grid--cols-4 {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.lh-plugin-shell .lh-plugin-card {
+    background: var(--eai-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    box-shadow: 0 2px 8px rgba(22, 78, 115, 0.05);
+    padding: 1rem;
+}
+
+.lh-plugin-shell .lh-plugin-card__top {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
+}
+
+.lh-plugin-shell .lh-plugin-card__icon {
+    align-items: center;
+    background: var(--lh-primary-light);
+    border-radius: var(--lh-radius-sm);
+    color: var(--lh-primary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2.25rem;
+    justify-content: center;
+    width: 2.25rem;
+}
+
+.lh-plugin-shell .lh-plugin-card__meta {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.lh-plugin-shell .lh-plugin-card__title {
+    color: var(--lh-text);
+    font-size: var(--font-size-body);
+    font-weight: 850;
+    line-height: 1.25;
+    margin: 0;
+}
+
+.lh-plugin-shell .lh-plugin-card__body {
+    color: var(--lh-text-secondary);
+    margin: 0;
+}
+
+.lh-plugin-shell .lh-plugin-card__actions {
+    flex: 0 0 auto;
+}
+
+.lh-plugin-shell .lh-plugin-empty-state {
+    align-items: center;
+    color: var(--lh-text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    justify-content: center;
+    min-height: 8rem;
+    padding: 1.5rem;
+    text-align: center;
+}
+
+.lh-plugin-shell .lh-plugin-empty-state__icon {
+    align-items: center;
+    background: var(--lh-bg-soft);
+    border-radius: 50%;
+    color: var(--lh-primary);
+    display: inline-flex;
+    height: 2.75rem;
+    justify-content: center;
+    width: 2.75rem;
+}
+
+.lh-plugin-shell .lh-plugin-empty-state__text {
+    margin: 0;
+    max-width: 32rem;
+}
+
+.lh-plugin-shell .lh-table-empty {
+    border: 1px dashed var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+}
+
+.lh-plugin-shell .lh-btn-open,
+.lh-plugin-shell .lh-btn-outline,
+.lh-plugin-shell .lh-btn-ghost {
+    align-items: center;
+    border-radius: var(--lh-radius-sm);
+    display: inline-flex;
+    font-weight: 750;
+    gap: 0.45rem;
+    min-height: 2.35rem;
+    padding: 0.5rem 0.85rem;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-btn-open {
+    background: var(--lh-primary);
+    border: 1px solid var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+
+.lh-plugin-shell .lh-btn-outline {
+    background: var(--eai-surface);
+    border: 1px solid var(--lh-border);
+    color: var(--lh-text);
+}
+
+.lh-plugin-shell .lh-btn-ghost {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--lh-primary);
+}
+
+.lh-plugin-shell .lh-btn-open:hover,
+.lh-plugin-shell .lh-btn-open:focus-visible,
+.lh-plugin-shell .lh-btn-outline:hover,
+.lh-plugin-shell .lh-btn-outline:focus-visible,
+.lh-plugin-shell .lh-btn-ghost:hover,
+.lh-plugin-shell .lh-btn-ghost:focus-visible {
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-btn-open:hover,
+.lh-plugin-shell .lh-btn-open:focus-visible {
+    background: var(--lh-primary-dark);
+    color: var(--eai-accent-ink);
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+}
+
+.lh-plugin-shell .lh-btn-outline:hover,
+.lh-plugin-shell .lh-btn-outline:focus-visible,
+.lh-plugin-shell .lh-btn-ghost:hover,
+.lh-plugin-shell .lh-btn-ghost:focus-visible {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary-dark);
+}
+
+.lh-plugin-shell .lh-btn-outline:focus-visible,
+.lh-plugin-shell .lh-btn-ghost:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+}
+
+.lh-plugin-shell .lh-plugin-section-nav:has(+ .lh-plugin-header__actionbar) {
+    margin-bottom: 0;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar {
+    border-top: 1px solid var(--lh-border-light);
+    padding: 0.6rem 0.9rem 0.55rem;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-list,
+.lh-plugin-shell .lh-row-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-item {
+    align-items: center;
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    color: var(--lh-text-secondary);
+    display: inline-flex;
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    gap: 0.35rem;
+    line-height: 1.2;
+    min-height: 2.75rem;
+    padding: 0.4rem 0.7rem;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-item .fa {
+    font-size: var(--font-size-small);
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-item:hover {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary);
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-item:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-item[aria-current="page"] {
+    background: var(--lh-primary);
+    border-color: var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+
+.lh-plugin-shell .lh-plugin-header__actionbar-more .dropdown-toggle {
+    min-height: 2.75rem;
+}
+
+@media (max-width: 720px) {
+    .lh-plugin-shell .lh-plugin-header__row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .lh-plugin-shell .lh-plugin-header__actions {
+        justify-content: flex-start;
+    }
+
+    .lh-plugin-shell .lh-plugin-infobar__progress {
+        grid-template-columns: 1fr auto;
+    }
+
+    .lh-plugin-shell .lh-plugin-infobar__progress-label,
+    .lh-plugin-shell .lh-plugin-infobar__progress-track {
+        grid-column: 1 / -1;
+    }
+}
+
+.lh-plugin-shell .lh-plugin-tag {
+    align-items: center;
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-pill);
+    display: inline-flex;
+    font-weight: 750;
+    gap: 0.35rem;
+    padding: 0.25rem 0.55rem;
+}
+
+.lh-plugin-shell .lh-plugin-tag--active {
+    background: var(--lh-success-light);
+    color: #166534;
+}
+
+.lh-plugin-shell .lh-plugin-tag--warning {
+    background: var(--lh-accent-light);
+    color: #9a3412;
+}
+
+/* === lh-core END === */
+
+/* While an answer is still arriving the bubble is the ordinary one — only a
+   soft caret marks it as unfinished, so nothing shifts when the final answer
+   replaces it. */
+.elediaai-chat-msg--live .elediaai-chat-markdown::after {
+    animation: elediaai-chat-caret 1s steps(2) infinite;
+    background: currentColor;
+    content: "";
+    display: inline-block;
+    height: 1em;
+    margin-left: 0.15em;
+    opacity: 0.6;
+    vertical-align: -0.15em;
+    width: 2px;
+}
+
+@keyframes elediaai-chat-caret {
+    0%, 49% { opacity: 0.6; }
+    50%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .elediaai-chat-msg--live .elediaai-chat-markdown::after {
+        animation: none;
+    }
+}
+
+/* Tutor-owned admin launcher styles stay outside the generated shell block. */
+.eat-admin-launcher-host {
+    align-items: center;
+    /* Centre in the navbar row: the surrounding flex container may align its
+       items on the baseline, which would drop the launcher below its
+       neighbours. */
+    align-self: center;
+    display: inline-flex;
+    margin: 0 0.15rem;
+    position: relative;
+    z-index: 1040;
+}
+
+.eat-admin-launcher-host[hidden] {
+    display: none !important; /* stylelint-disable-line declaration-no-important */
+}
+
+.eat-admin-launcher-host__link {
+    /* The link carries core's nav-link class, which supplies colour, padding and
+       hover. Only the round focus/hover shape is ours — everything the theme
+       already defines is deliberately left alone. */
+    border-radius: var(--eai-radius-pill);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
+/* WCAG 2.4.7: focus must be distinguishable from hover. */
+.eat-admin-launcher-host__link:focus-visible {
+    box-shadow: 0 0 0 2px var(--eac-focus-ring);
+    outline: none;
+}
+
+
+/* Tutor-owned button variants stay outside the generated shell block. */
+.lh-plugin-shell .lh-btn-primary,
+.lh-plugin-shell .lh-btn-secondary,
+.lh-plugin-shell .lh-btn-default {
+    align-items: center;
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-btn);
+    display: inline-flex;
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    gap: 0.35rem;
+    line-height: 1.2;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.8rem;
+    text-decoration: none;
+}
+
+.lh-plugin-shell .lh-btn-primary {
+    background: var(--lh-primary);
+    border-color: var(--lh-primary);
+    color: var(--eai-accent-ink);
+}
+
+.lh-plugin-shell .lh-btn-secondary,
+.lh-plugin-shell .lh-btn-default {
+    background: var(--eai-surface);
+    color: var(--lh-primary);
+}
+
+.lh-plugin-shell .lh-btn-primary:hover,
+.lh-plugin-shell .lh-btn-primary:focus-visible,
+.lh-plugin-shell .lh-btn-secondary:hover,
+.lh-plugin-shell .lh-btn-secondary:focus-visible,
+.lh-plugin-shell .lh-btn-default:hover,
+.lh-plugin-shell .lh-btn-default:focus-visible {
+    background: var(--lh-primary-light);
+    border-color: var(--lh-primary);
+    color: var(--lh-primary);
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+    text-decoration: none;
+}
+
+/* Plugin Shell content helpers for the aiTutor configuration overview. */
+.path-block-elediaai_tutor .lh-plugin-grid {
+    display: grid;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+.path-block-elediaai_tutor .lh-plugin-grid--cols-3 {
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+.path-block-elediaai_tutor .eat-setup-wizard {
+    background: var(--lh-bg-white);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    box-shadow: var(--lh-shadow-card);
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+.path-block-elediaai_tutor .eat-setup-wizard__head {
+    margin-bottom: 1rem;
+}
+.path-block-elediaai_tutor .eat-setup-wizard__title {
+    color: var(--lh-text);
+    font-size: var(--font-size-body);
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0;
+}
+.path-block-elediaai_tutor .eat-setup-wizard__intro {
+    color: var(--lh-muted);
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    line-height: 1.45;
+    margin: 0.35rem 0 0;
+}
+.path-block-elediaai_tutor .eat-setup-callout {
+    align-items: center;
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: space-between;
+    margin-top: 1rem;
+    padding: 0.75rem;
+}
+.path-block-elediaai_tutor .eat-setup-callout--warning {
+    background: var(--eai-warning-wash);
+    border-color: var(--eai-warning);
+}
+.path-block-elediaai_tutor .eat-setup-callout strong {
+    color: var(--lh-text);
+    display: block;
+    font-size: var(--font-size-small);
+    font-weight: 800;
+}
+.path-block-elediaai_tutor .eat-setup-callout p {
+    color: var(--lh-muted);
+    flex: 1 1 18rem;
+    font-size: var(--font-size-small);
+    font-weight: 500;
+    line-height: 1.35;
+    margin: 0;
+}
+.path-block-elediaai_tutor .eat-setup-callout .singlebutton {
+    margin: 0;
+}
+.path-block-elediaai_tutor .eat-setup-wizard__steps {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+.path-block-elediaai_tutor .eat-setup-step {
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    min-width: 0;
+    padding: 0.85rem;
+}
+.path-block-elediaai_tutor .eat-setup-step__top {
+    align-items: center;
+    display: flex;
+    gap: 0.45rem;
+}
+.path-block-elediaai_tutor .eat-setup-step__number,
+.path-block-elediaai_tutor .eat-setup-step__icon {
+    align-items: center;
+    border-radius: 50%;
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 1.85rem;
+    justify-content: center;
+    width: 1.85rem;
+}
+.path-block-elediaai_tutor .eat-setup-step__number {
+    background: var(--lh-primary);
+    color: var(--eai-accent-ink);
+    font-size: var(--font-size-small);
+    font-weight: 800;
+}
+.path-block-elediaai_tutor .eat-setup-step__icon {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary);
+}
+.path-block-elediaai_tutor .eat-setup-step__status {
+    border-radius: var(--eai-radius-pill);
+    font-size: var(--font-size-caption);
+    font-weight: 800;
+    margin-left: auto;
+    padding: 0.15rem 0.5rem;
+}
+.path-block-elediaai_tutor .eat-setup-step__status--ready {
+    background: var(--eai-success-wash);
+    color: var(--eai-success);
+}
+.path-block-elediaai_tutor .eat-setup-step__status--todo {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary);
+}
+.path-block-elediaai_tutor .eat-setup-step__status--error {
+    background: var(--eai-danger-wash);
+    color: var(--eai-danger);
+}
+.path-block-elediaai_tutor .eat-setup-step__status--missing {
+    background: var(--eai-bg);
+    color: var(--eai-muted);
+}
+.path-block-elediaai_tutor .eat-setup-step--missing {
+    opacity: 0.72;
+}
+.path-block-elediaai_tutor .eat-setup-step__title {
+    color: var(--lh-text);
+    font-size: var(--font-size-body);
+    font-weight: 800;
+    line-height: 1.25;
+    margin: 0;
+}
+.path-block-elediaai_tutor .eat-setup-step__body {
+    color: var(--lh-muted);
+    font-size: var(--font-size-small);
+    font-weight: 500;
+    line-height: 1.4;
+    margin: 0;
+}
+.path-block-elediaai_tutor .eat-setup-step__missing {
+    color: var(--lh-muted);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    line-height: 1.35;
+    margin: -0.15rem 0 0;
+}
+.path-block-elediaai_tutor .eat-setup-task-list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: 0.45rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.path-block-elediaai_tutor .eat-setup-task {
+    align-items: flex-start;
+    background: var(--lh-primary-light);
+    border-radius: var(--lh-radius-sm);
+    display: grid;
+    gap: 0.5rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0.55rem;
+}
+.path-block-elediaai_tutor .eat-setup-task__dot {
+    border-radius: 50%;
+    height: 0.6rem;
+    margin-top: 0.35rem;
+    width: 0.6rem;
+}
+.path-block-elediaai_tutor .eat-setup-task__state--ready {
+    background: var(--eai-success);
+}
+.path-block-elediaai_tutor .eat-setup-task__state--todo {
+    background: var(--lh-accent);
+}
+.path-block-elediaai_tutor .eat-setup-task__state--error {
+    background: var(--eai-danger);
+}
+.path-block-elediaai_tutor .eat-setup-task__state--missing {
+    background: var(--eai-faint);
+}
+.path-block-elediaai_tutor .eat-setup-task--disabled {
+    background: var(--eai-bg);
+}
+.path-block-elediaai_tutor .eat-setup-task__title {
+    color: var(--lh-text);
+    display: block;
+    font-size: var(--font-size-small);
+    font-weight: 800;
+    line-height: 1.25;
+}
+.path-block-elediaai_tutor .eat-setup-task__body {
+    color: var(--lh-muted);
+    display: block;
+    font-size: var(--font-size-caption);
+    font-weight: 500;
+    line-height: 1.3;
+    margin-top: 0.12rem;
+}
+.path-block-elediaai_tutor .eat-setup-task__action {
+    height: 1.75rem;
+    min-width: 1.75rem;
+}
+.path-block-elediaai_tutor .eat-setup-task__action .fa {
+    font-size: var(--font-size-small);
+}
+.path-block-elediaai_tutor .eat-setup-task__action--disabled {
+    cursor: default;
+    opacity: 0.65;
+    pointer-events: none;
+}
+.path-block-elediaai_tutor .eat-setup-step__action {
+    align-self: flex-start;
+    margin-top: 0.1rem;
+}
+.path-block-elediaai_tutor .lh-plugin-card {
+    background: var(--lh-bg-white);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    box-shadow: var(--lh-shadow-card);
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+.path-block-elediaai_tutor .lh-plugin-card__top {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem;
+}
+.path-block-elediaai_tutor .lh-plugin-card__icon {
+    align-items: center;
+    background: var(--lh-primary-light);
+    border-radius: var(--lh-radius-sm);
+    color: var(--lh-primary);
+    display: inline-flex;
+    flex: 0 0 auto;
+    height: 2.5rem;
+    justify-content: center;
+    width: 2.5rem;
+}
+.path-block-elediaai_tutor .lh-plugin-card__meta {
+    min-width: 0;
+}
+.path-block-elediaai_tutor .lh-plugin-card__title {
+    color: var(--lh-text);
+    font-size: var(--font-size-body);
+    font-weight: 800;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+.path-block-elediaai_tutor .lh-plugin-card__sub {
+    color: var(--lh-muted);
+    font-size: var(--font-size-small);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-top: 0.2rem;
+}
+.path-block-elediaai_tutor .lh-plugin-card__body {
+    color: var(--lh-muted);
+    flex: 1 1 auto;
+    font-size: var(--font-size-body);
+    font-weight: 500;
+    line-height: 1.45;
+    margin: 0;
+}
+.path-block-elediaai_tutor dl.lh-plugin-card__body {
+    display: grid;
+    gap: 0.45rem 1rem;
+    grid-template-columns: minmax(10rem, max-content) 1fr;
+}
+.path-block-elediaai_tutor .lh-plugin-card__body dt {
+    color: var(--lh-text-secondary);
+    font-weight: 600;
+}
+.path-block-elediaai_tutor .lh-plugin-card__body dd {
+    margin: 0;
+}
+.path-block-elediaai_tutor .lh-plugin-card__actions {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    margin-left: auto;
+    margin-top: 0;
+}
+.path-block-elediaai_tutor .lh-plugin-card__actions .lh-icon-action {
+    align-items: center;
+    background: rgba(25, 72, 102, 0.08);
+    border: 0;
+    border-radius: 50%;
+    color: var(--lh-text-secondary);
+    display: inline-flex;
+    flex-shrink: 0;
+    height: 2.25rem;
+    justify-content: center;
+    padding: 0;
+    position: relative;
+    text-decoration: none;
+    transition: background 0.15s ease, box-shadow 0.18s ease, color 0.15s ease, transform 0.15s ease;
+    width: 2.25rem;
+}
+/* 44x44 hit-area overlay (ADR-P14 D1, WCAG 2.5.5). */
+.path-block-elediaai_tutor .lh-plugin-card__actions .lh-icon-action::after {
+    content: "";
+    height: 44px;
+    left: 50%;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+}
+.path-block-elediaai_tutor .lh-plugin-card__actions .lh-icon-action:hover,
+.path-block-elediaai_tutor .lh-plugin-card__actions .lh-icon-action:focus {
+    background: var(--lh-primary);
+    box-shadow: 0 4px 12px rgba(25, 72, 102, 0.18);
+    color: var(--eai-accent-ink);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+.path-block-elediaai_tutor .lh-plugin-card__actions .lh-icon-action:focus-visible {
+    outline: 2px solid var(--lh-accent);
+    outline-offset: 2px;
+}
+.path-block-elediaai_tutor .lh-btn,
+.path-block-elediaai_tutor .lh-btn--secondary {
+    align-items: center;
+    background: var(--eai-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-btn);
+    color: var(--lh-primary);
+    display: inline-flex;
+    font-weight: 600;
+    gap: 0.35rem;
+    min-height: 2.25rem;
+    padding: 0.45rem 0.8rem;
+    text-decoration: none;
+}
+.path-block-elediaai_tutor .lh-btn:hover,
+.path-block-elediaai_tutor .lh-btn:focus,
+.path-block-elediaai_tutor .lh-btn--secondary:hover,
+.path-block-elediaai_tutor .lh-btn--secondary:focus {
+    background: var(--lh-primary-light);
+    color: var(--lh-primary);
+    text-decoration: none;
+}
+
+@media (max-width: 600px) {
+    .path-block-elediaai_tutor dl.lh-plugin-card__body {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Simple Moodle-like admin settings inside the Plugin Shell. */
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings {
+    margin: 1rem auto 0;
+    max-width: 58rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings fieldset {
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    margin: 0;
+    overflow: visible;
+    padding: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings h3.main {
+    background: var(--eac-settings-surface);
+    border: 0;
+    border-bottom: 1px solid var(--lh-border);
+    border-radius: 0;
+    color: var(--lh-text);
+    font-size: var(--font-size-h4);
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0 0 0.85rem;
+    padding: 1rem 0 0.45rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading:not([data-eat-info-hidden="1"]) {
+    background: var(--eac-settings-surface);
+    border: 0;
+    border-bottom: 1px solid var(--lh-border);
+    border-radius: 0;
+    box-shadow: none;
+    color: var(--eac-settings-muted);
+    display: block !important; /* stylelint-disable-line declaration-no-important */
+    font-size: var(--font-size-small);
+    line-height: 1.45;
+    margin: 0;
+    padding: 1rem 1.25rem 1rem 15.25rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading[data-eat-info-hidden="1"] {
+    display: none !important; /* stylelint-disable-line declaration-no-important */
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-group {
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    box-shadow: none;
+    margin: 0 0 0.65rem;
+    overflow: hidden;
+    padding: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-backnav {
+    margin: 0.55rem 0 1.35rem;
+    text-align: left;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor .eat-settings-backnav__button {
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--lh-border);
+    border-radius: var(--lh-radius-sm);
+    color: var(--lh-primary);
+    font-size: var(--font-size-small);
+    font-weight: 600;
+    padding: 0.4rem 0.7rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose {
+    align-items: start;
+    background: var(--eac-settings-surface);
+    border: 0;
+    border-bottom: 1px solid var(--lh-border);
+    border-radius: 0;
+    box-shadow: none;
+    column-gap: 1.25rem;
+    display: grid;
+    grid-template-columns: 13rem minmax(0, 1fr);
+    margin: 0;
+    padding: 1rem 1.25rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose {
+    row-gap: 0.55rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings
+.form-item.eat-settings-item--has-expose > .eat-settings-expose-inline {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    display: flex;
+    grid-column: 2;
+    margin: 0;
+    padding: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings
+.form-item.eat-settings-item--has-expose > .eat-settings-expose-inline .form-label {
+    display: none;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings
+.form-item.eat-settings-item--has-expose > .eat-settings-expose-inline .form-setting {
+    align-items: center;
+    display: inline-flex;
+    gap: 0;
+    max-width: none;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings
+.form-item.eat-settings-item--has-expose > .eat-settings-expose-inline .eat-settings-expose-label {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-small);
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings
+.form-item.eat-settings-item--has-expose > .eat-settings-expose-inline .form-defaultinfo {
+    background: transparent;
+    border-radius: 0;
+    color: var(--lh-text-secondary) !important; /* stylelint-disable-line declaration-no-important */
+    display: inline;
+    font-size: var(--font-size-body);
+    font-weight: 400;
+    line-height: 1.35;
+    margin-left: 1.25rem;
+    padding: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item:last-child,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings fieldset > *:last-child {
+    border-bottom: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label {
+    grid-column: 1;
+    justify-self: stretch;
+    max-width: none;
+    padding: 0;
+    text-align: right !important; /* stylelint-disable-line declaration-no-important */
+    width: auto;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label label {
+    color: var(--eac-settings-text);
+    display: block;
+    font-size: var(--font-size-body);
+    font-weight: 400;
+    line-height: 1.35;
+    margin: 0;
+    overflow-wrap: normal;
+    word-break: normal;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-shortname {
+    color: var(--eai-muted) !important; /* stylelint-disable-line declaration-no-important */
+    display: block;
+    font-size: var(--font-size-caption);
+    font-weight: 400;
+    line-height: 1.35;
+    margin-top: 0.15rem;
+    overflow-wrap: normal !important; /* stylelint-disable-line declaration-no-important */
+    word-break: normal !important; /* stylelint-disable-line declaration-no-important */
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-setting {
+    grid-column: 2;
+    max-width: none;
+    min-width: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-defaultinfo {
+    background: transparent;
+    border-radius: 0;
+    color: var(--eai-muted) !important; /* stylelint-disable-line declaration-no-important */
+    display: inline;
+    font-size: var(--font-size-body);
+    font-weight: 400;
+    margin: 0 0 0 0.25rem;
+    padding: 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-text {
+    color: var(--eac-settings-muted);
+    font-size: var(--font-size-small);
+    line-height: 1.45;
+    margin-top: 0.55rem;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-control,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .custom-select,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings select,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings textarea {
+    border-color: var(--eai-line);
+    border-radius: var(--eai-radius-sm);
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings input[type="checkbox"] {
+    accent-color: auto;
+    min-height: auto;
+    min-width: auto;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-expose-inline input[type="checkbox"] {
+    margin: 0 0.55rem 0 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-buttons,
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .settingsformbuttons {
+    background: transparent;
+    border: 0;
+    display: flex;
+    gap: 0.6rem;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem 0 0;
+}
+
+#page-admin-setting-blocksettingelediaai_tutor #adminsettings .eat-settings-cancel {
+    margin-right: 0.6rem;
+}
+
+@media (max-width: 700px) {
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading,
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .formsettingheading:not([data-eat-info-hidden="1"]),
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item,
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-item.eat-settings-item--has-expose {
+        display: block;
+        padding: 1rem;
+    }
+
+    #page-admin-setting-blocksettingelediaai_tutor #adminsettings .form-label {
+        padding-bottom: 0.5rem;
+        text-align: left !important; /* stylelint-disable-line declaration-no-important */
+    }
+}
+
+/* --- Question-analytics report. --------------------------------------- */
+.eat-report .eat-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 1rem;
+    margin: 0.5rem 0 1.5rem;
+}
+.eat-stat {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eai-radius);
+    padding: 1rem 1.2rem;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+.eat-stat-icon {
+    width: 2.9rem;
+    height: 2.9rem;
+    border-radius: var(--eai-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-h4);
+    flex: 0 0 auto;
+    background: var(--eai-accent-wash);
+    color: var(--eai-fg);
+}
+.eat-stat-num {
+    font-size: var(--font-size-h1);
+    font-weight: 700;
+    line-height: 1;
+    color: var(--eai-fg);
+}
+.eat-stat-label {
+    font-size: var(--font-size-small);
+    color: var(--eat-a-muted);
+    margin-top: 0.25rem;
+}
+.eat-report-card {
+    background: var(--eat-a-card);
+    border: 1px solid var(--eat-a-line);
+    border-radius: var(--eai-radius);
+    padding: 1.1rem 1.3rem 1.3rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(16, 24, 40, 0.06);
+}
+.eat-report-card .eat-report-title {
+    margin: 0 0 0.9rem;
+    font-size: var(--font-size-h4);
+    font-weight: 700;
+    color: var(--eai-fg);
+}
+.eat-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+.eat-bar-row {
+    display: grid;
+    grid-template-columns: minmax(6rem, 11rem) 1fr;
+    align-items: center;
+    gap: 0.9rem;
+}
+.eat-bar-label {
+    font-size: var(--font-size-small);
+    color: var(--eai-fg-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.eat-bar-label a {
+    color: var(--eat-a-accent);
+}
+.eat-bar-track {
+    background: var(--eai-bg);
+    border-radius: var(--eai-radius-pill);
+    height: 1.5rem;
+    overflow: hidden;
+}
+.eat-bar-fill {
+    height: 100%;
+    min-width: 1.9rem;
+    border-radius: var(--eai-radius-pill);
+    background: var(--eai-accent);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 0.55rem;
+    color: var(--eai-fg);
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    box-sizing: border-box;
+}
+.eat-bar-fill.eat-bar-zero {
+    background: var(--eai-line);
+    color: var(--eai-muted);
+}
+.eat-report-card .generaltable {
+    margin-bottom: 0;
+}
+
+/* ----------------------------------------------------------------------------
+   Per-instance settings shell (edit_instance.php).
+   The instance editor reuses the shared settings-hub markup so it matches the
+   site settings page. Those shared classes (.eat-settings-hub*, -group, -topic)
+   read --eac-settings-* custom properties that are otherwise declared only on
+   the admin settings page id, so the cards/groups rendered no borders and the
+   icon chips no colour here. Redeclare the properties on the instance wrapper,
+   then restyle the moodleform's collapsible header sections as the same bordered
+   cards the admin page shows (chevrons removed, sections shown one at a time by
+   the hub JS).
+   ------------------------------------------------------------------------- */
+.eat-instance-shell {
+    --eac-settings-primary: var(--lh-primary);
+    --eac-settings-primary-light: var(--lh-primary-light);
+    --eac-settings-border: var(--lh-border);
+    --eac-settings-muted: var(--lh-text-secondary);
+    --eac-settings-text: var(--lh-text);
+    --eac-settings-radius: var(--lh-radius-sm);
+    --eac-settings-shadow: var(--lh-shadow-card);
+    /* The card surface. It was written as a literal #fff in a dozen rules,
+       which is why this skin had no way to be anything but light. */
+    --eac-settings-surface: var(--lh-surface);
+}
+.eat-instance-shell .eat-section-heading {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-h4);
+    font-weight: 800;
+    margin: 0 0 0.15rem;
+}
+.eat-instance-shell .eat-settings-hub {
+    margin-top: 0.4rem;
+}
+/* Each managed moodleform section becomes a bordered card, not a collapsible. */
+.eat-instance-shell form fieldset.eat-settings-group {
+    background: var(--eac-settings-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    box-shadow: var(--eac-settings-shadow);
+    margin: 0 0 0.7rem;
+    overflow: visible;
+    padding: 0.7rem 1.1rem 0.45rem;
+}
+/* Hide the collapse chevron (the hub reveals one section at a time) and show the
+   section title as a plain group heading; keep the body open. */
+.eat-instance-shell form fieldset.eat-settings-group .ftoggler .fheader {
+    display: none;
+}
+.eat-instance-shell form fieldset.eat-settings-group .ftoggler > h3 {
+    color: var(--eac-settings-text);
+    font-size: var(--font-size-body);
+    font-weight: 700;
+    margin: 0;
+}
+.eat-instance-shell form fieldset.eat-settings-group > .fcontainer {
+    display: block;
+}
+
+/* ---- Form-row spacing + admin parity ----
+   The instance editor uses moodleform `.fitem` rows (the admin page uses `.form-item`).
+   Give them the admin page's roomy two-column layout + row separators so colour fields
+   (swatch + hex input) get clear breathing room before the next picker. */
+.eat-instance-shell form fieldset.eat-settings-group .fcontainer .fitem {
+    align-items: start;
+    border-bottom: 1px solid rgba(219, 231, 238, 0.6);
+    column-gap: 1.35rem;
+    display: grid;
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+    margin: 0;
+    padding: 0.75rem 0.25rem;
+}
+.eat-instance-shell form fieldset.eat-settings-group .fcontainer .fitem:last-child {
+    border-bottom: 0;
+}
+.eat-instance-shell form fieldset.eat-settings-group .fcontainer .fitem + .fitem {
+    padding-top: 0.55rem;
+}
+.eat-instance-shell form fieldset.eat-settings-group .fitem > .col-form-label,
+.eat-instance-shell form fieldset.eat-settings-group .fitem > .fitemtitle {
+    flex: none;
+    grid-column: 1;
+    max-width: none;
+    padding-top: 0.2rem;
+    text-align: right;
+    width: 100%;
+}
+.eat-instance-shell form fieldset.eat-settings-group .fitem > .felement,
+.eat-instance-shell form fieldset.eat-settings-group .fitem > [data-fieldtype] {
+    flex: 1 1 auto;
+    grid-column: 2;
+    max-width: none;
+    min-width: 0;
+}
+.eat-instance-shell form fieldset.eat-settings-group .fitem.femptylabel > .felement {
+    grid-column: 1 / -1;
+}
+/* Colour picker: keep the swatch + hex field on one tidy line with breathing room. */
+.eat-instance-shell .form-colourpicker {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0.15rem 0 0.35rem;
+}
+.eat-instance-shell .form-colourpicker input.form-control {
+    flex: 0 0 auto;
+    max-width: 9rem;
+    width: auto;
+}
+
+/* ---- Always-available Save ----
+   The real Save/Cancel buttonar (moodleform renders it after the section fieldsets) is
+   tagged `eat-instance-actions` by the hub JS and floated as a FIXED, full-width action
+   bar pinned to the bottom of the viewport (the conventional settings-page pattern), so
+   it is reachable without scrolling. position:fixed (not sticky) is used because Boost
+   page wrappers set overflow, which silently breaks sticky. */
+.eat-instance-shell .eat-instance-actions {
+    -webkit-backdrop-filter: blur(8px);
+    align-items: center;
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.97);
+    border-top: 1px solid var(--eac-settings-border);
+    bottom: 0;
+    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.09);
+    display: flex;
+    gap: 0.6rem;
+    justify-content: flex-end;
+    left: 0;
+    margin: 0;
+    padding: 0.7rem 1.75rem;
+    position: fixed;
+    right: 0;
+    z-index: 1020;
+}
+.eat-instance-shell .eat-instance-actions.fitem {
+    grid-template-columns: none;
+}
+/* Flatten moodleform's group grid (empty label col + a 75%-wide felement that nests
+   each button in its own row) into a simple right-aligned button cluster. */
+.eat-instance-shell .eat-instance-actions > .col-md-3,
+.eat-instance-shell .eat-instance-actions > .col-form-label,
+.eat-instance-shell .eat-instance-actions > .fitemtitle {
+    display: none;
+}
+.eat-instance-shell .eat-instance-actions > .felement {
+    display: flex;
+    flex: 0 0 auto;
+    justify-content: flex-end;
+    margin: 0;
+    max-width: none;
+    padding: 0;
+    width: auto;
+}
+.eat-instance-shell .eat-instance-actions .felement > div {
+    margin: 0;
+    width: auto;
+}
+.eat-instance-shell .eat-instance-actions .felement .d-flex {
+    align-items: center;
+    gap: 0.6rem;
+}
+.eat-instance-shell .eat-instance-actions .felement .fitem {
+    margin: 0;
+}
+.eat-instance-shell .eat-instance-actions .form-control-feedback {
+    display: none;
+}
+/* Room so the fixed Save bar never hides the last settings. */
+.eat-instance-shell {
+    padding-bottom: 5.5rem;
+}
+
+/* ---- Live preview: floating, draggable panel ----
+   The form stays full-width; the preview overlays the page as a movable card (so it never
+   affects the form layout). Drag by the title bar; the chevron minimises it. The widget
+   inside is inert and re-themes instantly as design fields change (see instance_preview.js). */
+.eat-instance-shell .eat-preview-float {
+    background: var(--eai-surface);
+    border: 1px solid var(--eac-settings-border);
+    border-radius: var(--eac-settings-radius);
+    bottom: 5rem;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.24);
+    display: flex;
+    flex-direction: column;
+    max-width: calc(100vw - 2rem);
+    overflow: hidden;
+    position: fixed;
+    right: 1.5rem;
+    width: 22rem;
+    z-index: 1030;
+}
+.eat-instance-shell .eat-preview-float__bar {
+    align-items: center;
+    background: var(--eac-settings-primary);
+    color: var(--eai-accent-ink);
+    cursor: move;
+    display: flex;
+    gap: 0.5rem;
+    justify-content: space-between;
+    padding: 0.4rem 0.4rem 0.4rem 0.85rem;
+    touch-action: none;
+    user-select: none;
+}
+.eat-instance-shell .eat-preview-float__title {
+    font-size: var(--font-size-caption);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+.eat-instance-shell .eat-preview-float__toggle {
+    background: transparent;
+    border: 0;
+    border-radius: var(--eai-radius-sm);
+    color: var(--eai-accent-ink);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.3rem 0.5rem;
+}
+.eat-instance-shell .eat-preview-float__toggle:hover,
+.eat-instance-shell .eat-preview-float__toggle:focus-visible {
+    background: rgba(255, 255, 255, 0.2);
+}
+/* WCAG 2.4.7: focus must be distinguishable from hover. */
+.eat-instance-shell .eat-preview-float__toggle:focus-visible {
+    box-shadow: 0 0 0 2px var(--eac-focus-ring);
+    outline: none;
+}
+.eat-instance-shell .eat-preview-float--collapsed .eat-preview-float__body {
+    display: none;
+}
+/* The embedded widget fills the panel. */
+.eat-instance-shell .eat-preview-float .eat-instance-preview,
+.eat-instance-shell .eat-preview-float .elediaai-chat-root,
+.eat-instance-shell .eat-preview-float .elediaai-chat-panel,
+.eat-instance-shell .eat-preview-float .elediaai-chat-window {
+    margin: 0;
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+}
+.eat-instance-shell .eat-preview-float .elediaai-chat-embedded .elediaai-chat-window {
+    border: 0;
+    border-radius: 0;
+    height: clamp(360px, 58vh, 560px); /* stylelint-disable-line csstree/validator */
+}
+/* Never let the colour picker spill out of its row. */
+.eat-instance-shell .admin_colourpicker {
+    max-width: 100%;
+}
+
+@media (max-width: 60rem) {
+    .eat-instance-shell .eat-preview-float {
+        width: calc(100vw - 2rem);
+    }
+    .eat-instance-shell form fieldset.eat-settings-group .fcontainer .fitem {
+        grid-template-columns: 1fr;
+    }
+    .eat-instance-shell form fieldset.eat-settings-group .fitem > .col-form-label,
+    .eat-instance-shell form fieldset.eat-settings-group .fitem > .fitemtitle {
+        text-align: left;
+    }
+}
+
+/* The privacy notice sits at the end of the line under the greeting: close to
+   what it is about, and out of the corner where a lone shield read as an
+   ornament. Only the symbol shows -- the name is its accessible label, because
+   a shield says nothing to a reader who cannot see it. */
+.elediaai-chat-privacylink {
+    align-items: center;
+    background: none;
+    border: 0;
+    color: var(--eac-muted);
+    display: inline-flex;
+    justify-content: center;
+    margin-inline-start: 0.4rem;
+    /* 24px is the smallest a target may be. */
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0;
+    /* `middle` aligns to the baseline plus half the x-height, which sits a
+       little below the line's own middle -- measured, 1.4px at this size. The
+       nudge closes that and is written in em, so it scales with the text
+       instead of drifting the moment the size changes. */
+    position: relative;
+    top: -0.09em;
+    vertical-align: middle;
+}
+
+.elediaai-chat-privacylink:hover,
+.elediaai-chat-privacylink:focus-visible {
+    color: var(--eac-accent);
+}
+
+/* Standing alone -- no welcome message above it -- the shield carries its
+   name. Beside a sentence the symbol is enough, because the sentence gives it
+   its place; under a greeting, on its own, it would be an unexplained mark.
+   It is a quiet line, not a button: the primary action on this page is the
+   field below, and a second filled control beside it would compete. */
+.elediaai-chat-privacylink--named {
+    font-size: var(--font-size-small);
+    gap: 0.35rem;
+    margin-inline-start: 0;
+    /* The vertical nudge above centres a lone symbol against its line. With a
+       label the symbol is a flex item and already centred, so the nudge would
+       push both off it. */
+    position: static;
+    top: auto;
+}
+
+/* No sentence to sit under, so the row supplies the distance the subline
+   would otherwise have carried. */
+.elediaai-chat-hero-sub--bare {
+    margin-top: 0.35rem;
+}

@@ -1,0 +1,8 @@
+{
+    "subplugintypes": {
+        "aisourcesextractor": "subplugins"
+    },
+    "plugintypes": {
+        "aisourcesextractor": "local/elediaai_sources/subplugins"
+    }
+}

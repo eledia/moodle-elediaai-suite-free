@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/elediaai_sources/db" VERSION="20260823" COMMENT="AI Sources plugin schema."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_elediaai_sources_course" COMMENT="Tracks whether each course is currently represented in the RAG index, so that toggling a course's ingestion marking can trigger a one-time re-index (on enable) or purge (on disable) instead of acting on every course edit.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course."/>
+        <FIELD NAME="ingested" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when at least one of the course's documents is in the index. This is what consumers such as the tutor ask before grounding answers in course sources."/>
+        <FIELD NAME="pending" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when documents are still outstanding. Independent of ingested: a partly ingested course has both set, so the tutor can already use the sources while the reconcile keeps working."/>
+        <FIELD NAME="sink" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Id of the destination the course was last ingested into. Empty when not ingested."/>
+        <FIELD NAME="embeddingmodel" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Embedding model reported by that destination at the time. Empty when the destination reports none."/>
+        <FIELD NAME="tenant" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Tenant id derived from wwwroot at the time. Empty when not ingested."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last state change."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="courseid" TYPE="foreign-unique" FIELDS="courseid" REFTABLE="course" REFFIELDS="id" COMMENT="One state row per course."/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="local_elediaai_sources_cm" COMMENT="Explicit per-activity ingestion decisions. No row means untouched: the site-wide activitydefault mode decides. Deletions from the index are only ever driven by an explicit exclusion, so switching the mode never touches existing content.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course, for bulk reads and course-level cleanup."/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course module the decision is about."/>
+        <FIELD NAME="included" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 = explicitly included, 0 = explicitly excluded."/>
+        <FIELD NAME="usermodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Who made the decision."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the decision was last changed."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="cmid" TYPE="unique" FIELDS="cmid" COMMENT="One decision per course module."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_sources_cmstate" COMMENT="Site-local index truth per course module: what was last sent where, under which source id and with which content hash. Absence of a row means: not in the index. Deliberately separate from the decisions table, whose rows mean 'a teacher decided'.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course, for bulk reads and course-level cleanup."/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course module."/>
+        <FIELD NAME="sink" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Destination id the content was sent to."/>
+        <FIELD NAME="sourceid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Module-level source id at ingest time; freezes the tenant so later deletes stay exact."/>
+        <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="sha1 over the final document tuples; empty until a successful upsert."/>
+        <FIELD NAME="laststatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="success or error."/>
+        <FIELD NAME="attempts" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Consecutive failed attempts. Reset by a success. Once it reaches the retry limit the module is skipped until a forced reindex, so one broken document cannot stall the course every reconcile run."/>
+        <FIELD NAME="lasterror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last error message, when laststatus is error."/>
+        <FIELD NAME="timeingested" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When content last reached the index."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last row change."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="cmid" TYPE="unique" FIELDS="cmid" COMMENT="One state row per course module."/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

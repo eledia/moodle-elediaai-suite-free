@@ -1,0 +1,69 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_elediaai_tutor/hero_privacy
+
+    The subline of the dashboard hero, and the way to the privacy guidelines.
+
+    The shield used to live inside the welcome section, which tied it to a
+    text field: with no welcome message it was not rendered, and because the
+    header's own shield is switched off on the dashboard and the consent
+    notice hides itself once somebody has consented, the guidelines were then
+    unreachable altogether. A privacy notice must not depend on whether an
+    administrator filled in an optional field.
+
+    So the block always renders. With a subline the shield follows the
+    sentence as a symbol -- the text beside it would repeat what the sentence
+    already frames. Alone it carries its name, because a lone shield under a
+    greeting says nothing to anyone who has not been told what it means.
+
+    It is a partial because both branches of the hero need it -- with a
+    greeting and without one -- and the alternative was a third copy of the
+    same SVG.
+
+    What stands here covers the opening screen only. The hero is hidden with
+    the first message, so the footer carries a second shield for the length of
+    the conversation (see the quiet corner in launcher.mustache). Exactly one
+    of the two is ever on screen.
+
+    Note for editors: no mustache tag may appear in this comment. A comment
+    ends at the first closing pair of braces, so a tag written here would end
+    it early and print the remainder onto the page.
+
+    Context variables required for this template:
+    * welcome - The subline. Optional; the shield renders either way.
+}}
+{{#welcome}}
+    <div class="elediaai-chat-hero-sub">
+        {{{welcome}}}
+        <button type="button" class="elediaai-chat-privacylink"
+                data-action="privacy" aria-haspopup="dialog"
+                aria-label="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}"
+                title="{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+        </button>
+    </div>
+{{/welcome}}
+{{^welcome}}
+    <div class="elediaai-chat-hero-sub elediaai-chat-hero-sub--bare">
+        <button type="button" class="elediaai-chat-privacylink elediaai-chat-privacylink--named"
+                data-action="privacy" aria-haspopup="dialog">
+            <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+            <span>{{#str}}privacyguidelines, block_elediaai_tutor{{/str}}</span>
+        </button>
+    </div>
+{{/welcome}}

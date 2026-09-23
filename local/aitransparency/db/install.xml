@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/aitransparency/db" VERSION="20260919" COMMENT="XMLDB file for local_aitransparency"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_aitransparency_rec" COMMENT="One provenance record per AI-generated output (Art. 50 EU AI Act)">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="uuid" TYPE="char" LENGTH="36" NOTNULL="true" SEQUENCE="false" COMMENT="Public, non-guessable identifier shown in markers and manifests"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Generating plugin, e.g. local_elediaai_coursegen"/>
+        <FIELD NAME="actionname" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="generate_text, generate_image, summarise_text, explain_text, translate"/>
+        <FIELD NAME="registerid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="ai_action_register.id when derivable. Nobody sets it; the suite links through turnid instead."/>
+        <FIELD NAME="turnid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="local_elediaai_core_turn.id -- the exchange this output came out of. The link the audit needed and never had."/>
+        <FIELD NAME="provider" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="aiprovider_eledia, aiprovider_openai, local_literag, ..."/>
+        <FIELD NAME="model" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Model identifier from the response, empty if unknown"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Triggering user; anonymised to 0 after the retention window"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Moodle context id"/>
+        <FIELD NAME="assettype" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="text" SEQUENCE="false" COMMENT="text, image, file"/>
+        <FIELD NAME="contenthash" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="SHA-256 of the output, binds the record to the concrete content"/>
+        <FIELD NAME="markstate" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="pending" SEQUENCE="false" COMMENT="pending, marked, embedded, sidecar, failed, unsupported"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="uuid" UNIQUE="true" FIELDS="uuid"/>
+        <INDEX NAME="contenthash" UNIQUE="false" FIELDS="contenthash"/>
+        <INDEX NAME="componentstate" UNIQUE="false" FIELDS="component, markstate"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_aitransparency_file" COMMENT="Links a provenance record to a stored file via its contenthash">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="recordid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="filecontenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="stored_file::get_contenthash(), survives draft to final move"/>
+        <FIELD NAME="manifestmode" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="embedded" SEQUENCE="false" COMMENT="embedded or sidecar"/>
+        <FIELD NAME="sidecarfileid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Files id of the .c2pa sidecar"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="recordid" TYPE="foreign" FIELDS="recordid" REFTABLE="local_aitransparency_rec" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="filecontenthash" UNIQUE="false" FIELDS="filecontenthash"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

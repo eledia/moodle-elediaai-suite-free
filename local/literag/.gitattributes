@@ -1,0 +1,11 @@
+# Repository metadata and local release helpers.
+.gitattributes export-ignore
+.gitignore export-ignore
+
+# Release helper files are not required inside the Moodle Plugins Directory ZIP.
+bin export-ignore
+bin/** export-ignore
+
+# Moodle language translations should normally be maintained through AMOS.
+lang/de export-ignore
+lang/de/** export-ignore

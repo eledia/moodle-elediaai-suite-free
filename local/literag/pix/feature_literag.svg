@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 70" class="eai-ill" focusable="false" aria-hidden="true">
+  <ellipse class="eai-ill__line" cx="52" cy="16" rx="34" ry="8"/>
+  <path class="eai-ill__line" d="M18 16v38c0 4 15 8 34 8s34-4 34-8V16"/>
+  <path class="eai-ill__hair" d="M18 32c0 4 15 8 34 8s34-4 34-8"/>
+  <path class="eai-ill__track" d="M96 38h20"/>
+  <rect class="eai-ill__hair" x="126" y="12" width="82" height="12" rx="3"/>
+  <rect class="eai-ill__fill" x="126" y="30" width="82" height="12" rx="3"/>
+  <path class="eai-ill__on-fill" d="M138 36h46"/>
+  <rect class="eai-ill__hair" x="126" y="48" width="82" height="12" rx="3"/>
+</svg>

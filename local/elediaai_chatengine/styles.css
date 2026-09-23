@@ -1,0 +1,1062 @@
+/*
+ * This file is part of Moodle - http://moodle.org/
+ *
+ * Moodle is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Moodle is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * The chat surface every placement renders.
+ *
+ * One stylesheet for the tutor block, the AI chat activity and the learning
+ * scenario, so a design change lands on all three at once. A per-placement
+ * skin made them look alike only for as long as somebody kept them alike by
+ * hand.
+ *
+ * Everything is namespaced under .elediaai-chat-* so nothing leaks into the
+ * surrounding Moodle theme. Overlay modes are portalled to <body> by the AMD
+ * module and given a high z-index so chat overlays are never clipped by
+ * block-container overflow.
+ *
+ * The custom properties declared here are the design tokens: their values come
+ * from the site design and, where a placement allows it, from the chat design
+ * selected on the instance. A token that is not set falls back to the default
+ * declared in this file.
+ *
+ * @package   local_elediaai_chatengine
+ * @copyright 2026 eLeDia GmbH, Berlin
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+/*
+ * Custom properties are declared on BOTH the root and the panel. Overlay modes
+ * (docked/modal/fullscreen) portal the panel to <body>, i.e. outside the root,
+ * so the panel must carry its own variables or it would render unstyled.
+ */
+.elediaai-chat-root,
+.elediaai-chat-panel,
+.elediaai-chat-modal,
+.elediaai-chat-launch {
+    /* Die Vorgaben leiten sich aus den Suite-Token ab (adr05, task26). Ein
+       unkonfigurierter Tutor traegt damit die Farben der Suite statt eines
+       eigenen Dunkelblaus -- vorher sah eine frische Installation aus wie ein
+       fremdes Produkt neben der Suite, in der sie steht.
+       Eine gesetzte Instanz-Konfiguration gewinnt weiterhin: sie kommt als
+       Inline-Style auf dasselbe Element.
+       Nicht abgeleitet sind die eigenen Achsen -- Status, Fehler, Fundierung,
+       Backdrop: gruen fuer "online" und rot fuer "Fehler" sind keine
+       Markenfarben und sollen es nicht werden. */
+    --eac-accent: var(--eai-accent);
+    --eac-accent-dark: var(--eai-accent-hover);
+    --eac-accent-contrast: var(--eai-accent-ink);
+    /* eLeDia brand orange — used sparingly (logo only). */
+    --eac-brand: var(--eai-brand);
+    /* Neutral surfaces and hairlines. */
+    --eac-surface: var(--eai-surface);
+    --eac-body-bg: var(--eai-bg);
+    --eac-line: var(--eai-line);
+    /* Text. */
+    --eac-ink: var(--eai-fg);
+    /* 4.63:1 on white — keep >= 4.5:1 (WCAG 1.4.3) when tuning. */
+    --eac-muted: var(--eai-muted);
+    --eac-header-fg: var(--eai-fg);
+    /* Bubbles: warm peach for the learner, clean white card for the tutor. */
+    --eac-user-bg: var(--eai-accent-wash);
+    --eac-user-fg: var(--eai-fg);
+    --eac-bot-bg: var(--eai-surface);
+    --eac-bot-fg: var(--eai-fg);
+    /* Composer input text. */
+    --eac-assistant-bg: var(--eai-surface);
+    --eac-assistant-fg: var(--eai-fg);
+    /* Shape + rhythm. */
+    --eac-radius: var(--eai-radius-lg);
+    --eac-bubble-radius: 16px;
+    --eac-gap: 0.8rem;
+    --eac-z: 1080;
+    /* Typography — inherits the Moodle theme font unless an institution sets one. */
+    --eac-font: var(--eai-font);
+    /* State + accent surfaces (tokenised so branding overrides reach them). */
+    --eac-status-online: var(--eai-success);
+    /* Hover wash for the header icon buttons (settable + per-theme). */
+    --eac-icon-hover: rgba(16, 24, 40, 0.06);
+    /* Focus / pressed ring. Derived from the accent so it is theme-specific and
+       follows the brand colour; override the token to tune it independently. */
+    --eac-focus-ring: color-mix(in srgb, var(--eac-accent) 35%, transparent);
+    --eac-overlay: rgba(16, 24, 40, 0.06);
+    --eac-overlay-strong: rgba(0, 0, 0, 0.04);
+    --eac-code-bg: rgba(0, 0, 0, 0.06);
+    --eac-backdrop: rgba(16, 24, 40, 0.45);
+    --eac-error-bg: var(--eai-danger-wash);
+    --eac-error-fg: var(--eai-danger);
+    --eac-error-line: var(--eai-danger);
+    --eac-grounded-bg: #eaf1f3;
+    --eac-grounded-line: #c9d8dd;
+    --eac-muted-soft: var(--eai-fg-dim);
+    --eac-tint: var(--eai-bg);
+    /* Cohesive shadow scale — all elevation flows from these three. */
+    --eac-shadow-sm: var(--eai-shadow-card);
+    --eac-shadow-md: var(--eai-shadow-raised);
+    --eac-shadow-lg: var(--eai-shadow);
+    /* Avatar elevation/glow — themes (e.g. HAL) can turn this into a glow. */
+    --eac-avatar-glow: 0 4px 12px rgba(16, 24, 40, 0.12);
+    /* Floating-launcher offsets. Defaults clear Boost's bottom-right "?" help
+       button (fixed at bottom:2rem; right:2rem). Override these (e.g. via the
+       admin Custom CSS) to fit other themes:
+         .elediaai-chat-root { --eac-fab-bottom: 1.25rem; --eac-fab-right: 1.25rem; } */
+    --eac-fab-bottom: 5.5rem;
+    --eac-fab-right: 2rem;
+}
+
+.elediaai-chat-root,
+.elediaai-chat-panel {
+    font-family: var(--eac-font);
+}
+/* Children inherit the widget font, but icon fonts (Font Awesome) must not be
+   overridden, so we never set font-family on [class*="fa-"].
+
+   MathJax braucht dieselbe Ausnahme und aus demselben Grund: Es bringt
+   eigene Schriften mit, und seine Zeichen liegen an Stellen, die eine
+   Textschrift nicht belegt. Mit der Widget-Schrift erschienen von einem `U`
+   nur Bruchstuecke, und die kursive Mathematikschrift wurde nie angefordert
+   -- die Regel dafuer kam nie zum Zug.
+
+   Ausgeschlossen wird der Container samt Inhalt. Eine eigene Regel mit
+   fester Schriftliste waere zerbrechlich: Welche Schriften MathJax nutzt,
+   haengt an seiner Fassung. So bleibt die Wahl bei ihm. */
+.elediaai-chat-root :not([class*="fa-"]):not(.fa):not(mjx-container):not(mjx-container *),
+.elediaai-chat-panel :not([class*="fa-"]):not(.fa):not(mjx-container):not(mjx-container *) {
+    font-family: inherit;
+}
+
+/* --- Bootstrap button state re-skin. ----------------------------------- */
+/*
+ * Moodle ships Bootstrap 5.3, whose buttons are painted entirely from --bs-btn-*
+ * custom properties (hover/active/focus colours, focus ring). Bootstrap's own
+ * state selectors (e.g. `.btn:first-child:active`, specificity 0,3,0) tie or beat
+ * our overrides, so re-colouring those states by selector is a losing fight.
+ * Instead we override the VARIABLES on our buttons: Bootstrap's rules then read
+ * our accent values, so pressing/focusing any control follows the theme rather
+ * than Bootstrap's blue. Each selector carries two classes (0,2,0), which beats
+ * Bootstrap's own `.btn { --bs-btn-*: ... }` declaration (0,1,0), so our values win.
+ * The focus ring follows --eac-focus-ring (accent-derived, adjustable).
+ */
+.elediaai-chat-root .elediaai-chat-launch,
+.elediaai-chat-launch.elediaai-chat-launch--fab,
+.elediaai-chat-panel .elediaai-chat-iconbtn,
+.elediaai-chat-panel .elediaai-chat-consent-accept,
+.elediaai-chat-panel .elediaai-chat-consent-link {
+    --bs-btn-focus-box-shadow: 0 0 0 0.2rem var(--eac-focus-ring);
+    --bs-btn-active-shadow: none;
+    --bs-btn-box-shadow: none;
+}
+
+/* Pill launch: stays on the light surface with accent text when hovered/pressed. */
+.elediaai-chat-root .elediaai-chat-launch {
+    --bs-btn-bg: var(--eac-surface);
+    --bs-btn-color: var(--eac-accent);
+    --bs-btn-border-color: var(--eac-line);
+    --bs-btn-hover-bg: var(--eac-surface);
+    --bs-btn-hover-color: var(--eac-accent);
+    --bs-btn-hover-border-color: var(--eac-accent);
+    --bs-btn-active-bg: var(--eac-surface);
+    --bs-btn-active-color: var(--eac-accent);
+    --bs-btn-active-border-color: var(--eac-accent);
+}
+
+/* Solid pill + floating button: accent fill, darker accent when hovered/pressed. */
+.elediaai-chat-root .elediaai-chat-launch--solid,
+.elediaai-chat-launch.elediaai-chat-launch--fab {
+    --bs-btn-bg: var(--eac-accent);
+    --bs-btn-color: var(--eac-accent-contrast);
+    --bs-btn-border-color: var(--eac-accent);
+    --bs-btn-hover-bg: var(--eac-accent-dark);
+    --bs-btn-hover-color: var(--eac-accent-contrast);
+    --bs-btn-hover-border-color: var(--eac-accent-dark);
+    --bs-btn-active-bg: var(--eac-accent-dark);
+    --bs-btn-active-color: var(--eac-accent-contrast);
+    --bs-btn-active-border-color: var(--eac-accent-dark);
+}
+
+/* Header / message icon buttons: only the soft hover wash, never a blue fill. */
+.elediaai-chat-panel .elediaai-chat-iconbtn {
+    --bs-btn-hover-bg: var(--eac-icon-hover);
+    --bs-btn-hover-color: var(--eac-header-fg);
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-active-bg: var(--eac-icon-hover);
+    --bs-btn-active-color: var(--eac-header-fg);
+    --bs-btn-active-border-color: transparent;
+    --bs-btn-focus-box-shadow: 0 0 0 0.18rem var(--eac-focus-ring);
+}
+
+/* Consent "accept" (accent fill) + privacy link (accent text). */
+.elediaai-chat-panel .elediaai-chat-consent-accept {
+    --bs-btn-bg: var(--eac-accent);
+    --bs-btn-color: var(--eac-accent-contrast);
+    --bs-btn-border-color: var(--eac-accent);
+    --bs-btn-hover-bg: var(--eac-accent-dark);
+    --bs-btn-hover-color: var(--eac-accent-contrast);
+    --bs-btn-hover-border-color: var(--eac-accent-dark);
+    --bs-btn-active-bg: var(--eac-accent-dark);
+    --bs-btn-active-color: var(--eac-accent-contrast);
+    --bs-btn-active-border-color: var(--eac-accent-dark);
+}
+
+.elediaai-chat-panel .elediaai-chat-consent-link {
+    --bs-btn-color: var(--eac-accent);
+    --bs-btn-hover-color: var(--eac-accent-dark);
+    --bs-btn-active-color: var(--eac-accent-dark);
+}
+
+/* --- Panel base. ------------------------------------------------------- */
+.elediaai-chat-panel {
+    box-sizing: border-box;
+}
+
+.elediaai-chat-panel *,
+.elediaai-chat-panel *::before,
+.elediaai-chat-panel *::after {
+    box-sizing: border-box;
+}
+
+.elediaai-chat-window {
+    display: flex;
+    flex-direction: column;
+    background: var(--eac-surface);
+    color: var(--eac-ink);
+    border: 1px solid var(--eac-line);
+    border-radius: var(--eac-radius);
+    overflow: hidden;
+    box-shadow: var(--eac-shadow-lg);
+    min-height: 0;
+}
+
+/* Embedded: fills the block, no overlay chrome. */
+.elediaai-chat-embedded {
+    display: block;
+}
+
+.elediaai-chat-embedded .elediaai-chat-window {
+    height: clamp(380px, 60vh, 620px); /* stylelint-disable-line csstree/validator */
+    box-shadow: none;
+}
+
+/* --- Header. ----------------------------------------------------------- */
+.elediaai-chat-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.85rem 1rem;
+    background: var(--eac-surface);
+    color: var(--eac-header-fg);
+    border-bottom: 1px solid var(--eac-overlay);
+    flex: 0 0 auto;
+}
+
+.elediaai-chat-identity {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    min-width: 0;
+}
+
+.elediaai-chat-avatar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 50%;
+    background: var(--eai-surface);
+    color: var(--eac-accent);
+    font-size: var(--font-size-h4);
+    flex: 0 0 auto;
+    padding: 4px;
+    border: 1px solid rgba(16, 24, 40, 0.08);
+    box-shadow: var(--eac-avatar-glow);
+    transition: box-shadow 0.3s ease;
+}
+
+/* The header avatar links to eledia.ai; keep the badge look, signal the link. */
+a.elediaai-chat-avatar,
+a.elediaai-chat-avatar:hover,
+a.elediaai-chat-avatar:focus {
+    text-decoration: none;
+}
+
+a.elediaai-chat-avatar:hover,
+a.elediaai-chat-avatar:focus-visible {
+    border-color: var(--eac-accent);
+    box-shadow: 0 4px 12px rgba(30, 63, 89, 0.28);
+}
+
+.elediaai-chat-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 50%;
+    display: block;
+}
+
+.elediaai-chat-status-dot {
+    position: absolute;
+    right: -1px;
+    bottom: -1px;
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 50%;
+    background: var(--eac-status-online);
+    border: 2px solid var(--eac-surface);
+}
+
+.elediaai-chat-identity-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+}
+
+.elediaai-chat-title {
+    font-weight: 700;
+    font-size: var(--font-size-h4);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.elediaai-chat-presence {
+    font-size: var(--font-size-caption);
+    color: var(--eac-muted);
+}
+
+.elediaai-chat-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.15rem;
+    flex: 0 0 auto;
+}
+
+.elediaai-chat-iconbtn {
+    /* Based on the header foreground (which every theme sets for contrast
+       against the header) rather than the faint --eac-muted, so the controls
+       stay visible on dark themes; opacity gives the secondary look. */
+    color: var(--eac-header-fg);
+    opacity: 0.7;
+    background: transparent;
+    border: 0;
+    padding: 0.35rem 0.5rem;
+    border-radius: 10px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.elediaai-chat-iconbtn:hover,
+.elediaai-chat-iconbtn:focus,
+.elediaai-chat-iconbtn:focus-visible,
+.elediaai-chat-iconbtn:active {
+    background: var(--eac-icon-hover);
+    color: var(--eac-header-fg);
+    opacity: 1;
+    box-shadow: none;
+    outline: none;
+}
+
+/* Two-class specificity so this beats Bootstrap's blue .btn pressed/focus state
+   on the header buttons (which carry .btn). Keyboard focus shows the accent ring. */
+.elediaai-chat-actions .elediaai-chat-iconbtn:focus,
+.elediaai-chat-actions .elediaai-chat-iconbtn:active,
+.elediaai-chat-message-actions .elediaai-chat-iconbtn:focus,
+.elediaai-chat-message-actions .elediaai-chat-iconbtn:active {
+    background: var(--eac-icon-hover);
+    box-shadow: none;
+    outline: none;
+}
+
+.elediaai-chat-actions .elediaai-chat-iconbtn:focus-visible,
+.elediaai-chat-message-actions .elediaai-chat-iconbtn:focus-visible {
+    box-shadow: 0 0 0 0.18rem var(--eac-focus-ring);
+}
+
+/* Every icon button in the panel uses the header foreground (two-class
+   specificity beats Bootstrap's .btn/.btn-icon colour), and — importantly — its
+   glyph inherits that colour. Bootstrap otherwise forces its own icon colour,
+   which is invisible on dark presets (e.g. the trash icon in the conversation-
+   history list). This makes the history delete icon match the four header
+   buttons on every preset. */
+.elediaai-chat-panel .elediaai-chat-iconbtn,
+.elediaai-chat-actions .elediaai-chat-iconbtn {
+    color: var(--eac-header-fg);
+}
+.elediaai-chat-panel .elediaai-chat-iconbtn .fa,
+.elediaai-chat-panel .elediaai-chat-iconbtn i {
+    color: inherit;
+}
+
+.elediaai-chat-message-actions .elediaai-chat-iconbtn {
+    color: var(--eac-muted);
+}
+
+.elediaai-chat-message-actions .elediaai-chat-iconbtn:hover {
+    background: var(--eac-overlay);
+}
+
+/* --- Message log. ------------------------------------------------------ */
+.elediaai-chat-log {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    /* Never scroll the conversation sideways: wide content (code blocks,
+       tables) scrolls inside its own element instead. */
+    overflow-x: hidden;
+    padding: 1.1rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--eac-gap);
+    background: var(--eac-body-bg);
+}
+
+.elediaai-chat-message {
+    display: flex;
+    flex-direction: column;
+    max-width: 90%;
+    min-width: 0;
+    animation: elediaai-chat-msg-in 0.22s ease-out both;
+}
+
+@keyframes elediaai-chat-msg-in {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.elediaai-chat-user {
+    align-self: flex-end;
+    align-items: flex-end;
+}
+
+.elediaai-chat-assistant {
+    align-self: flex-start;
+    align-items: flex-start;
+}
+
+/* Sender meta row (avatar + name) above each bubble. */
+.elediaai-chat-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0.35rem 0.3rem;
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    color: var(--eac-muted);
+}
+
+.elediaai-chat-user .elediaai-chat-meta {
+    flex-direction: row-reverse;
+}
+
+/* mod_aichat rendered its role label in small caps before the placements shared
+   a stylesheet, and its accessibility test pins that down: small caps render as
+   capitals without text-transform, so the accessibility tree and the clipboard
+   still get the translated string as written. Scoped rather than shared,
+   because the tutor never had it and the tutor's look is fixed. */
+/* A panel that sits in the page has nothing to give the transcript its height:
+   with an empty conversation the log flexes to nothing and the surface reads as
+   a broken strip between header and composer. A floor fixes that. Not applied
+   to every log, because a launcher panel sizes to its content on purpose. */
+.elediaai-chat-inline .elediaai-chat-log {
+    min-height: 16rem;
+}
+
+/* Collapse the alert box while it has nothing to say, without taking it out of
+   the accessibility tree - see the note in chat_panel.mustache. */
+.elediaai-chat-error:empty {
+    border-width: 0;
+    margin: 0;
+    padding: 0;
+}
+
+[data-component="mod_aichat"] .elediaai-chat-sender {
+    font-variant-caps: all-small-caps;
+    letter-spacing: 0.04em;
+    text-transform: none;
+}
+
+.elediaai-chat-msg-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 50%;
+    background: var(--eai-surface);
+    flex: 0 0 auto;
+    padding: 2px;
+    border: 1px solid var(--eac-line);
+    /* Clip non-square logos to the circle (matches the header avatar). */
+    overflow: hidden;
+}
+
+.elediaai-chat-msg-avatar-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+.elediaai-chat-bubble {
+    padding: 0.7rem 0.95rem;
+    border-radius: var(--eac-bubble-radius);
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.55;
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Sides are distinguished by fill + alignment + a single soft shadow -- no
+   borders, to keep the conversation clean and quiet. */
+.elediaai-chat-user .elediaai-chat-bubble {
+    background: var(--eac-user-bg);
+    color: var(--eac-user-fg);
+    border-bottom-right-radius: 5px;
+    box-shadow: 0 1px 2px rgba(30, 63, 89, 0.06);
+}
+
+.elediaai-chat-assistant .elediaai-chat-bubble {
+    background: var(--eac-bot-bg);
+    color: var(--eac-bot-fg);
+    border-bottom-left-radius: 5px;
+    box-shadow: 0 1px 2px rgba(30, 63, 89, 0.05), 0 8px 24px rgba(30, 63, 89, 0.05);
+}
+
+.elediaai-chat-assistant:not(.elediaai-chat-failed) .elediaai-chat-bubble a {
+    color: var(--eac-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.elediaai-chat-failed .elediaai-chat-bubble {
+    background: var(--eac-error-bg);
+    color: var(--eac-error-fg);
+    border: 1px solid var(--eac-error-line);
+}
+
+.elediaai-chat-markdown > *:first-child {
+    margin-top: 0;
+}
+
+.elediaai-chat-markdown > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Assistant markdown may emit h1–h6; without these they inherit the theme's
+   large heading sizes and dwarf the chat text. Scale them to the bubble. */
+.elediaai-chat-markdown h1,
+.elediaai-chat-markdown h2,
+.elediaai-chat-markdown h3,
+.elediaai-chat-markdown h4,
+.elediaai-chat-markdown h5,
+.elediaai-chat-markdown h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    margin: 0.85em 0 0.3em;
+    color: inherit;
+}
+
+.elediaai-chat-markdown h1 {
+    font-size: var(--font-size-h3);
+}
+
+.elediaai-chat-markdown h2 {
+    font-size: var(--font-size-h4);
+}
+
+.elediaai-chat-markdown h3 {
+    font-size: var(--font-size-body);
+}
+
+.elediaai-chat-markdown h4,
+.elediaai-chat-markdown h5,
+.elediaai-chat-markdown h6 {
+    font-size: var(--font-size-body);
+}
+
+.elediaai-chat-markdown pre {
+    background: var(--eac-code-bg);
+    padding: 0.6rem;
+    border-radius: 8px;
+    overflow-x: auto;
+}
+
+.elediaai-chat-markdown code {
+    word-break: break-word;
+}
+
+.elediaai-chat-markdown table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.elediaai-chat-markdown img {
+    max-width: 100%;
+    height: auto;
+}
+
+.elediaai-chat-markdown pre,
+.elediaai-chat-markdown blockquote {
+    max-width: 100%;
+}
+
+/* --- Write confirmations (generic card from tool annotations). --------- */
+.elediaai-chat-confirmation {
+    display: block;
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid var(--eac-border, var(--eai-line));
+    border-left: 3px solid var(--eac-accent);
+    border-radius: 8px;
+    background: var(--eai-bg);
+}
+
+.elediaai-chat-confirmation--destructive {
+    border-left-color: var(--eai-danger);
+}
+
+.elediaai-chat-confirmation__title {
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.elediaai-chat-confirmation--destructive .elediaai-chat-confirmation__title {
+    color: var(--eai-danger);
+}
+
+.elediaai-chat-confirmation__summary {
+    font-size: var(--font-size-small);
+    color: var(--eac-muted, var(--eai-muted));
+    margin-bottom: 0.5rem;
+}
+
+.elediaai-chat-confirmation__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.elediaai-chat-confirmation .btn {
+    min-width: 4.5rem;
+}
+
+.elediaai-chat-confirmation .btn-primary {
+    background: var(--eac-accent);
+    border-color: var(--eac-accent);
+}
+
+.elediaai-chat-confirmation .btn-outline-secondary {
+    background: var(--eai-surface);
+}
+
+/* --- Sources / citations. --------------------------------------------- */
+.elediaai-chat-sources {
+    margin-top: 0.5rem;
+    font-size: var(--font-size-small);
+}
+
+.elediaai-chat-sources-title {
+    font-weight: 600;
+    opacity: 0.75;
+    margin-bottom: 0.2rem;
+}
+
+.elediaai-chat-sources-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.elediaai-chat-source-snippet {
+    display: block;
+    opacity: 0.7;
+    font-size: var(--font-size-caption);
+}
+
+.elediaai-chat-message-actions {
+    margin-top: 0.2rem;
+    display: flex;
+    gap: 0.25rem;
+}
+
+/* --- Typing indicator. ------------------------------------------------- */
+.elediaai-chat-typing .elediaai-chat-bubble {
+    display: inline-flex;
+    gap: 0.25rem;
+    align-items: center;
+}
+
+.elediaai-chat-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.4;
+    animation: elediaai-chat-bounce 1.2s infinite ease-in-out;
+}
+
+.elediaai-chat-dot:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.elediaai-chat-dot:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes elediaai-chat-bounce {
+    0%,
+    60%,
+    100% {
+        transform: translateY(0);
+        opacity: 0.4;
+    }
+    30% {
+        transform: translateY(-4px);
+        opacity: 0.9;
+    }
+}
+
+/* --- Status live region. ----------------------------------------------- */
+.elediaai-chat-status {
+    min-height: 1.1rem;
+    padding: 0 0.85rem;
+    font-size: var(--font-size-caption);
+    color: var(--eac-muted-soft);
+}
+
+.elediaai-chat-status:empty {
+    min-height: 0;
+}
+
+/* --- Composer. --------------------------------------------------------- */
+.elediaai-chat-composer {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--eac-overlay);
+    background: var(--eac-surface);
+    flex: 0 0 auto;
+}
+
+.elediaai-chat-input {
+    flex: 1 1 auto;
+    resize: none;
+    border: 0;
+    background: transparent;
+    border-radius: 12px;
+    padding: 0.55rem 0.4rem;
+    max-height: 160px;
+    font: inherit;
+    line-height: 1.45;
+    color: var(--eac-assistant-fg);
+}
+
+.elediaai-chat-input::placeholder {
+    color: var(--eac-muted);
+}
+
+.elediaai-chat-input:focus {
+    outline: 0;
+}
+
+.elediaai-chat-input:focus-visible {
+    outline: 2px solid var(--eac-accent);
+    outline-offset: 2px;
+    border-radius: 8px;
+}
+
+.elediaai-chat-send {
+    flex: 0 0 auto;
+    border: 0;
+    background: var(--eac-accent);
+    color: var(--eac-accent-contrast);
+    border-radius: 50%;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    /* Erbt das Fliesstextmass: ein Knopf traegt keine eigene Groesse. */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(30, 63, 89, 0.25);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.elediaai-chat-send:hover,
+.elediaai-chat-send:focus,
+.elediaai-chat-send:focus-visible {
+    background: var(--eac-accent-dark);
+    box-shadow: 0 3px 12px rgba(30, 63, 89, 0.35);
+}
+
+.elediaai-chat-send:focus {
+    outline: none;
+}
+
+.elediaai-chat-send:focus-visible {
+    outline: 2px solid var(--eac-focus-ring);
+    outline-offset: 2px;
+}
+
+.elediaai-chat-send:active {
+    transform: scale(0.92);
+}
+
+/* --- Grounding badge (in the message meta row). ------------------------ */
+.elediaai-chat-grounding {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: var(--eai-radius-pill);
+    margin-left: 0.25rem;
+}
+
+.elediaai-chat-grounded {
+    background: var(--eac-grounded-bg);
+    color: var(--eac-accent);
+    border: 1px solid var(--eac-grounded-line);
+}
+
+.elediaai-chat-ungrounded {
+    background: transparent;
+    color: var(--eac-muted);
+    border: 1px solid var(--eac-line);
+}
+
+.elediaai-chat-mcp {
+    background: var(--eai-ai-wash);
+    color: var(--eai-ai);
+    border: 1px solid var(--eai-line);
+}
+
+/* --- Overlay: expanded chat. ------------------------------------------ */
+.elediaai-chat-expanded {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    z-index: var(--eac-z);
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: clamp(0.75rem, 3vw, 2rem) !important; /* stylelint-disable-line csstree/validator */
+    transform: none !important;
+}
+
+.elediaai-chat-expanded .elediaai-chat-window {
+    width: min(920px, calc(100vw - clamp(1.5rem, 6vw, 4rem))) !important; /* stylelint-disable-line csstree/validator */
+    max-width: 100% !important;
+    height: min(88vh, 820px) !important; /* stylelint-disable-line csstree/validator */
+    height: min(88dvh, 820px) !important; /* stylelint-disable-line csstree/validator */
+    position: relative;
+    z-index: 1;
+}
+
+.elediaai-chat-backdrop {
+    position: fixed;
+    inset: 0;
+    background: var(--eac-backdrop);
+    z-index: 0;
+}
+
+/* --- Unavailable notice. ----------------------------------------------- */
+.elediaai-chat-unavailable {
+    font-size: var(--font-size-body);
+}
+
+/* --- Responsive. ------------------------------------------------------- */
+@media (max-width: 576px) {
+    .elediaai-chat-docked {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        max-width: 100%;
+    }
+
+    .elediaai-chat-docked .elediaai-chat-window {
+        height: 80vh;
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+    }
+
+    .elediaai-chat-modal {
+        padding: 0;
+    }
+
+    .elediaai-chat-modal .elediaai-chat-window {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .elediaai-chat-expanded {
+        padding: 0;
+    }
+
+    .elediaai-chat-expanded .elediaai-chat-window {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+    }
+
+    .elediaai-chat-message {
+        max-width: 95%;
+    }
+}
+
+/* --- Themed modals (privacy guidelines, confirmations). ----------------- *
+ * Core modals are portalled to <body>, outside the widget, so they don't
+ * inherit the --eac-* tokens. The JS sets the brand variables inline on the
+ * modal root and adds .elediaai-chat-modal; these rules then theme it. */
+.elediaai-chat-modal .modal-content {
+    background: var(--eac-surface);
+    color: var(--eac-ink);
+}
+
+.elediaai-chat-modal .modal-header,
+.elediaai-chat-modal .modal-footer {
+    background: var(--eac-surface);
+    color: var(--eac-ink);
+    border-color: var(--eac-line);
+}
+
+.elediaai-chat-modal .modal-title,
+.elediaai-chat-modal .close {
+    color: var(--eac-ink);
+}
+
+/* The Bootstrap 5 close button is an SVG background image with a fixed dark
+   fill, so a colour rule can't recolour it — it's low-contrast/invisible on dark
+   presets. Re-draw the same glyph as a mask filled with --eac-ink, which
+   contrasts the modal surface on every preset. */
+.elediaai-chat-modal .btn-close {
+    background: var(--eac-ink);
+    -webkit-mask: var(--bs-btn-close-bg) center / 1em auto no-repeat;
+    mask: var(--bs-btn-close-bg) center / 1em auto no-repeat;
+    opacity: 0.7;
+}
+.elediaai-chat-modal .btn-close:hover,
+.elediaai-chat-modal .btn-close:focus-visible {
+    opacity: 1;
+}
+
+.elediaai-chat-modal .elediaai-chat-privacy {
+    color: var(--eac-ink);
+}
+
+.elediaai-chat-modal .elediaai-chat-privacy h5 {
+    color: var(--eac-header-fg);
+}
+
+/* Token-styled accuracy callout (replaces Bootstrap .alert-warning so it reads
+   on every theme, light or dark). */
+.elediaai-chat-callout {
+    background: var(--eac-grounded-bg);
+    color: var(--eac-ink);
+    border: 1px solid var(--eac-grounded-line);
+    border-radius: 10px;
+    padding: 0.7rem 0.9rem;
+    margin: 0 0 1rem;
+    font-size: var(--font-size-body);
+}
+
+/* --- Reduced motion. --------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    .elediaai-chat-dot,
+    .elediaai-chat-message {
+        animation: none;
+    }
+
+    .elediaai-chat-log {
+        scroll-behavior: auto;
+    }
+}
+
+/*
+ * The widget intentionally keeps its own light palette regardless of the OS
+ * colour scheme, so it reads as a clean, consistent product embedded in any
+ * Moodle theme rather than flipping to a dark card on a light page.
+ */
+
+
+/* --- Gesetzte Formeln. -------------------------------------------------- */
+
+/*
+ * MathJax ersetzt den Formeltext durch eigene Elemente, die hoeher sind als
+ * eine gewoehnliche Textzeile -- ein Bruch, ein Index, ein Wurzelzeichen
+ * ragen ueber die Zeilenhoehe hinaus. Die Blase rechnet damit nicht von
+ * selbst, deshalb wurde oben und unten abgeschnitten.
+ */
+
+/*
+ * Die Huelle als inline-block: So bekommt sie eine eigene Hoehe, und die
+ * Zeile waechst mit, statt die Formel zu beschneiden. Ohne das zaehlt fuer
+ * die Zeilenhoehe nur die Schrift, nicht der Inhalt der Formel.
+ */
+.elediaai-chat-bubble .filter_mathjaxloader_equation {
+    display: inline-block;
+    vertical-align: middle;
+    max-width: 100%;
+}
+
+/* Nichts an der Formel selbst darf beschnitten werden. */
+.elediaai-chat-bubble mjx-container {
+    overflow: visible;
+    max-width: 100%;
+}
+
+/*
+ * Abgesetzte Gleichungen koennen breiter sein als die Blase. Sie scrollen
+ * dann in ihrem eigenen Element -- wie Code-Bloecke und Tabellen, und aus
+ * demselben Grund: Das Gespraech selbst soll nie seitwaerts laufen.
+ */
+.elediaai-chat-bubble mjx-container[display="true"] {
+    display: block;
+    overflow-x: auto;
+    overflow-y: visible;
+    margin: 0.55rem 0;
+    padding: 0.15rem 0;
+}
+
+/*
+ * Etwas Luft zwischen den Zeilen, sobald Formeln im Spiel sind. Zwei Zeilen
+ * mit Indizes stehen sonst dicht aufeinander, auch wenn nichts mehr
+ * abgeschnitten wird.
+ */
+.elediaai-chat-bubble p:has(.filter_mathjaxloader_equation) {
+    line-height: 1.9;
+}

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 70" class="eai-ill" focusable="false" aria-hidden="true">
+  <rect class="eai-ill__line" x="16" y="10" width="96" height="30" rx="7"/>
+  <path class="eai-ill__line" d="M30 21h62"/>
+  <path class="eai-ill__line" d="M30 31h40"/>
+  <path class="eai-ill__line" d="M32 40v9l11-9"/>
+  <rect class="eai-ill__fill" x="104" y="34" width="104" height="30" rx="7"/>
+  <path class="eai-ill__on-fill" d="M118 45h64M118 55h40"/>
+  <path class="eai-ill__line" d="M192 64v8l-11-8"/>
+</svg>

@@ -1,0 +1,178 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_elediaai_sources/preview_page
+
+    Dry run for one activity: what would be sent, and why.
+
+    Content is printed as escaped source on purpose — the page shows what
+    travels to the destination, not how it would look rendered.
+
+    Context variables required for this template:
+    * modulename, modname, moduleurl, courseurl, modulesourceid
+    * verdict, verdictlabel, verdictclass, verdicthint, hasverdicthint
+    * comparisontext, unchanged
+    * sinkname, embeddingmodel, hasmodel
+    * documents[] - sourceid, title, content_type, sizetext, hashshort, isbinary,
+      skipped, skipreason, displaycontent, hasdisplay, displaytruncated
+    * hasdocuments, documentcount, meta[], hasmeta, aggregatehash
+
+    Example context (json):
+    {
+        "modulename": "Welcome page",
+        "modname": "Page",
+        "moduleurl": "https://example.com/mod/page/view.php?id=5",
+        "courseurl": "https://example.com/local/elediaai_sources/activities.php?id=2",
+        "modulesourceid": "example.com:course2:cmid5",
+        "verdict": "ingest",
+        "verdictlabel": "Would be sent",
+        "verdictclass": "badge-success bg-success",
+        "verdicthint": "",
+        "hasverdicthint": false,
+        "comparisontext": "Not in the index.",
+        "unchanged": false,
+        "sinkname": "LiteRAG",
+        "embeddingmodel": null,
+        "hasmodel": false,
+        "hasdocuments": true,
+        "documentcount": 1,
+        "documents": [{
+            "sourceid": "example.com:course2:cmid5",
+            "title": "Welcome page",
+            "content_type": "text/html",
+            "sizetext": "1.2 KB",
+            "hashshort": "a1b2c3d4e5f6",
+            "isbinary": false,
+            "skipped": false,
+            "skipreason": "",
+            "displaycontent": "<h1>Welcome page</h1>",
+            "hasdisplay": true,
+            "displaytruncated": false
+        }],
+        "hasmeta": true,
+        "meta": [{"key": "cmid", "value": "5"}],
+        "aggregatehash": "aaaabbbbcccc"
+    }
+}}
+<div class="les-preview">
+    <div class="les-preview-head d-flex align-items-center mb-3">
+        <div class="flex-grow-1">
+            <h3 class="h5 mb-1">
+                <a href="{{moduleurl}}">{{modulename}}</a>
+                <span class="text-muted">{{modname}}</span>
+            </h3>
+            <code class="les-preview-sourceid">{{modulesourceid}}</code>
+        </div>
+        <span class="badge {{verdictclass}} les-preview-verdict">{{verdictlabel}}</span>
+    </div>
+
+    {{#hasverdicthint}}
+        <div class="alert alert-secondary">{{verdicthint}}</div>
+    {{/hasverdicthint}}
+
+    {{#hasaccessibility}}
+        <div class="alert {{a11yclass}} les-preview-a11y">
+            <strong>{{#str}} a11y_heading, local_elediaai_sources {{/str}}:</strong>
+            {{a11ytext}}
+            {{#hasa11yfiles}}
+                <p class="mb-1 mt-2">{{a11yfileslabel}}</p>
+                <ul class="les-preview-a11y-files mb-0">
+                    {{#a11yfiles}}<li><code>{{path}}</code></li>{{/a11yfiles}}
+                </ul>
+            {{/hasa11yfiles}}
+            {{#hasa11ydangling}}
+                <p class="mb-1 mt-2">{{a11ydanglinglabel}}</p>
+                <ul class="les-preview-a11y-files mb-0">
+                    {{#a11ydangling}}<li><code>{{path}}</code></li>{{/a11ydangling}}
+                </ul>
+            {{/hasa11ydangling}}
+        </div>
+    {{/hasaccessibility}}
+
+    <dl class="row les-preview-facts">
+        <dt class="col-sm-3">{{#str}} preview_destination, local_elediaai_sources {{/str}}</dt>
+        <dd class="col-sm-9">
+            {{sinkname}}
+            {{#hasmodel}}<span class="text-muted">({{embeddingmodel}})</span>{{/hasmodel}}
+        </dd>
+        <dt class="col-sm-3">{{#str}} preview_index_state, local_elediaai_sources {{/str}}</dt>
+        <dd class="col-sm-9">{{comparisontext}}</dd>
+        {{#aggregatehash}}
+            <dt class="col-sm-3">{{#str}} preview_fingerprint, local_elediaai_sources {{/str}}</dt>
+            <dd class="col-sm-9"><code>{{aggregatehash}}</code></dd>
+        {{/aggregatehash}}
+    </dl>
+
+    {{#unchanged}}
+        <div class="alert alert-info">{{#str}} preview_unchanged_note, local_elediaai_sources {{/str}}</div>
+    {{/unchanged}}
+
+    {{#hasmeta}}
+        <h4 class="h6 mt-4">{{#str}} preview_metadata, local_elediaai_sources {{/str}}</h4>
+        <table class="generaltable table-sm les-preview-meta">
+            <tbody>
+                {{#meta}}
+                    <tr><th scope="row"><code>{{key}}</code></th><td>{{value}}</td></tr>
+                {{/meta}}
+            </tbody>
+        </table>
+    {{/hasmeta}}
+
+    <h4 class="h6 mt-4">
+        {{#str}} preview_documents, local_elediaai_sources, {{documentcount}} {{/str}}
+    </h4>
+
+    {{^hasdocuments}}
+        <p class="text-muted">{{#str}} preview_nodocuments, local_elediaai_sources {{/str}}</p>
+    {{/hasdocuments}}
+
+    {{#documents}}
+        <section class="les-preview-document">
+            <header class="les-preview-document-head d-flex align-items-center">
+                <span class="flex-grow-1">
+                    {{#title}}<strong class="les-preview-title">{{title}}</strong>{{/title}}
+                    {{#sourceid}}<code>{{sourceid}}</code>{{/sourceid}}
+                </span>
+                <span class="badge badge-light bg-light text-dark">{{content_type}}</span>
+                <span class="badge badge-light bg-light text-dark">{{sizetext}}</span>
+                {{#hashshort}}<code class="text-muted les-preview-hash">{{hashshort}}</code>{{/hashshort}}
+            </header>
+
+            {{#skipped}}
+                <div class="alert alert-warning mb-0">{{skipreason}}</div>
+            {{/skipped}}
+
+            {{^skipped}}
+                {{#isbinary}}
+                    <p class="text-muted mb-0">{{#str}} preview_binary, local_elediaai_sources {{/str}}</p>
+                {{/isbinary}}
+                {{^isbinary}}
+                    {{#hasdisplay}}
+                        <pre class="les-preview-content">{{displaycontent}}</pre>
+                        {{#displaytruncated}}
+                            <p class="text-muted les-preview-truncated">
+                                {{#str}} preview_truncated, local_elediaai_sources {{/str}}
+                            </p>
+                        {{/displaytruncated}}
+                    {{/hasdisplay}}
+                {{/isbinary}}
+            {{/skipped}}
+        </section>
+    {{/documents}}
+
+    <p class="mt-4"><a href="{{courseurl}}">{{#str}} preview_backtocourse, local_elediaai_sources {{/str}}</a></p>
+</div>

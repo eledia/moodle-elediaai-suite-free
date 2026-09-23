@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 70" class="eai-ill" focusable="false" aria-hidden="true">
+  <rect class="eai-ill__line" x="16" y="8" width="46" height="12" rx="3"/>
+  <rect class="eai-ill__hair" x="70" y="9" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__hair" x="104" y="9" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__hair" x="138" y="9" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__line" x="16" y="29" width="46" height="12" rx="3"/>
+  <rect class="eai-ill__hair" x="70" y="30" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__hair" x="104" y="30" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__fill" x="16" y="50" width="46" height="12" rx="3"/>
+  <rect class="eai-ill__fill-stroke" x="70" y="51" width="28" height="10" rx="2"/>
+  <rect class="eai-ill__fill-stroke" x="104" y="51" width="28" height="10" rx="2"/>
+</svg>

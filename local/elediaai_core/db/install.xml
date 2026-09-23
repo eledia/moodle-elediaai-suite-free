@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/elediaai_core/db" VERSION="2026092000" COMMENT="XMLDB file for local_elediaai_core"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd">
+  <TABLES>
+    <TABLE NAME="local_elediaai_core_usage" COMMENT="Per-user token quota counters for eLeDia.ai requests.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="rolebucket" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="student"/>
+        <FIELD NAME="windowtype" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="day"/>
+        <FIELD NAME="windowstart" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="prompttokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="completiontokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="totaltokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="reservedtokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="requestcount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userwindow_uix" UNIQUE="true" FIELDS="userid, rolebucket, windowtype, windowstart"/>
+        <INDEX NAME="windowstart_ix" UNIQUE="false" FIELDS="windowstart"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_core_turn" COMMENT="One row per AI turn of the suite: what was asked and answered, what it was grounded on, which feature asked and what it cost. Carries no user id by design (operator decision 05.09.2026); askerkey is a salted pseudonym that counts askers without naming one and makes an erasure request answerable.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="Frankenstyle name of the feature that asked. The one thing Moodle's own ai_action_register cannot record."/>
+        <FIELD NAME="instanceid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Placement instance id, 0 for a site-wide surface."/>
+        <FIELD NAME="actionname" TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="generate_text, summarise_text, explain_text, generate_image or chat_turn."/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Derived from contextid at write time so the course report does not walk the context tree once per row."/>
+        <FIELD NAME="askerkey" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="sha256 of the user id plus a site salt. Never displayed, never resolved by any surface; empty string when no person was involved."/>
+        <FIELD NAME="origin" TYPE="char" LENGTH="20" NOTNULL="true" DEFAULT="general" COMMENT="grounded (answered from indexed course material), general (from the model) or mcp (read out of Moodle through a tool)."/>
+        <FIELD NAME="topic" TYPE="char" LENGTH="255" NOTNULL="false" COMMENT="Canonical topic label from the backend, when it supplies one."/>
+        <FIELD NAME="sourcetitle" TYPE="char" LENGTH="255" NOTNULL="false" COMMENT="Title of the primary cited source."/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Course module of the primary cited source, when resolvable. No foreign key: a deleted module must not take the row with it."/>
+        <FIELD NAME="prompt" TYPE="text" NOTNULL="false" COMMENT="What was asked, in full."/>
+        <FIELD NAME="response" TYPE="text" NOTNULL="false" COMMENT="What was answered, in full."/>
+        <FIELD NAME="prompttokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="completiontokens" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="tokensestimated" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Whether the two token counts are an estimate rather than the backend's own figure. The chat backends do not all report usage; the credit chokepoint then books an estimate, and the log has to say which of the two a reader is looking at."/>
+        <FIELD NAME="registerid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="The row this request produced in Moodle's own ai_action_register, when it went through core_ai. Lets the register view leave out what the suite already lists itself. Null for chat turns: they reach their backend on their own transport and never touch that register."/>
+        <FIELD NAME="success" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="errorcode" TYPE="char" LENGTH="100" NOTNULL="false"/>
+        <FIELD NAME="provider" TYPE="char" LENGTH="100" NOTNULL="false"/>
+        <FIELD NAME="model" TYPE="char" LENGTH="100" NOTNULL="false"/>
+        <FIELD NAME="durationms" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="coursetime_ix" UNIQUE="false" FIELDS="courseid, timecreated"/>
+        <INDEX NAME="component_ix" UNIQUE="false" FIELDS="component"/>
+        <INDEX NAME="askerkey_ix" UNIQUE="false" FIELDS="askerkey"/>
+        <INDEX NAME="timecreated_ix" UNIQUE="false" FIELDS="timecreated"/>
+        <INDEX NAME="registerid_ix" UNIQUE="false" FIELDS="registerid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_core_action" COMMENT="One row per action the AI performed through a tool on somebody's behalf: which tool, whether it changed anything, and who it acted for. Keeps the person on purpose -- oversight without an actor is not oversight. Holds no content; that is the turn log's job. A projection of the tool events, not a second log: the event store keeps them too, but encodes its payload as JSON or PHP-serialised depending on configuration and is therefore not queryable.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Who the AI acted for. Set to 0 by the retention task; the row itself is kept, because a proof that disappears on request is not one."/>
+        <FIELD NAME="component" TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="Frankenstyle of the plugin that owns the tool."/>
+        <FIELD NAME="toolname" TYPE="char" LENGTH="100" NOTNULL="true" COMMENT="The tool as the agent called it, e.g. moodle_grade_submission."/>
+        <FIELD NAME="iswrite" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" COMMENT="Whether the tool changed state. Taken from the tool's own MCP annotations, not guessed from its name."/>
+        <FIELD NAME="success" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="1"/>
+        <FIELD NAME="errorcode" TYPE="char" LENGTH="100" NOTNULL="false"/>
+        <FIELD NAME="durationms" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+        <FIELD NAME="turnid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="The turn that caused this action. Prepared but always null: the MCP token is issued per user, not per turn, so nothing links the two yet."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="usertime_ix" UNIQUE="false" FIELDS="userid, timecreated"/>
+        <INDEX NAME="coursetime_ix" UNIQUE="false" FIELDS="courseid, timecreated"/>
+        <INDEX NAME="writetime_ix" UNIQUE="false" FIELDS="iswrite, timecreated"/>
+        <INDEX NAME="timecreated_ix" UNIQUE="false" FIELDS="timecreated"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

@@ -1,0 +1,233 @@
+{{!
+    @template block_elediaai_tutor/plugin_shell_header
+
+    Shared Plugin Shell header owned by the eLeDia.ai Tutor block.
+
+    Renders the page title, optional breadcrumb/home links, tag chips, call-to-action
+    buttons, header action icons (help, settings, create) and an optional info bar with
+    progress, stats or a hint line. All sections are optional and driven by the context.
+
+    Classes required for JS:
+    * none
+
+    Data attributes required for JS:
+    * none
+
+    Context variables required for this template:
+    * name - Plugin name shown in the header title.
+    * tagline - Short tagline shown after the name.
+    * subtitle - Optional subtitle line below the title.
+    * sectionnav - Optional pre-rendered section navigation HTML.
+    * backurl, backlabel - Optional back link URL and accessible label.
+    * homeurl, homelabel - Optional home link URL and accessible label.
+    * hastags, tags - Whether to show tag chips and the list of {modifier, iconsvg, label}.
+    * ctas - Optional call-to-action buttons: {modifier, url, iconsvg, label}.
+    * createurl, createlabel - Optional create action URL and label.
+    * headeractionicons - Optional extra action icons: {modifierclass, url, label, iconsvg}.
+    * helpurl, helplabel - Optional help action URL and label.
+    * settingsurl, settingsiscurrent, settingslabel - Optional settings action.
+    * hasactionicons, actionicons - Optional secondary action icon bar.
+    * hasprogress, progress - Optional progress bars: {label, percent, count}.
+    * hasstats, stats - Optional stat chips: {iconsvg, value, label}.
+
+    Each "iconsvg" is a pre-rendered inline Lucide <svg> string, produced with
+    \block_elediaai_tutor\local\icon::render('<name>') on the PHP side.
+    * hint - Optional informational hint shown when there is no progress or stats.
+
+    Example context (json):
+    {
+        "name": "eLeDia.ai Tutor",
+        "tagline": "Dashboard",
+        "subtitle": "Manage your AI tutors",
+        "sectionnav": "",
+        "homeurl": "https://example.com/blocks/elediaai_tutor/configuration.php",
+        "homelabel": "Dashboard",
+        "hastags": true,
+        "tags": [
+            {"modifier": "info", "iconsvg": "<svg class=\"lucide\">...</svg>", "label": "MCP"}
+        ],
+        "ctas": [
+            {"modifier": "primary", "url": "https://example.com/create", "iconsvg": "<svg class=\"lucide\">...</svg>", "label": "Create tutor"}
+        ],
+        "helpurl": "https://example.com/blocks/elediaai_tutor/help.php",
+        "helplabel": "Help",
+        "settingsurl": "https://example.com/blocks/elediaai_tutor/operator_settings.php",
+        "settingsiscurrent": false,
+        "settingslabel": "Settings",
+        "hasprogress": false,
+        "hasstats": true,
+        "stats": [
+            {"iconsvg": "<svg class=\"lucide\">...</svg>", "value": "12", "label": "learners"}
+        ],
+        "hint": "All systems ready."
+    }
+}}
+<div class="lh-plugin-header{{#sectionnav}} lh-plugin-header--has-section-nav{{/sectionnav}}">
+    <div class="lh-plugin-header__row">
+        {{#backurl}}
+            <div class="lh-plugin-header__nav">
+                <a class="lh-plugin-header__action lh-plugin-header__action--back"
+                   href="{{ backurl }}"
+                   aria-label="{{ backlabel }}"
+                   title="{{ backlabel }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+                </a>
+            </div>
+        {{/backurl}}
+
+        <div class="lh-plugin-header__title-block">
+            <div class="lh-plugin-header__name">
+                {{! h1: shell pages call set_heading('') and the base hook hides
+                    #page-header, so Zone A carries the only page heading
+                    (WCAG 1.3.1 / §9 A6). Sync: local_lernhive partial. }}
+                <h1 class="lh-plugin-header__name-text">
+                    {{#homeurl}}
+                        <a class="lh-plugin-header__home"
+                           href="{{ homeurl }}"
+                           aria-label="{{ homelabel }}"
+                           title="{{ homelabel }}">{{ name }}</a>
+                    {{/homeurl}}
+                    {{^homeurl}}
+                        {{ name }}
+                    {{/homeurl}}
+                    <span class="lh-plugin-header__sep" aria-hidden="true">|</span>
+                    <span class="lh-plugin-header__tagline">{{ tagline }}</span>
+                </h1>
+                {{#hastags}}
+                    <span class="lh-plugin-header__tags" aria-label="{{#str}} tags {{/str}}">
+                        {{#tags}}
+                            <span class="lh-plugin-tag lh-plugin-tag--{{ modifier }}">
+                                {{{ iconsvg }}}
+                                {{ label }}
+                            </span>
+                        {{/tags}}
+                    </span>
+                {{/hastags}}
+            </div>
+            {{#subtitle}}
+                <p class="lh-plugin-header__subtitle">{{ subtitle }}</p>
+            {{/subtitle}}
+        </div>
+
+        <div class="lh-plugin-header__actions">
+            {{#ctas}}
+                <a class="lh-btn-{{ modifier }}" href="{{ url }}">
+                    {{#iconsvg}}<span class="me-1">{{{ iconsvg }}}</span>{{/iconsvg}}
+                    {{ label }}
+                </a>
+            {{/ctas}}
+            {{#createurl}}
+                <a class="lh-plugin-header__action lh-plugin-header__action--create"
+                   href="{{ createurl }}"
+                   aria-label="{{ createlabel }}"
+                   title="{{ createlabel }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                </a>
+            {{/createurl}}
+            {{#headeractionicons}}
+                <a class="lh-plugin-header__action {{ modifierclass }}"
+                   href="{{ url }}"
+                   aria-label="{{ label }}"
+                   title="{{ label }}">
+                    {{{ iconsvg }}}
+                </a>
+            {{/headeractionicons}}
+            {{#helpurl}}
+                <a class="lh-plugin-header__action lh-plugin-header__action--help"
+                   href="{{ helpurl }}"
+                   aria-label="{{ helplabel }}"
+                   title="{{ helplabel }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+                </a>
+            {{/helpurl}}
+            {{#settingsurl}}
+                {{#settingsiscurrent}}
+                    <span class="lh-plugin-header__action lh-plugin-header__action--settings lh-plugin-header__action--current"
+                          aria-current="page"
+                          aria-label="{{ settingslabel }}"
+                          title="{{ settingslabel }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </span>
+                {{/settingsiscurrent}}
+                {{^settingsiscurrent}}
+                    <a class="lh-plugin-header__action lh-plugin-header__action--settings"
+                       href="{{ settingsurl }}"
+                       aria-label="{{ settingslabel }}"
+                       title="{{ settingslabel }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+                    </a>
+                {{/settingsiscurrent}}
+            {{/settingsurl}}
+        </div>
+    </div>
+    {{{ sectionnav }}}
+
+    {{! ADR-P14 D3 / §3.4.1: the action band lives in Zone A (§3.3 keeps Zone B
+        state-only) and every entry carries a VISIBLE label — icons never
+        replace labels. Sync: local_lernhive/plugin_shell_header. The inline
+        `iconsvg` slot is this plugin's own Lucide variant and is kept. }}
+    {{#hasactionicons}}
+        <div class="lh-plugin-header__actionbar">
+            <nav class="lh-plugin-header__actionbar-list" aria-label="{{ actionbarlabel }}">
+                {{#actionicons}}
+                    <a class="lh-plugin-header__actionbar-item {{ modifierclass }}"
+                       href="{{ url }}"
+                       {{#iscurrent}}aria-current="page"{{/iscurrent}}>
+                        {{{ iconsvg }}}
+                        <span class="lh-plugin-header__actionbar-label">{{ label }}</span>
+                    </a>
+                {{/actionicons}}
+                {{#hasactionmore}}
+                    <span class="lh-plugin-header__actionbar-more">{{{ actionmore }}}</span>
+                {{/hasactionmore}}
+            </nav>
+        </div>
+    {{/hasactionicons}}
+</div>
+
+{{#hasprogress}}
+    <div class="lh-plugin-infobar">
+        {{#progress}}
+            <div class="lh-plugin-infobar__progress">
+                <span class="lh-plugin-infobar__progress-label">{{ label }}</span>
+                <div class="lh-plugin-infobar__progress-track">
+                    <div class="lh-plugin-infobar__progress-fill"
+                         role="progressbar"
+                         style="width: {{ percent }}%"
+                         aria-valuenow="{{ percent }}"
+                         aria-valuemin="0"
+                         aria-valuemax="100"></div>
+                </div>
+                <span class="lh-plugin-infobar__progress-count">{{ percent }}%</span>
+                <span class="lh-plugin-infobar__progress-count lh-plugin-infobar__progress-count--muted">{{ count }}</span>
+            </div>
+        {{/progress}}
+    </div>
+{{/hasprogress}}
+{{^hasprogress}}
+    {{#hasstats}}
+        <div class="lh-plugin-infobar">
+            <div class="lh-plugin-infobar__stats">
+                {{#stats}}
+                    <span class="lh-plugin-infobar__stat">
+                        {{#iconsvg}}{{{ iconsvg }}}{{/iconsvg}}
+                        {{#value}}<strong>{{ value }}</strong>{{/value}}
+                        {{ label }}
+                    </span>
+                {{/stats}}
+            </div>
+        </div>
+    {{/hasstats}}
+    {{^hasstats}}
+        {{#hint}}
+            <div class="lh-plugin-infobar">
+                <div class="lh-plugin-infobar__stats">
+                    <span class="lh-plugin-infobar__stat">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                        {{ hint }}
+                    </span>
+                </div>
+            </div>
+        {{/hint}}
+    {{/hasstats}}
+{{/hasprogress}}

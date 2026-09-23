@@ -1,0 +1,102 @@
+/* Herkunftsnachweis und Kennzeichnung.
+ *
+ * Die Token kommen aus local_elediaai_core (adr05) und werden hier ohne
+ * Rueckfallwert gelesen: ohne Core gaebe es keine Skala, also ist die
+ * Abhaengigkeit echt und nicht kosmetisch.
+ */
+
+.aitransparency-notice {
+    align-items: baseline;
+    background: var(--eai-ai-wash);
+    border-radius: var(--eai-radius-sm);
+    color: var(--eai-fg-dim);
+    display: flex;
+    flex-wrap: wrap;
+    font-size: var(--font-size-small);
+    gap: var(--eai-space-1);
+    margin: var(--eai-space-1) 0;
+    padding: var(--eai-space-1) var(--eai-space-2);
+}
+
+.aitransparency-notice__link {
+    color: var(--eai-ai);
+    font-weight: 600;
+}
+
+.aitransparency-verify {
+    background: var(--eai-surface);
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    box-shadow: var(--eai-shadow-card);
+    margin: 0 auto;
+    max-width: 52rem;
+    padding: var(--eai-space-4);
+}
+
+.aitransparency-verify__heading {
+    color: var(--eai-fg);
+    font-size: var(--font-size-h2);
+    font-weight: 700;
+    margin: 0 0 var(--eai-space-1);
+}
+
+.aitransparency-verify__intro {
+    color: var(--eai-muted);
+    margin: 0 0 var(--eai-space-4);
+    max-width: 62ch;
+}
+
+.aitransparency-verify__list {
+    display: grid;
+    gap: 0 var(--eai-space-4);
+    grid-template-columns: minmax(8rem, 14rem) minmax(0, 1fr);
+    margin: 0;
+}
+
+.aitransparency-verify__list dt {
+    border-top: 1px solid var(--eai-line-soft);
+    color: var(--eai-muted);
+    font-weight: 400;
+    padding: var(--eai-space-1) 0;
+}
+
+.aitransparency-verify__list dd {
+    border-top: 1px solid var(--eai-line-soft);
+    color: var(--eai-fg);
+    margin: 0;
+    padding: var(--eai-space-1) 0;
+}
+
+.aitransparency-verify__hash {
+    overflow-wrap: anywhere;
+}
+
+/* Wer den Inhalt erzeugt hat, steht nicht auf der Seite -- und die Seite sagt
+   das, statt die Leerstelle unerklaert zu lassen. */
+.aitransparency-verify__note {
+    background: var(--eai-bg);
+    border-radius: var(--eai-radius-sm);
+    color: var(--eai-muted);
+    font-size: var(--font-size-small);
+    margin-top: var(--eai-space-4);
+    padding: var(--eai-space-2);
+}
+
+.aitransparency-verify__uuid {
+    color: var(--eai-faint);
+    font-size: var(--font-size-caption);
+    margin-top: var(--eai-space-2);
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
+@media (max-width: 36rem) {
+    .aitransparency-verify__list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aitransparency-verify__list dd {
+        border-top: 0;
+        padding-top: 0;
+    }
+}

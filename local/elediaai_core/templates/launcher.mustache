@@ -1,0 +1,24 @@
+{{!
+    @template local_elediaai_core/launcher
+
+    AI-Suite launcher trigger. Visual shape mirrors the LernHive
+    launcher. The icon opens the AI Suite overview; individual AI
+    plugins are selected on that overview page.
+
+    Context keys:
+      title      - SR-only launcher label
+      subtitle   - SR-only tagline
+      url        - AI Suite overview URL
+}}
+<section class="lh-ai-launcher" aria-labelledby="lh-ai-launcher-title">
+    <a class="lh-ai-launcher__link" href="{{url}}" title="{{title}}" aria-label="{{title}}">
+        <span class="lh-ai-launcher__summary-icon" aria-hidden="true">
+            {{! Lucide astroid — 4-cusp hypocycloid }}
+            <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 22c0-5-5-10-10-10 5 0 10-5 10-10 0 5 5 10 10 10-5 0-10 5-10 10"/>
+            </svg>
+        </span>
+        <span id="lh-ai-launcher-title" class="lh-ai-launcher__title">{{title}}</span>
+        <span class="lh-ai-launcher__subtitle">{{subtitle}}</span>
+    </a>
+</section>

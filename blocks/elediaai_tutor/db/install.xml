@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="blocks/elediaai_tutor/db" VERSION="20260919" COMMENT="eLeDia.ai Tutor block database schema."
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="block_elediaai_tutor_consent" COMMENT="Documented privacy-guidelines acknowledgements: one timestamped row per user, written the first time they confirm the privacy guidelines before using the tutor. Erased when the user account is deleted (event observer) and covered by the privacy provider.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The consenting user."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the user acknowledged the privacy guidelines."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign-unique" FIELDS="userid" REFTABLE="user" REFFIELDS="id" COMMENT="At most one consent record per user."/>
+      </KEYS>
+    </TABLE>
+    <TABLE NAME="block_elediaai_tutor_diag" COMMENT="Short admin diagnostics for failed tutor calls. Stores only non-sensitive metadata such as phase, error code and redacted detail; no prompts, answers, API keys or service tokens. Rows are pruned automatically.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The user whose chat turn failed; used for privacy export/erasure."/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Course the chat turn belonged to, or 0 for global chat."/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Context where the failure occurred."/>
+        <FIELD NAME="phase" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="Short phase label such as configuration, mcp, rag or tool_error."/>
+        <FIELD NAME="errorcode" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Moodle error code or exception class."/>
+        <FIELD NAME="detail" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Redacted non-sensitive debug detail for administrators."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the failure was recorded."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="timecreated" UNIQUE="false" FIELDS="timecreated" COMMENT="Dashboard listing and retention pruning."/>
+        <INDEX NAME="userid-timecreated" UNIQUE="false" FIELDS="userid,timecreated" COMMENT="Privacy export and erasure support."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="block_elediaai_tutor_tutor" COMMENT="Saved site-wide tutor profiles: a named, reusable bundle of tutor settings (persona + every design token + behaviour/launcher/footer) serialised as JSON, plus optional logo/avatar images stored in the system context (file areas tutorlogo/tutoravatar, itemid = this row id). Admins create these by duplicating a built-in preset or importing a bundle; applying a profile snapshot-copies its values into the site config or a block instance.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Human-readable tutor name."/>
+        <FIELD NAME="shortname" TYPE="char" LENGTH="100" NOTNULL="true" SEQUENCE="false" COMMENT="Stable machine name, unique; used in export bundles."/>
+        <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Optional admin notes describing the tutor."/>
+        <FIELD NAME="settings" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="JSON map of registry key => value defining the tutor's persona and design."/>
+        <FIELD NAME="sortorder" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Display order in the management list."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Creation timestamp."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last-modified timestamp."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="shortname" UNIQUE="true" FIELDS="shortname" COMMENT="One profile per machine name."/>
+        <INDEX NAME="sortorder" UNIQUE="false" FIELDS="sortorder" COMMENT="Listing order."/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

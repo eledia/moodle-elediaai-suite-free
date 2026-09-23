@@ -1,0 +1,188 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_elediaai_chatengine/chat_panel
+
+    The chat shell every placement renders. Only the empty frame is painted
+    here; the conversation itself is rendered client-side into the log region
+    by the chat_panel AMD module.
+
+    The structure is the tutor's, deliberately: header with the assistant's
+    identity, transcript, composer with a round send button. Sharing a
+    stylesheet was not enough to make the surfaces look alike, because the
+    surfaces did not share the markup the stylesheet describes - an activity
+    rendered a bare Bootstrap form under rules written for a chat window. A
+    placement that needs more contributes it through headerhtml and footerhtml
+    rather than by building a second window.
+
+    Two things are deliberate beyond that. Every CSS hook carries a
+    placement-supplied prefix, so a surface keeps its own Behat selectors while
+    sharing the behaviour. And the log starts with aria-live="off", which the
+    AMD module raises to "polite" only after a restored conversation has been
+    rendered - otherwise reopening a chat announces every past turn, one at a
+    time.
+
+    The configuration travels as a JSON island rather than through
+    js_call_amd, whose argument string Moodle truncates past 1024 characters.
+
+    Context:
+      prefix          - CSS class prefix, e.g. elediaai-chat
+      uniqid          - unique element id for this panel
+      component       - frankenstyle component of the placement
+      instanceid      - the placement's own instance id, 0 for site-wide
+      configjson      - non-secret configuration as JSON
+      transcriptlabel - accessible name for the transcript region
+      placeholder     - input placeholder
+      sendlabel       - submit button label
+      sendaria        - aria-label for the send button
+      inline          - whether the panel sits in the page rather than in a
+                        launcher; an inline transcript keeps a floor so an
+                        empty conversation still reads as one
+      showheader      - whether to paint the identity header
+      personaname     - the assistant's name, shown in the header
+      presencelabel   - the line under the name, e.g. "Online"
+      avatarurl       - the assistant's mark; a monogram stands in when empty
+      monogram        - single letter shown when there is no avatar
+      showclear       - whether to offer starting over
+      clearlabel      - label for starting a new conversation
+      showexpand      - whether to offer the enlarge button
+      expandlabel     - aria-label for enlarging
+      collapselabel   - aria-label for shrinking
+      headerhtml      - optional placement markup above the transcript
+      footerhtml      - optional placement markup below the composer
+      designvars      - the resolved design as CSS custom properties, applied
+                        inline so two differently designed surfaces can share a
+                        page
+      logcontent      - optional turns rendered server-side into the transcript.
+                        A surface that guests use seeds the conversation here
+                        rather than fetching it, because an unauthenticated
+                        visitor has no account for the history endpoint to
+                        scope by.
+
+    Example context (json):
+    {
+        "prefix": "elediaai-chat",
+        "uniqid": "chatengine-1",
+        "component": "mod_aichat",
+        "instanceid": 7,
+        "configjson": "{\"maxlength\":4000}",
+        "transcriptlabel": "Conversation transcript",
+        "placeholder": "Ask a question…",
+        "sendlabel": "Send",
+        "sendaria": "Send message",
+        "inline": true,
+        "showheader": true,
+        "personaname": "AI assistant",
+        "presencelabel": "Online",
+        "avatarurl": "",
+        "monogram": "A",
+        "showclear": true,
+        "clearlabel": "Start a new conversation",
+        "showexpand": true,
+        "expandlabel": "Enlarge the chat",
+        "collapselabel": "Shrink the chat",
+        "headerhtml": "",
+        "footerhtml": "",
+        "logcontent": "",
+        "designvars": ""
+    }
+}}
+<div class="{{prefix}}-root" id="{{uniqid}}" data-component="{{component}}"
+     data-instanceid="{{instanceid}}" style="{{designvars}}">
+    {{! Read once by the AMD module; never rendered. }}
+    <script type="application/json" data-region="chatengine-config">{{{configjson}}}</script>
+    <div class="{{prefix}}-backdrop" hidden></div>
+    <div class="{{prefix}}-panel{{#inline}} {{prefix}}-inline{{/inline}}" data-region="panel" role="region" aria-label="{{transcriptlabel}}">
+        <div class="{{prefix}}-window" role="document">
+            {{#showheader}}
+                <header class="{{prefix}}-header">
+                    <div class="{{prefix}}-identity">
+                        <span class="{{prefix}}-avatar">
+                            {{#avatarurl}}
+                                <img class="{{prefix}}-avatar-img" src="{{avatarurl}}" alt="" width="34" height="34">
+                            {{/avatarurl}}
+                            {{^avatarurl}}<span aria-hidden="true">{{monogram}}</span>{{/avatarurl}}
+                            <span class="{{prefix}}-status-dot"></span>
+                        </span>
+                        <span class="{{prefix}}-identity-text">
+                            <span class="{{prefix}}-title">{{personaname}}</span>
+                            <span class="{{prefix}}-presence">{{presencelabel}}</span>
+                        </span>
+                    </div>
+                    <div class="{{prefix}}-actions">
+                        {{#showclear}}
+                            {{! A bin, not a plus: this button deletes the
+                                conversation. The plus belongs to the tutor's
+                                launcher, where the action is starting a new
+                                one rather than erasing the old. }}
+                            <button type="button" class="btn btn-icon {{prefix}}-iconbtn"
+                                    data-action="clear" aria-label="{{clearlabel}}" title="{{clearlabel}}">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
+                            </button>
+                        {{/showclear}}
+                        {{#showexpand}}
+                            <button type="button" class="btn btn-icon {{prefix}}-iconbtn"
+                                    data-action="expand"
+                                    data-label-expand="{{expandlabel}}"
+                                    data-label-collapse="{{collapselabel}}"
+                                    aria-label="{{expandlabel}}"
+                                    title="{{expandlabel}}"
+                                    aria-pressed="false"
+                                    aria-expanded="false">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8"/><path d="M3 16.2V21m0 0h4.8M3 21l6-6"/><path d="M21 7.8V3m0 0h-4.8M21 3l-6 6"/><path d="M3 7.8V3m0 0h4.8M3 3l6 6"/></svg>
+                            </button>
+                        {{/showexpand}}
+                    </div>
+                </header>
+            {{/showheader}}
+            {{{headerhtml}}}
+            {{! aria-live is raised to polite by the AMD module only after a
+                restored conversation has been rendered, so reopening a chat
+                does not announce every past turn one by one. }}
+            <div
+                class="{{prefix}}-log"
+                data-region="log"
+                role="log"
+                tabindex="0"
+                aria-live="off"
+                aria-atomic="false"
+                aria-label="{{transcriptlabel}}">{{{logcontent}}}</div>
+            {{! Both live regions stay in the accessibility tree while empty, so
+                a later error or status change is announced reliably. The alert
+                is collapsed by an :empty rule rather than by the hidden
+                attribute, because hidden takes it out of that tree and a
+                screen reader then has nothing to announce into. }}
+            <div class="alert alert-danger {{prefix}}-error" data-region="error" role="alert" aria-atomic="true"></div>
+            <div class="{{prefix}}-status" data-region="status" role="status" aria-live="polite"></div>
+            <form class="{{prefix}}-composer" data-region="composer" aria-label="{{placeholder}}">
+                <label class="visually-hidden" for="{{uniqid}}-input">{{placeholder}}</label>
+                <textarea
+                    class="{{prefix}}-input"
+                    id="{{uniqid}}-input"
+                    data-region="input"
+                    rows="1"
+                    autocomplete="off"
+                    placeholder="{{placeholder}}"></textarea>
+                <button type="submit" class="{{prefix}}-send" data-action="send"
+                        aria-label="{{sendaria}}" title="{{sendlabel}}">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/></svg>
+                </button>
+            </form>
+            {{{footerhtml}}}
+        </div>
+    </div>
+</div>

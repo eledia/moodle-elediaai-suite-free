@@ -1,0 +1,158 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template local_elediaai_sources/activities_page
+
+    Per-course activity selection for ingestion.
+
+    Context variables required for this template:
+    * courseid - Course id.
+    * intro - Introductory sentence.
+    * modeinfo - Explanation of the site-wide default mode.
+    * modedefault - 1 when undecided activities are included (opt-out mode).
+    * hassections - Whether there is anything to show.
+    * sections - Array of {name, plainname, activities[], bulkcmids, hasbulk}; each
+      activity carries cmid, name, plainname, modname, iconurl, supported, included,
+      excluded, explicit, status fields, previewurl and aria labels.
+
+    Example context (json):
+    {
+        "courseid": 2,
+        "intro": "Choose which activities are sent.",
+        "modeinfo": "New activities are included automatically.",
+        "modedefault": 1,
+        "hassections": true,
+        "sections": [{
+            "name": "Course materials &amp; content",
+            "plainname": "Course materials & content",
+            "bulkcmids": "5",
+            "hasbulk": true,
+            "activities": [{
+                "cmid": 5,
+                "name": "Welcome page",
+                "plainname": "Welcome page",
+                "modname": "Page",
+                "iconurl": "https://example.com/icon.svg",
+                "supported": true,
+                "included": true,
+                "excluded": false,
+                "explicit": false,
+                "status": "indexed",
+                "statuslabel": "Indexed",
+                "statusclass": "badge-success bg-success",
+                "statustitle": "23 August 2026",
+                "previewurl": "https://example.com/local/elediaai_sources/preview.php?cmid=5",
+                "previewaria": "Dry run for Welcome page",
+                "togglearia": "Toggle ingestion of Welcome page",
+                "resetaria": "Reset Welcome page to the site default"
+            }]
+        }]
+    }
+}}
+<div class="les-activities" data-region="elediaai-activities"
+    data-courseid="{{courseid}}" data-modedefault="{{modedefault}}">
+    <p>{{intro}}</p>
+    <div class="alert alert-info les-activities-mode" role="note">{{modeinfo}}</div>
+
+    <div class="les-activities-live sr-only" aria-live="polite" data-region="status"></div>
+
+    {{^hassections}}
+        <p class="text-muted">{{#str}} activities_nosections, local_elediaai_sources {{/str}}</p>
+    {{/hassections}}
+
+    {{#hassections}}
+        <div class="les-activities-filter form-inline mb-3">
+            <label class="sr-only" for="les-filter-{{courseid}}">
+                {{#str}} activities_filter, local_elediaai_sources {{/str}}
+            </label>
+            <input type="text" id="les-filter-{{courseid}}" class="form-control les-filter-input"
+                data-region="filter"
+                placeholder="{{#str}} activities_filter, local_elediaai_sources {{/str}}">
+        </div>
+    {{/hassections}}
+
+    {{#sections}}
+        <section class="les-activities-section" data-region="section">
+            <div class="les-activities-section-head d-flex align-items-center">
+                <h3 class="les-activities-section-name h5 flex-grow-1 mb-0">{{{name}}}</h3>
+                {{#hasbulk}}
+                    <div class="les-activities-bulk btn-group btn-group-sm" role="group"
+                        aria-label="{{#str}} activities_bulk_aria, local_elediaai_sources, {{plainname}} {{/str}}">
+                        <button type="button" class="btn btn-outline-secondary"
+                            data-region="bulk" data-state="included" data-cmids="{{bulkcmids}}">
+                            {{#str}} activities_bulk_include, local_elediaai_sources {{/str}}
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary"
+                            data-region="bulk" data-state="excluded" data-cmids="{{bulkcmids}}">
+                            {{#str}} activities_bulk_exclude, local_elediaai_sources {{/str}}
+                        </button>
+                    </div>
+                {{/hasbulk}}
+            </div>
+            <ul class="les-activities-list list-unstyled">
+                {{#activities}}
+                    <li class="les-activity d-flex align-items-center {{^supported}}les-activity-unsupported{{/supported}}"
+                        data-cmid="{{cmid}}" data-region="row">
+                        <img class="les-activity-icon activityicon" src="{{iconurl}}" alt="" aria-hidden="true">
+                        <div class="les-activity-label flex-grow-1">
+                            <span class="les-activity-name" data-region="name">{{{name}}}</span>
+                            <span class="les-activity-type text-muted">{{modname}}</span>
+                        </div>
+                        <span class="badge {{statusclass}} les-activity-badge" data-region="statusbadge"
+                            {{#statustitle}}title="{{statustitle}}"{{/statustitle}}>{{statuslabel}}</span>
+                        <span class="badge badge-warning bg-warning text-dark les-activity-badge {{^excluded}}hidden{{/excluded}}"
+                            data-region="excludedbadge" {{^excluded}}hidden{{/excluded}}>
+                            {{#str}} activities_excluded_badge, local_elediaai_sources {{/str}}
+                        </span>
+                        <a href="{{previewurl}}" class="btn btn-link btn-sm les-activity-preview"
+                            aria-label="{{previewaria}}">
+                            {{#str}} preview_link, local_elediaai_sources {{/str}}
+                        </a>
+                        {{#supported}}
+                            <button type="button"
+                                class="btn btn-link btn-sm les-activity-reset {{^explicit}}hidden{{/explicit}}"
+                                data-region="reset" data-cmid="{{cmid}}" aria-label="{{resetaria}}"
+                                {{^explicit}}hidden{{/explicit}}>
+                                {{#str}} activities_reset, local_elediaai_sources {{/str}}
+                            </button>
+                            <label class="les-switch mb-0">
+                                <input type="checkbox" data-region="toggle" data-cmid="{{cmid}}"
+                                    {{#included}}checked{{/included}} aria-label="{{togglearia}}">
+                                <span class="les-switch-slider" aria-hidden="true"></span>
+                            </label>
+                        {{/supported}}
+                        {{^supported}}
+                            <span class="badge badge-secondary bg-secondary les-activity-badge"
+                                title="{{#str}} activities_unsupported_hint, local_elediaai_sources {{/str}}">
+                                {{#str}} activities_unsupported, local_elediaai_sources {{/str}}
+                            </span>
+                            <label class="les-switch mb-0 les-switch-disabled">
+                                <input type="checkbox" disabled aria-label="{{togglearia}}">
+                                <span class="les-switch-slider" aria-hidden="true"></span>
+                            </label>
+                        {{/supported}}
+                    </li>
+                {{/activities}}
+            </ul>
+        </section>
+    {{/sections}}
+</div>
+{{#js}}
+require(['local_elediaai_sources/activity_toggle'], function(toggle) {
+    toggle.init();
+});
+{{/js}}

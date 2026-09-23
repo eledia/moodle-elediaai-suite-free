@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 70" class="eai-ill" focusable="false" aria-hidden="true">
+  <rect class="eai-ill__wash" x="16" y="12" width="74" height="46" rx="5"/>
+  <path class="eai-ill__hair" d="M28 26h50M28 36h38M28 46h46"/>
+  <path class="eai-ill__fill-stroke" d="M100 28h24"/>
+  <path class="eai-ill__fill-stroke" d="M118 22l6 6-6 6"/>
+  <path class="eai-ill__line" d="M124 46h-24"/>
+  <path class="eai-ill__line" d="M106 40l-6 6 6 6"/>
+  <rect class="eai-ill__wash" x="134" y="12" width="74" height="46" rx="5"/>
+  <path class="eai-ill__hair" d="M146 26h38M146 46h50"/>
+  <path class="eai-ill__fill-stroke" d="M146 36h30"/>
+</svg>

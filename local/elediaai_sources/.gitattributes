@@ -1,0 +1,13 @@
+# Development-only helpers.
+debug_server.py export-ignore
+bin export-ignore
+bin/** export-ignore
+
+# Repository metadata and local submission drafts.
+.gitattributes export-ignore
+.gitignore export-ignore
+.submission-draft.md export-ignore
+
+# Moodle language translations should normally be maintained through AMOS.
+lang/de export-ignore
+lang/de/** export-ignore
