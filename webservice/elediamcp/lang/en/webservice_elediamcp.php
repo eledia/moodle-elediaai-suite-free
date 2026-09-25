@@ -263,7 +263,7 @@ Identity & context: call moodle_me first to confirm identity, then moodle_verify
 
 People discovery: moodle_find_user resolves a free-form name fragment (e.g. "erika") to a list of messageable Moodle users with concrete ids. Use it BEFORE moodle_send_message whenever you do not already know the recipient\'s exact user id.
 
-Course discovery: moodle_my_courses lists enrolled courses; moodle_search_courses searches the public catalogue; moodle_course_contents enumerates sections/activities of one course; moodle_get_resource returns the body of a page/book chapter/label/url/resource by cmid.
+Course discovery: moodle_my_courses lists enrolled courses; moodle_search_courses searches the public catalogue; moodle_list_course_categories lists the categories the user may create courses in (use it to turn a category name into the category_id for moodle_create_course); moodle_course_contents enumerates sections/activities of one course; moodle_get_resource returns the body of a page/book chapter/label/url/resource by cmid.
 
 Feeds & progress: moodle_get_announcements for the latest news-forum posts; moodle_calendar_upcoming for deadlines; moodle_my_assignments for submission status; moodle_my_grades for course finals (or per-item with include_items + course_id).
 

@@ -42,7 +42,7 @@ bei `kurs_aus_dokument` bleibt clientseitig.
 
 - Stabile, denormalisierte Read-Tools: Identität (`moodle_me`,
   `moodle_verify_user_context`), Personen (`moodle_find_user`), Kurse
-  (`moodle_my_courses`, `moodle_search_courses`, `moodle_course_contents`,
+  (`moodle_my_courses`, `moodle_search_courses`, `moodle_list_course_categories`, `moodle_course_contents`,
   `moodle_get_resource`, `moodle_search_content`), Kommunikation
   (`moodle_get_announcements`, `moodle_forum_discussions`,
   `moodle_calendar_upcoming`), Lernstand (`moodle_due_work`,

@@ -68,11 +68,13 @@ class cleanup_task extends \core\task\scheduled_task {
         $rows = $DB->get_records('local_elediaai_sources_cmstate');
         foreach ($rows as $row) {
             $cmid = (int) $row->cmid;
+            // An "empty" row stands for nothing in the index; there is nothing to delete.
+            $holdsdocuments = $row->laststatus !== cm_state::STATUS_EMPTY;
 
             if (!$DB->record_exists('course_modules', ['id' => $cmid])) {
                 // Module gone. Clean the active destination via the stored id;
                 // stale rows for other destinations are dropped untouched.
-                if ((string) $row->sink === $activeid && $candelete) {
+                if ($holdsdocuments && (string) $row->sink === $activeid && $candelete) {
                     $result = $sink->delete((string) $row->sourceid, 'prefix');
                     if (empty($result['success'])) {
                         continue;
@@ -90,7 +92,10 @@ class cleanup_task extends \core\task\scheduled_task {
             }
 
             $hidden = !ingestion_manager::visible_to_learners($cm);
-            if ($hidden && (string) $row->sink === $activeid && $candelete) {
+            if ($hidden && !$holdsdocuments) {
+                cm_state::forget($cmid);
+                $hiddenstates++;
+            } else if ($hidden && (string) $row->sink === $activeid && $candelete) {
                 $result = $sink->delete((string) $row->sourceid, 'prefix');
                 if (!empty($result['success'])) {
                     cm_state::forget($cmid);

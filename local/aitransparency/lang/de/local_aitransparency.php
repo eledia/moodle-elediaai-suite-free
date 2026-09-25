@@ -25,6 +25,19 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['aitransparency:viewreport'] = 'KI-Transparenz-Provenance-Bericht ansehen';
+$string['guide_body'] = 'Die KI-Verordnung verlangt in Art. 50 zweierlei: Menschen müssen erkennen können, dass sie es mit einer KI zu tun haben, und KI-erzeugte Inhalte müssen maschinenlesbar gekennzeichnet sein. Die Suite legt dafür zu jeder KI-Ausgabe einen Herkunftsnachweis an.
+
+Der Bericht unter „KI-Transparenz" zeigt diese Nachweise, die neuesten zuerst: welches Plugin die Ausgabe erzeugt hat, mit welchem Dienst und Modell, wann, und ob sie ihre Kennzeichnung trug.
+
+Worauf zu achten ist:
+
+- **„Ohne Kennzeichnung" ist der Befund, um den es geht.** Ein solcher Nachweis bedeutet, dass die Ausgabe ohne ihre Art.-50-Markierung hinausging.
+- **Jeder Nachweis lässt sich einzeln prüfen.** Über „Öffnen" sehen Sie die Angaben zu genau dieser Ausgabe.
+- **Die Person wird nach einer Frist entfernt.** Nach der eingestellten Zahl von Tagen wird die Verknüpfung zur auslösenden Person gelöst; der Nachweis selbst bleibt.
+
+Den Bericht sehen Personen mit der Berechtigung „local/aitransparency:viewreport", standardmäßig Manager und Administration.';
+$string['guide_summary'] = 'Welche KI-Ausgaben die Website nachweist und ob sie nach Art. 50 gekennzeichnet hinausgingen.';
+$string['guide_title'] = 'KI-Transparenz: der Herkunftsbericht';
 $string['pluginname'] = 'KI-Transparenz';
 $string['privacy:metadata:local_aitransparency_file'] = 'Verknüpft einen Provenance-Datensatz mit einer gespeicherten Datei, damit die Kennzeichnung Kopieren, Verschieben und Backup übersteht. Enthält keine personenbezogene Kennung.';
 $string['privacy:metadata:local_aitransparency_file:filecontenthash'] = 'Der Content-Hash der gekennzeichneten Datei.';
@@ -39,6 +52,12 @@ $string['privacy:metadata:local_aitransparency_rec:timecreated'] = 'Zeitpunkt de
 $string['privacy:metadata:local_aitransparency_rec:userid'] = 'Die Nutzerin oder der Nutzer, die/der die Erzeugung ausgelöst hat.';
 $string['setting_retentiondays'] = 'Aufbewahrung der Nutzerverknüpfung (Tage)';
 $string['setting_retentiondays_desc'] = 'Anzahl der Tage, nach denen die auslösende Person auf einem Provenance-Datensatz anonymisiert wird. Der Datensatz selbst bleibt als Compliance-Nachweis erhalten. 0 behält die Nutzerverknüpfung unbegrenzt.';
+$string['suite_feature_desc'] = 'Alle KI-Ausgaben, die die Website nachweist, mit ihrer Kennzeichnung nach Art. 50 — und die, die ohne hinausgingen.';
+$string['suite_feature_detail'] = 'Der Herkunftsbericht listet jede KI-erzeugte Ausgabe, für die diese Website einen Herkunftsnachweis angelegt hat: welches Plugin sie erzeugt hat, mit welchem Dienst und Modell, und ob sie ihre maschinenlesbare Kennzeichnung nach Art. 50 der KI-Verordnung trug. Ein Nachweis ohne Kennzeichnung wird als solcher gezeigt — Lücken werden sichtbar, statt still zu bleiben.';
+$string['suite_feature_key_1'] = 'Alle Herkunftsnachweise der Website, die neuesten zuerst.';
+$string['suite_feature_key_2'] = 'Ausgaben ohne Kennzeichnung nach Art. 50 fallen auf.';
+$string['suite_feature_key_3'] = 'Jeder Nachweis lässt sich einzeln über seine Kennung prüfen.';
+$string['suite_feature_name'] = 'KI-Transparenz';
 $string['task_anonymise_records'] = 'Nutzerverknüpfung abgelaufener KI-Provenance-Datensätze anonymisieren';
 $string['assettype_file'] = 'Datei';
 $string['assettype_image'] = 'Bild';

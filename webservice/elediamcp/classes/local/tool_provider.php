@@ -55,6 +55,7 @@ class tool_provider {
      */
     private const FREE_AI_TOOLS = [
         'moodle_search_courses',
+        'moodle_list_course_categories',
         'moodle_search_content',
         'moodle_create_user',
         'moodle_me',

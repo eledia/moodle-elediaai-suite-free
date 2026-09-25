@@ -63,7 +63,8 @@ $PAGE->set_heading('');
 
 $PAGE->requires->css('/local/elediaai_core/styles.css');
 
-$features = registry::visible();
+// Mit den gesperrten Premium-Kacheln (#29); alle anderen Leser fragen visible().
+$features = registry::launcher();
 
 $actions = plugin_shell::action_slots(
     'local_elediaai_core',

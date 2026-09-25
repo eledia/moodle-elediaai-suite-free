@@ -128,6 +128,33 @@ final class feature_grid_test extends advanced_testcase {
     }
 
     /**
+     * Eine nicht lizenzierte Premium-Kachel ist gesperrt und fuehrt ins Handbuch (#29).
+     */
+    public function test_an_unlicensed_card_is_locked_and_says_so(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $gesperrt = new descriptor(
+            id: 'lockedfortest',
+            component: 'local_elediaai_core',
+            name: 'Premium thing',
+            description: 'Costs extra.',
+            launchurl: new moodle_url('/local/elediaai_core/somewhere.php'),
+            icon: 'award',
+            kind: descriptor::KIND_PAGE,
+            tier: \local_elediaai_core\feature\tier::PREMIUM,
+        );
+
+        $html = feature_grid::render([$gesperrt->id => $gesperrt]);
+
+        preg_match_all('~<div class="lh-plugin-card__kicker[^"]*">([^<]*)</div>~', $html, $treffer);
+        $this->assertSame([get_string('feature_status_locked', 'local_elediaai_core')], $treffer[1]);
+        $this->assertStringContainsString('lh-plugin-card--locked', $html);
+        $this->assertStringContainsString(s(get_string('feature_locked_hint', 'local_elediaai_core')), $html);
+        $this->assertStringNotContainsString('somewhere.php', $html, 'A locked tile must not lead into the feature.');
+    }
+
+    /**
      * Jede Kachel sagt, woran man ist.
      *
      * Frueher pruefte das ein Behat-Szenario auf der Erklaerseite. Das ging

@@ -5,6 +5,23 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.1] – 2026-09-25
+### Added
+- `moodle_list_course_categories` (read, free): the categories the user may
+  create courses in, with id and path, so a named category becomes a
+  `category_id` (#33).
+### Fixed
+- `moodle_create_course` no longer falls back blindly to the default
+  category. Without `category_id` it takes the only category the user may
+  create in, else the default if allowed, else it asks with the allowed
+  categories by name (#33).
+- A course creator is enrolled in the course they just created, like the
+  course form does (`$CFG->creatornewroleid`); before, the course was
+  unreachable for them (#34).
+- A missing capability is reported as such, not as "internal tool error,
+  try again later", and every failed tool call records an `errorcode` in
+  `local_elediaai_core_action` (#33).
+
 ## [1.7.0] – 2026-08-06
 ### Added
 - MCP prompts/list and prompts/get with five built-in Suite workflow prompts.

@@ -229,6 +229,7 @@ $string['activities_bulk_saved'] = 'Selection saved for {$a} activities.';
 $string['activities_status_indexed'] = 'Indexed';
 $string['activities_status_error'] = 'Error';
 $string['activities_status_unknown'] = 'Unknown';
+$string['activities_status_empty'] = 'Nothing to index';
 
 // Dry run.
 $string['preview_title'] = 'Dry run';

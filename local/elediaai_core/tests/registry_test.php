@@ -970,4 +970,66 @@ final class registry_test extends advanced_testcase {
         $this->assertSame($installurl, $descriptor->installurl);
         $this->assertTrue($descriptor->comingsoon);
     }
+
+    /**
+     * Put exactly these descriptors into the registry.
+     *
+     * @param descriptor ...$descriptors The descriptors.
+     * @return void
+     */
+    private function only(descriptor ...$descriptors): void {
+        $property = new \ReflectionProperty(registry::class, 'descriptors');
+        $property->setAccessible(true);
+        $byid = [];
+        foreach ($descriptors as $descriptor) {
+            $byid[$descriptor->id] = $descriptor;
+        }
+        $property->setValue(null, $byid);
+    }
+
+    /**
+     * Placeholders for features that are not installed stay off customer systems (#31).
+     */
+    public function test_placeholders_are_hidden_unless_switched_on(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $this->only(new descriptor(
+            id: 'coursegen',
+            component: 'local_elediaai_core',
+            name: 'Course author',
+            description: 'Install it.',
+            launchurl: null,
+            icon: 'book',
+            comingsoon: true,
+            installrequired: true,
+        ));
+
+        $this->assertArrayNotHasKey('coursegen', registry::visible());
+        $this->assertArrayNotHasKey('coursegen', registry::launcher());
+
+        set_config('showplaceholders', 1, 'local_elediaai_core');
+        $this->assertArrayHasKey('coursegen', registry::visible());
+    }
+
+    /**
+     * An installed premium feature outside the licence stays on the launcher, locked (#29).
+     */
+    public function test_an_unlicensed_premium_feature_is_locked_not_gone(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $locked = new descriptor(
+            id: 'lockedfortest',
+            component: 'local_elediaai_core',
+            name: 'Premium thing',
+            description: 'Costs extra.',
+            launchurl: new \moodle_url('/local/elediaai_core/index.php'),
+            icon: 'award',
+            tier: tier::PREMIUM,
+        );
+        $this->only($locked);
+
+        $this->assertTrue(registry::is_locked($locked));
+        $this->assertArrayNotHasKey('lockedfortest', registry::visible(), 'Nobody may use it.');
+        $this->assertArrayHasKey('lockedfortest', registry::launcher(), 'Everybody who could may see it.');
+    }
 }

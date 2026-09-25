@@ -430,6 +430,52 @@ final class course_state_test extends \advanced_testcase {
     }
 
     /**
+     * A selected module that never got an attempt is caught up (#32).
+     *
+     * The course counts as finished (`pending = 0`), yet one of its modules
+     * has no state at all -- the event never arrived. Before, neither the
+     * scheduled reconcile nor a targeted one touched the course again.
+     */
+    public function test_a_module_without_state_is_caught_up(): void {
+        $cat = $this->getDataGenerator()->create_category();
+        $course = $this->getDataGenerator()->create_course(['category' => $cat->id]);
+        set_config('enabledcategories', (string) $cat->id, 'local_elediaai_sources');
+        course_state::set_ingested((int) $course->id, true, false);
+        $page = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+
+        $this->assertSame([(int) $course->id], course_state::courses_with_unattempted_modules());
+        $this->assertSame(1, course_state::queue_divergent_reconciles());
+        $this->assertSame('reindexed', course_state::reconcile((int) $course->id, $this->manager_with([])));
+
+        // Tried, nothing to send: recorded, and the course is left alone.
+        cm_state::record_empty((int) $course->id, (int) $page->cmid, 'src', 'nothing', sink\sink_manager::active_id());
+        $this->assertSame([], course_state::courses_with_unattempted_modules());
+        $this->assertSame(0, course_state::queue_divergent_reconciles());
+        $this->assertSame('noop', course_state::reconcile((int) $course->id, $this->manager_with([])));
+    }
+
+    /**
+     * In opt-in mode only selected modules count, and hidden ones never do.
+     */
+    public function test_only_selected_visible_modules_count_in_optin_mode(): void {
+        $cat = $this->getDataGenerator()->create_category();
+        $course = $this->getDataGenerator()->create_course(['category' => $cat->id]);
+        set_config('enabledcategories', (string) $cat->id, 'local_elediaai_sources');
+        set_config('activitydefault', activity_gate::MODE_OPTIN, 'local_elediaai_sources');
+        course_state::set_ingested((int) $course->id, true, false);
+        $page = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+        $hidden = $this->getDataGenerator()->create_module('page', ['course' => $course->id, 'visible' => 0]);
+
+        $this->assertSame([], course_state::courses_with_unattempted_modules());
+
+        activity_gate::set_included((int) $course->id, (int) $hidden->cmid, true);
+        $this->assertSame([], course_state::courses_with_unattempted_modules(), 'Hidden modules are not owed.');
+
+        activity_gate::set_included((int) $course->id, (int) $page->cmid, true);
+        $this->assertSame([(int) $course->id], course_state::courses_with_unattempted_modules((int) $course->id));
+    }
+
+    /**
      * The same course is offered to the bulk indexing action.
      */
     public function test_queue_pending_includes_partly_ingested_courses(): void {

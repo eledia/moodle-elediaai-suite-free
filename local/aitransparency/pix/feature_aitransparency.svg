@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224 70" class="eai-ill" focusable="false" aria-hidden="true">
+  <rect class="eai-ill__line" x="40" y="8" width="58" height="56" rx="4"/>
+  <path class="eai-ill__hair" d="M50 22h38M50 32h38M50 42h24"/>
+  <circle class="eai-ill__fill" cx="92" cy="56" r="10"/>
+  <path class="eai-ill__check" d="M87.5 56l3.2 3.2 5.8-6.4"/>
+  <path class="eai-ill__track" d="M112 36h26"/>
+  <rect class="eai-ill__hair" x="150" y="14" width="46" height="12" rx="3"/>
+  <rect class="eai-ill__hair" x="150" y="31" width="46" height="12" rx="3"/>
+  <rect class="eai-ill__hair" x="150" y="48" width="46" height="12" rx="3"/>
+  <circle class="eai-ill__line" cx="186" cy="20" r="3"/>
+  <circle class="eai-ill__line" cx="186" cy="37" r="3"/>
+  <circle class="eai-ill__fill" cx="186" cy="54" r="3"/>
+</svg>

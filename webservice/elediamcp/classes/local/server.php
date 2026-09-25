@@ -869,24 +869,34 @@ class server extends webservice_base_server {
         $arguments = is_array($this->parameters) ? $this->parameters : [];
         $start = microtime(true);
         $iserror = false;
+        $errorcode = null;
 
         try {
             $output = $class::execute($arguments, $USER);
             $this->emit_tool_result($output, false);
         } catch (tool_exception $ex) {
             $iserror = true;
+            $errorcode = (string) ($ex->get_context()['errorcode'] ?? 'toolerror');
             $this->emit_tool_result([
                 'error' => $ex->getMessage(),
                 'context' => $ex->get_context(),
             ], true, $ex->getMessage());
+        } catch (\core\exception\required_capability_exception $ex) {
+            // A missing permission is not an outage. Saying "internal error,
+            // try again later" made people repeat the same failing call (#33).
+            $iserror = true;
+            $errorcode = (string) $ex->errorcode;
+            $message = $ex->getMessage() . ' This is a missing permission, not a fault: do not retry the same call.';
+            $this->emit_tool_result(['error' => $message], true, $message);
         } catch (\Throwable $ex) {
             $iserror = true;
+            $errorcode = $ex instanceof moodle_exception ? (string) $ex->errorcode : 'internal';
             $this->log_throwable_for_debug($ex);
             $this->emit_tool_result([
                 'error' => get_string('err_internal_tool_error', 'webservice_elediamcp'),
             ], true, get_string('err_internal_tool_error', 'webservice_elediamcp'));
         } finally {
-            $this->record_tool_invocation($name, $iserror, $start, true, $arguments);
+            $this->record_tool_invocation($name, $iserror, $start, true, $arguments, $errorcode);
         }
     }
 
@@ -916,7 +926,7 @@ class server extends webservice_base_server {
             }
         } catch (Exception $ex) {
             $this->emit_tool_result(['error' => $ex->getMessage()], true, $ex->getMessage());
-            $this->record_tool_invocation($name, true, $start, false);
+            $this->record_tool_invocation($name, true, $start, false, [], 'invalidresponse');
             return;
         }
 
@@ -947,7 +957,8 @@ class server extends webservice_base_server {
                 $message = $ex->getMessage();
             }
             $this->emit_tool_result(['error' => $message], true, $message);
-            $this->record_tool_invocation($name, true, microtime(true), false);
+            $errorcode = $ex instanceof moodle_exception ? (string) $ex->errorcode : 'internal';
+            $this->record_tool_invocation($name, true, microtime(true), false, [], $errorcode);
             return;
         }
 
@@ -1127,6 +1138,8 @@ class server extends webservice_base_server {
      * @param bool $iserror Whether the call ended in error.
      * @param float $start Timing start (microtime(true)).
      * @param bool $aitool Whether this was an AI-native tool.
+     * @param array $arguments Tool arguments, to place the action.
+     * @param string|null $errorcode Why it failed, for the action log.
      * @return void
      */
     protected function record_tool_invocation(
@@ -1134,7 +1147,8 @@ class server extends webservice_base_server {
         bool $iserror,
         float $start,
         bool $aitool,
-        array $arguments = []
+        array $arguments = [],
+        ?string $errorcode = null
     ): void {
         try {
             $durationms = (int) round((microtime(true) - $start) * 1000);
@@ -1183,6 +1197,7 @@ class server extends webservice_base_server {
                     'durationms' => $durationms,
                     'contextid' => $contextid,
                     'courseid' => $courseid,
+                    'errorcode' => $iserror ? ($errorcode ?? 'unknown') : null,
                 ]);
             }
         } catch (Exception $ex) {

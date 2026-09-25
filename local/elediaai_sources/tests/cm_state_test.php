@@ -118,6 +118,22 @@ final class cm_state_test extends \advanced_testcase {
     }
 
     /**
+     * "Nothing to send" never overwrites a row that says the index holds content.
+     */
+    public function test_record_empty_keeps_index_truth(): void {
+        $this->resetAfterTest();
+
+        cm_state::record_empty(7, 101, 'sid', 'no content', 'recording');
+        $this->assertSame(cm_state::STATUS_EMPTY, cm_state::get(101)->laststatus);
+        $this->assertFalse(cm_state::may_hold_documents(101));
+
+        cm_state::record_success(7, 100, 'sid', 'hash-a', 'recording');
+        cm_state::record_empty(7, 100, 'sid', 'no content', 'recording');
+        $this->assertSame(cm_state::STATUS_SUCCESS, cm_state::get(100)->laststatus);
+        $this->assertTrue(cm_state::may_hold_documents(100));
+    }
+
+    /**
      * An error without prior success records an empty hash.
      */
     public function test_record_error_without_prior_success(): void {

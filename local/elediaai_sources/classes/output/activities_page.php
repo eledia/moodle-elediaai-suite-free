@@ -174,6 +174,15 @@ class activities_page implements renderable, templatable {
             ];
         }
 
+        if ($state->laststatus === cm_state::STATUS_EMPTY) {
+            return [
+                'status' => 'empty',
+                'statuslabel' => get_string('activities_status_empty', 'local_elediaai_sources'),
+                'statusclass' => 'badge-secondary bg-secondary',
+                'statustitle' => (string) ($state->lasterror ?? ''),
+            ];
+        }
+
         if ($state->laststatus === cm_state::STATUS_SUCCESS) {
             return [
                 'status' => 'indexed',

@@ -23,6 +23,7 @@ use webservice_elediamcp\local\ai\tools\moodle_create_course;
 use webservice_elediamcp\local\ai\tools\moodle_create_user;
 use webservice_elediamcp\local\ai\tools\moodle_due_work;
 use webservice_elediamcp\local\ai\tools\moodle_enrol_user;
+use webservice_elediamcp\local\ai\tools\moodle_list_course_categories;
 use webservice_elediamcp\local\ai\tools\moodle_grading_queue;
 use webservice_elediamcp\local\ai\tools\moodle_me;
 use webservice_elediamcp\local\ai\tools\moodle_unanswered_forum_posts;
@@ -351,6 +352,59 @@ final class ai_tools_test extends advanced_testcase {
         $this->assertSame('MCP-CREATED', $created['course']['shortname']);
         $this->assertSame((int) $category->id, $created['course']['category_id']);
         $this->assertTrue($DB->record_exists('course', ['shortname' => 'MCP-CREATED']));
+    }
+
+    /**
+     * A course creator of one category: no id needed, and they get into the course (#33, #34).
+     */
+    public function test_moodle_create_course_for_a_category_creator(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+        $category = $this->getDataGenerator()->create_category(['name' => 'FFHS']);
+        $user = $this->getDataGenerator()->create_user();
+        $roleid = (int) $DB->get_field('role', 'id', ['shortname' => 'coursecreator']);
+        role_assign($roleid, $user->id, \core\context\coursecat::instance((int) $category->id)->id);
+        $this->setUser($user);
+
+        $listed = moodle_list_course_categories::execute([], $user);
+        $this->assertSame([['id' => (int) $category->id, 'name' => 'FFHS']], $listed['categories']);
+
+        $created = moodle_create_course::execute([
+            'fullname' => 'Testkurs Kursautor A',
+            'shortname' => 'KA-A',
+            'confirm' => true,
+        ], $user);
+
+        $this->assertSame((int) $category->id, $created['course']['category_id']);
+        $context = \core\context\course::instance($created['course']['id']);
+        $this->assertTrue(is_enrolled($context, $user));
+        $this->assertTrue(has_capability('moodle/course:update', $context, $user));
+    }
+
+    /**
+     * Several categories and none named: the tool asks, naming them (#33).
+     */
+    public function test_moodle_create_course_asks_for_the_category(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+        $a = $this->getDataGenerator()->create_category(['name' => 'FFHS']);
+        $b = $this->getDataGenerator()->create_category(['name' => 'Confidos']);
+        $user = $this->getDataGenerator()->create_user();
+        $roleid = (int) $DB->get_field('role', 'id', ['shortname' => 'coursecreator']);
+        foreach ([$a, $b] as $category) {
+            role_assign($roleid, $user->id, \core\context\coursecat::instance((int) $category->id)->id);
+        }
+        $this->setUser($user);
+
+        try {
+            moodle_create_course::execute(['fullname' => 'X', 'shortname' => 'X', 'confirm' => true], $user);
+            $this->fail('Expected a question about the category.');
+        } catch (tool_exception $ex) {
+            $this->assertSame('categoryrequired', $ex->get_context()['errorcode']);
+            $this->assertStringContainsString('"FFHS" (id ' . $a->id . ')', $ex->getMessage());
+            $this->assertStringContainsString('"Confidos" (id ' . $b->id . ')', $ex->getMessage());
+        }
+        $this->assertFalse($DB->record_exists('course', ['shortname' => 'X']));
     }
 
     /**

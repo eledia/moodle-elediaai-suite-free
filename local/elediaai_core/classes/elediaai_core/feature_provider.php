@@ -73,14 +73,18 @@ final class feature_provider implements feature_provider_contract {
                 kind: descriptor::KIND_PAGE,
                 component: 'local_elediaai_core',
                 name: get_string('feature_coursegen_name', 'local_elediaai_core'),
-                description: get_string('feature_coursegen_desc', 'local_elediaai_core'),
+                // The course author exists (local_elediaai_coursegen); when it
+                // is missing here it is installable, not "coming soon" (#31).
+                description: get_string('feature_coursegen_install_desc', 'local_elediaai_core'),
                 launchurl: null,
                 icon: 'book',
                 audience: registry::AUDIENCE_DESIGNER,
                 imagename: 'feature_coursegen',
-                capability: null,
+                capability: 'moodle/site:config',
                 configurl: null,
                 comingsoon: true,
+                installrequired: true,
+                installurl: new moodle_url('/admin/tool/installaddon/index.php'),
                 detaildescription: get_string('feature_coursegen_detail', 'local_elediaai_core'),
                 keyfeatures: [
                     get_string('feature_coursegen_key_1', 'local_elediaai_core'),

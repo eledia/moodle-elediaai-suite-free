@@ -279,8 +279,9 @@ class course_state {
         }
 
         // Finished for this target — nothing left to do, whether or not the
-        // course actually put anything in the index.
-        if (self::is_reconciled($courseid)) {
+        // course actually put anything in the index. Unless a selected module
+        // never got an attempt: the course flag cannot know about those (#32).
+        if (self::is_reconciled($courseid) && self::courses_with_unattempted_modules($courseid) === []) {
             return 'noop';
         }
 
@@ -306,6 +307,57 @@ class course_state {
             return 'reindex_failed';
         }
         return 'reindexed';
+    }
+
+    /**
+     * Courses with a selected, visible module that has no state for the active destination.
+     *
+     * `pending` on the course is only ever set by a retryable error. A module
+     * whose first attempt never happened -- the event did not arrive, the task
+     * died without a trace -- leaves no error and so no trace at all, and the
+     * course counted as finished for good (#32, three modules of course 27 on
+     * the sandbox). Here those modules are found directly: selected by the
+     * activity gate, visible to learners, not being deleted, and without a
+     * row. Modules that were tried and had nothing to send have an "empty"
+     * row and are not counted, or a course would be queued on every run.
+     *
+     * Whether a course is marked for ingestion is not asked here; callers do.
+     *
+     * @param int|null $courseid Limit to one course, or null for the site.
+     * @return int[] Course ids.
+     */
+    public static function courses_with_unattempted_modules(?int $courseid = null): array {
+        global $DB;
+
+        $sink = sink_manager::active();
+        if (!$sink->is_configured()) {
+            return [];
+        }
+
+        // Opt-in: only explicit inclusions. Opt-out: everything not explicitly excluded.
+        $selected = activity_gate::mode() === activity_gate::MODE_OPTIN
+            ? 'd.included = 1'
+            : '(d.id IS NULL OR d.included = 1)';
+        $params = ['sink' => $sink::id()];
+        $coursefilter = '';
+        if ($courseid !== null) {
+            $coursefilter = 'AND cm.course = :courseid';
+            $params['courseid'] = $courseid;
+        }
+
+        $sql = "SELECT DISTINCT cm.course
+                  FROM {course_modules} cm
+                  JOIN {course_sections} cs ON cs.id = cm.section
+             LEFT JOIN {local_elediaai_sources_cm} d ON d.cmid = cm.id
+             LEFT JOIN {local_elediaai_sources_cmstate} s ON s.cmid = cm.id AND s.sink = :sink
+                 WHERE cm.deletioninprogress = 0
+                   AND cm.visible = 1
+                   AND cs.visible = 1
+                   AND {$selected}
+                   AND s.id IS NULL
+                   {$coursefilter}";
+
+        return array_map('intval', $DB->get_fieldset_sql($sql, $params));
     }
 
     /**
@@ -474,13 +526,15 @@ class course_state {
         }
 
         $queued = 0;
+        // One query for the whole site, not one per course.
+        $unattempted = array_flip(self::courses_with_unattempted_modules());
         $courses = $DB->get_recordset('course', null, 'id', 'id');
         foreach ($courses as $course) {
             $courseid = (int) $course->id;
             // Mirror what reconcile() would decide, so no task is queued for a
             // course that would immediately return 'noop'.
             if (course_gate::should_ingest($courseid)) {
-                if (self::is_reconciled($courseid)) {
+                if (self::is_reconciled($courseid) && !isset($unattempted[$courseid])) {
                     continue;
                 }
             } else if (!self::has_state($courseid)) {

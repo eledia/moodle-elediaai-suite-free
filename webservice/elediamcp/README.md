@@ -291,6 +291,7 @@ require an explicit two-step confirmation.
 | `moodle_find_user` | read | Resolves a free-text name fragment to messageable users (respects messaging privacy rules). |
 | `moodle_my_courses` | read | Lists the user's enrolled courses with progress classification and search. |
 | `moodle_search_courses` | read | Searches the visible course catalogue (respects course/category visibility). |
+| `moodle_list_course_categories` | read | Lists the course categories the user may create courses in, with id and path, so a named category can be turned into a `category_id`. |
 | `moodle_course_contents` | read | Lists sections and visible activities of a course the user may access. |
 | `moodle_get_resource` | read | Returns the readable body of a page/book chapter/label/URL/resource by `cmid`. |
 | `moodle_search_content` | read | Full-text search across accessible content via global search (graceful fallback to activity names/descriptions when disabled). |

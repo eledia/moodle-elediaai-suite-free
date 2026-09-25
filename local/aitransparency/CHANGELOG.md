@@ -4,6 +4,22 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.0.2] – 2026-09-25
+### Neu
+- **Handbuchkapitel „KI-Transparenz: der Herkunftsbericht"** (Abschnitt
+  Vertrauen, für die Administration). Jede Kachel ohne eigene Seite führt ins
+  Handbuch, und der Wegweiser prüft, dass keine stumm ist — mit der Kachel aus
+  #30 fehlte das Kapitel.
+
+## [1.0.1] – 2026-09-25
+### Neu
+- **Kachel im Launcher der KI-Suite** (#30). Das Plugin meldete keinen
+  `feature_provider` an und fehlte darum unter `/local/elediaai_core/index.php`
+  — auf einem Kundensystem sah das aus wie „nicht installiert". Die Kachel
+  führt zum Herkunftsbericht und hängt an dessen eigener Berechtigung
+  `local/aitransparency:viewreport` (Manager, Administration), damit Launcher
+  und Bericht dieselbe Antwort geben.
+
 ## [0.3.0] – 2026-09-19
 ### Neu
 - **Der Nachweis kennt den Turn, aus dem er stammt** (`turnid`). Schicht C

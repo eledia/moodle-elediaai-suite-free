@@ -150,6 +150,21 @@ if ($hassiteconfig) {
         ));
     }
 
+    // Vorgabe 0: ein Kundensystem soll keine Werkzeuge ankuendigen, die es
+    // nicht hat und nicht bestellt hat (#31). Demo- und Vertriebsinstanzen
+    // schalten die Vorschau ein.
+    $settings->add(new admin_setting_heading(
+        'local_elediaai_core/launcher_heading',
+        get_string('launcher_heading', 'local_elediaai_core'),
+        ''
+    ));
+    $settings->add(new admin_setting_configcheckbox(
+        'local_elediaai_core/showplaceholders',
+        get_string('showplaceholders', 'local_elediaai_core'),
+        get_string('showplaceholders_desc', 'local_elediaai_core'),
+        0
+    ));
+
     $settings->add(new admin_setting_heading(
         'local_elediaai_core/developerdocs_heading',
         get_string('developerdocs_heading', 'local_elediaai_core'),

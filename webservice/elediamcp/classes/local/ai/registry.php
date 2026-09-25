@@ -34,6 +34,7 @@ use webservice_elediamcp\local\ai\tools\moodle_grading_queue;
 use webservice_elediamcp\local\ai\tools\moodle_get_announcements;
 use webservice_elediamcp\local\ai\tools\moodle_get_resource;
 use webservice_elediamcp\local\ai\tools\moodle_grade_submission;
+use webservice_elediamcp\local\ai\tools\moodle_list_course_categories;
 use webservice_elediamcp\local\ai\tools\moodle_manage_sections;
 use webservice_elediamcp\local\ai\tools\moodle_me;
 use webservice_elediamcp\local\ai\tools\moodle_message_course_students;
@@ -101,6 +102,7 @@ class registry {
             // Course discovery & contents.
             moodle_my_courses::class,
             moodle_search_courses::class,
+            moodle_list_course_categories::class,
             moodle_course_contents::class,
             moodle_get_resource::class,
             moodle_search_content::class,

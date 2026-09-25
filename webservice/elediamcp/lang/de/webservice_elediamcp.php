@@ -265,7 +265,7 @@ Identität und Kontext: Rufen Sie zuerst moodle_me auf, um die Identität zu bes
 
 Personensuche: moodle_find_user löst ein freies Namensfragment (z. B. "erika") in eine Liste von Moodle-Nutzer/innen mit konkreten IDs auf, die per Mitteilung erreichbar sind. Verwenden Sie moodle_find_user VOR moodle_send_message, wenn Sie die genaue Nutzer-ID des Empfängers nicht bereits kennen.
 
-Kurssuche: moodle_my_courses listet eingeschriebene Kurse; moodle_search_courses durchsucht den öffentlichen Katalog; moodle_course_contents listet Abschnitte und Aktivitäten eines Kurses auf; moodle_get_resource liefert den Inhalt einer Textseite, eines Buchkapitels, eines Textfelds, eines Links oder einer Datei anhand der cmid.
+Kurssuche: moodle_my_courses listet eingeschriebene Kurse; moodle_search_courses durchsucht den öffentlichen Katalog; moodle_list_course_categories listet die Kursbereiche, in denen die Person Kurse anlegen darf (damit wird ein genannter Bereich zur category_id für moodle_create_course); moodle_course_contents listet Abschnitte und Aktivitäten eines Kurses auf; moodle_get_resource liefert den Inhalt einer Textseite, eines Buchkapitels, eines Textfelds, eines Links oder einer Datei anhand der cmid.
 
 Feeds und Fortschritt: moodle_get_announcements für die neuesten Beiträge im Ankündigungsforum; moodle_calendar_upcoming für Termine; moodle_my_assignments für den Abgabestatus; moodle_my_grades für die Kursgesamtbewertung (oder je Element mit include_items + course_id).
 

@@ -775,7 +775,11 @@ class feature_grid {
         bool $hidden = false
     ): string {
         $cardclasses = 'lh-plugin-card lh-ai-suite-card';
-        if ($feature->comingsoon || $feature->installrequired) {
+        // Installed, but not part of the licence (#29): shown, dimmed like a
+        // placeholder, and leading to the handbook instead of into a page
+        // that would turn the visitor away.
+        $locked = registry::is_locked($feature);
+        if ($feature->comingsoon || $feature->installrequired || $locked) {
             $cardclasses .= ' lh-plugin-card--locked';
         }
 
@@ -786,6 +790,9 @@ class feature_grid {
         $primaryurl = $feature->installrequired && $feature->installurl !== null
             ? $feature->installurl
             : ($feature->launchurl ?? self::handbook_url($feature->component));
+        if ($locked) {
+            $primaryurl = self::handbook_url($feature->component);
+        }
 
         $card = html_writer::start_tag('article', [
             'class' => $cardclasses,
@@ -816,7 +823,9 @@ class feature_grid {
         // "Installierbar" und "In Vorbereitung" bleiben: die stehen auf
         // wenigen Kacheln und genau das ist ihr Wert.
         $kicker = null;
-        if ($feature->installrequired) {
+        if ($locked) {
+            $kicker = get_string('feature_status_locked', 'local_elediaai_core');
+        } else if ($feature->installrequired) {
             $kicker = get_string('feature_status_install', 'local_elediaai_core');
         } else if ($feature->comingsoon) {
             $kicker = get_string('feature_status_coming', 'local_elediaai_core');
@@ -849,6 +858,13 @@ class feature_grid {
         $card .= html_writer::end_tag('div');
 
         $card .= html_writer::tag('p', s($feature->description), ['class' => 'lh-plugin-card__body']);
+        if ($locked) {
+            $card .= html_writer::tag(
+                'p',
+                lucide_icon::render('lock') . html_writer::span(s(get_string('feature_locked_hint', 'local_elediaai_core'))),
+                ['class' => 'lh-ai-suite-card__where']
+            );
+        }
 
         // The answer on the card, not one click away: the question a course
         // capability raises is "where do I find this", and it is short enough

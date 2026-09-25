@@ -30,8 +30,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_aitransparency';
-$plugin->version   = 2026092301;
-$plugin->release   = '1.0.0';
+$plugin->version   = 2026092501;
+$plugin->release   = '1.0.2';
 $plugin->requires  = 2024100700; // Moodle 4.5+.
 $plugin->maturity  = MATURITY_STABLE;
 // Die Design-Token der Suite (--eai-*, --font-size-*) stehen in

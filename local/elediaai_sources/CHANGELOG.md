@@ -7,6 +7,25 @@ Format angelehnt an Keep a Changelog.
 Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 `local_ragingest` erschienen und nennen ihn deshalb weiterhin.
 
+## [1.0.1] – 2026-09-25
+
+### Behoben
+
+- **Nie indizierte Aktivitäten wurden vom Abgleich nie nachgeholt** (#32).
+  Der Abgleich fragte nur den Kurs-Merker `pending`, und den setzt allein ein
+  wiederholbarer Fehler. Eine ausgewählte, sichtbare Aktivität, die nie einen
+  Versuch bekam, hinterließ keine Spur — der Kurs galt für immer als fertig
+  (Kurs 27 auf der Sandbox: drei Einträge). Jetzt gilt ein Kurs erst als
+  abgeglichen, wenn jede ausgewählte sichtbare Aktivität einen Stand für das
+  aktive Ziel hat; der geplante und der gezielte Abgleich holen fehlende nach.
+- Damit „versucht, nichts zu senden" (kein Extraktor, leerer Inhalt, nur nicht
+  sendbare Dateien) nicht als „nie versucht" gilt, wird es als eigener Stand
+  `empty` festgehalten und in der Aktivitätenliste als „Nichts zu indizieren"
+  gezeigt. Ein bestehender Erfolg wird davon nie überschrieben.
+- Nach dem Update gleicht der Abgleich jeden freigegebenen Kurs mit solchen
+  Aktivitäten einmal ab; unveränderte Inhalte werden dabei nicht erneut
+  gesendet.
+
 ## [0.28.0] – 2026-09-20
 
 ### Geändert

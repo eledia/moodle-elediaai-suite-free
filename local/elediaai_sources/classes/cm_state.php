@@ -50,6 +50,15 @@ class cm_state {
     public const STATUS_ERROR = 'error';
 
     /**
+     * @var string Worked through, nothing to send: no extractor, empty content, or only files that may not go.
+     *
+     * Holds nothing in the index. It exists so "tried, nothing there" can be
+     * told from "never tried" -- a row missing for an included module is
+     * what the reconcile catches up on (#32).
+     */
+    public const STATUS_EMPTY = 'empty';
+
+    /**
      * @var int Consecutive failures after which a module is left alone.
      *
      * The reconcile runs every quarter of an hour. Without a limit, a document
@@ -211,6 +220,57 @@ class cm_state {
             'attempts' => 1,
             'timeingested' => 0,
         ]);
+    }
+
+    /**
+     * Record that the module had nothing to send.
+     *
+     * A row that says the index holds the module's content is left as it is:
+     * a module that became empty was not removed from the index before, and
+     * the state has to keep describing what is there.
+     *
+     * @param int $courseid The course id.
+     * @param int $cmid The course module id.
+     * @param string $sourceid The module-level source id.
+     * @param string $reason Why there was nothing to send.
+     * @param string $sinkid The destination that was attempted.
+     * @return void
+     */
+    public static function record_empty(
+        int $courseid,
+        int $cmid,
+        string $sourceid,
+        string $reason,
+        string $sinkid
+    ): void {
+        $existing = self::get($cmid);
+        if ($existing !== null && $existing->laststatus === self::STATUS_SUCCESS) {
+            return;
+        }
+
+        self::upsert($courseid, $cmid, [
+            'sink' => $sinkid,
+            'sourceid' => $sourceid,
+            'contenthash' => '',
+            'laststatus' => self::STATUS_EMPTY,
+            'lasterror' => $reason,
+            'attempts' => 0,
+            'timeingested' => 0,
+        ]);
+    }
+
+    /**
+     * Whether the index may hold documents of the module.
+     *
+     * A success certainly, an error possibly (a failed update leaves the
+     * previous content); an "empty" row never.
+     *
+     * @param int $cmid The course module id.
+     * @return bool
+     */
+    public static function may_hold_documents(int $cmid): bool {
+        $row = self::get($cmid);
+        return $row !== null && $row->laststatus !== self::STATUS_EMPTY;
     }
 
     /**

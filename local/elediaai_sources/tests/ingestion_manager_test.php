@@ -126,6 +126,12 @@ final class ingestion_manager_test extends \advanced_testcase {
         $this->assertNotNull($forumresult, 'Forum module should be skipped.');
         $this->assertFalse($forumresult['success']);
         $this->assertEquals('skipped', $forumresult['status']);
+        // Tried, nothing to send -- written down, so the reconcile does not
+        // mistake it for a module that never got an attempt (#32).
+        $state = cm_state::get((int) $forumresult['cmid']);
+        $this->assertNotNull($state);
+        $this->assertSame(cm_state::STATUS_EMPTY, $state->laststatus);
+        $this->assertFalse(cm_state::may_hold_documents((int) $forumresult['cmid']));
     }
 
     /**

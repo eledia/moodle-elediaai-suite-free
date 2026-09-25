@@ -18,8 +18,8 @@ declare(strict_types=1);
 
 namespace webservice_elediamcp\local\ai\tools;
 
-use context_coursecat;
 use core_course_category;
+use local_elediaai_core\local\course_creator;
 use moodle_url;
 use stdClass;
 use Throwable;
@@ -63,7 +63,9 @@ class moodle_create_course implements ai_tool {
             . 'local_elediaai_coursegen\'s moodle_generate_course instead -- and use it ALONE: it '
             . 'creates the course itself, so calling this tool first only leaves an empty second '
             . 'course behind. This tool makes the shell and nothing else. This is a write tool and '
-            . 'requires moodle/course:create in the target category. Two-step flow: first '
+            . 'requires moodle/course:create in the target category. To place the course in a '
+            . 'category the teacher names, look its id up with moodle_list_course_categories. '
+            . 'Two-step flow: first '
             . 'call returns a preview; call again with confirm=true to create. Shortname '
             . 'and optional idnumber must be unique.';
     }
@@ -93,7 +95,9 @@ class moodle_create_course implements ai_tool {
                 'category_id' => [
                     'type' => 'integer',
                     'minimum' => 1,
-                    'description' => 'Target category id. If omitted, the default category is used.',
+                    'description' => 'Target category id, from moodle_list_course_categories. If '
+                        . 'omitted: the only category the user may create courses in, else the site '
+                        . 'default if allowed there; if neither applies the tool asks which category.',
                 ],
                 'summary' => [
                     'type' => 'string',
@@ -209,12 +213,11 @@ class moodle_create_course implements ai_tool {
             throw new tool_exception('shortname is required.');
         }
 
-        $categoryid = isset($arguments['category_id'])
-            ? max(1, (int) $arguments['category_id'])
-            : (int) core_course_category::get_default()->id;
+        $categoryid = course_category_guard::resolve(
+            isset($arguments['category_id']) ? max(1, (int) $arguments['category_id']) : null,
+            (int) $user->id
+        );
         $category = core_course_category::get($categoryid, MUST_EXIST, true);
-        $categorycontext = context_coursecat::instance($categoryid);
-        require_capability('moodle/course:create', $categorycontext, $user->id);
 
         if ($DB->record_exists('course', ['shortname' => $shortname])) {
             throw new tool_exception('shortname is already in use.', ['shortname' => $shortname]);
@@ -268,6 +271,9 @@ class moodle_create_course implements ai_tool {
         } catch (Throwable $ex) {
             throw new tool_exception('Course creation failed: ' . $ex->getMessage(), $preview);
         }
+        // Like the course form: a creator who could not work in the new course
+        // otherwise is enrolled in it (#34).
+        course_creator::enrol_creator($course, (int) $user->id);
 
         return [
             'created' => true,

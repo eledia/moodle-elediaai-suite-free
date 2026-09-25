@@ -229,6 +229,7 @@ $string['activities_bulk_saved'] = 'Auswahl für {$a} Aktivitäten gespeichert.'
 $string['activities_status_indexed'] = 'Indexiert';
 $string['activities_status_error'] = 'Fehler';
 $string['activities_status_unknown'] = 'Unbekannt';
+$string['activities_status_empty'] = 'Nichts zu indizieren';
 
 // Dry run.
 $string['preview_title'] = 'Probelauf';

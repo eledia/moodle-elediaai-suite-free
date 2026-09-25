@@ -93,6 +93,7 @@ Der Workflow reicht nur noch Event, Input und die geaenderten Dateien durch;
 | `classes/local/audit_config.php` | Liest alle audit-bezogenen Plugin-Settings an einer Stelle. |
 | `classes/local/audit_page.php` | Geteilte Rendering-Helper fuer die Audit-Seiten (CSS, Metriken, Panels, Aggregate). |
 | `classes/local/stale_marker.php` | Gemeinsamer Stale/Regenerate-Fingerprint-Helper (Hash + Vergleich). |
+| `classes/local/course_creator.php` | Was jeder Suite-Weg rund um `create_course()` tun muss, wie `course/edit.php`: `creatable_categories()`, `resolve_category()` (einziger erlaubter Bereich, sonst Standardbereich wenn erlaubt, sonst `null` = nachfragen) und `enrol_creator()` (`$CFG->creatornewroleid`). Genutzt von `moodle_create_course` und dem Kursautor (#33, #34, 25.09.2026). **Wer einen Kurs anlegt, geht hier durch** — `create_course()` allein laesst Kursersteller eines Bereichs ohne Zugang zum eigenen Kurs. |
 | `classes/local/quota_manager.php` | Per-User-Token-Quota als harte Kreditgrenze: atomare Reservierung, Verbuchung und Freigabe in Stunden-, Tages- und Monatsfenster. |
 | `classes/reportbuilder/local/entities/ai_action_audit.php` | Entity-Subclass von `core_ai`-`ai_action_register` mit Praesentationsspalten. |
 | `classes/reportbuilder/local/systemreports/audit.php` | Der auf `audit_technical.php` gemountete System-Report. |
@@ -847,6 +848,22 @@ den registrierten Descriptor.
 ## Launcher-Platzierung
 
 `hook_callbacks::inject_launcher()` lauscht auf `before_standard_top_of_body_html_generation` (Hook in `db/hooks.php`, Prioritaet `500`, also nach dem Haupt-Launcher mit `600`, damit die KI-Pille rechts davon sitzt). Die gerenderte Pille ist ein direkter Link auf `/local/elediaai_core/index.php`; einzelne Funktionen werden im Launcher bewusst nicht gerendert (`00-master.md` adr03). JS verschiebt das Host-Element neben die LernHive-Launcher-Pille, mit Fallback auf `.usermenu` bzw. den Navbar-Container.
+
+### Was die Uebersicht zeigt, wenn eine Funktion nicht nutzbar ist (#29, #31, 25.09.2026)
+
+`index.php` fragt `registry::launcher()`, alle anderen Leser weiter
+`registry::visible()`. Der Unterschied ist genau eine Klasse von Kacheln:
+
+| Fall | `visible()` | `launcher()` | Darstellung |
+| --- | --- | --- | --- |
+| Premium, installiert, **nicht lizenziert** (`registry::is_locked()`) | fehlt | da | gesperrt, „Nicht lizenziert", Link ins Handbuch statt in die Funktion |
+| Platzhalter fuer **nicht installierte** Funktion (`registry::is_placeholder()`: `comingsoon` oder `installrequired`) | nur mit `showplaceholders` | nur mit `showplaceholders` | „In Vorbereitung" / „Installierbar" |
+
+`local_elediaai_core/showplaceholders` steht per Vorgabe auf **aus**: ein
+Kundensystem kuendigt keine Werkzeuge an, die es nicht hat. Demo- und
+Vertriebsinstanzen schalten es ein. Wer eine nicht nutzbare Funktion *nutzen*
+will (Tutor-Kurzbefehle, Strategie-Matrix, Insights), fragt weiter
+`visible()` -- dort bleibt eine gesperrte Funktion unsichtbar.
 
 ## Feature-Textebenen
 

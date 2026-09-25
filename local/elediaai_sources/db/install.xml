@@ -45,9 +45,9 @@
         <FIELD NAME="sink" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Destination id the content was sent to."/>
         <FIELD NAME="sourceid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Module-level source id at ingest time; freezes the tenant so later deletes stay exact."/>
         <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="sha1 over the final document tuples; empty until a successful upsert."/>
-        <FIELD NAME="laststatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="success or error."/>
+        <FIELD NAME="laststatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="success, error, or empty (worked through, nothing to send)."/>
         <FIELD NAME="attempts" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Consecutive failed attempts. Reset by a success. Once it reaches the retry limit the module is skipped until a forced reindex, so one broken document cannot stall the course every reconcile run."/>
-        <FIELD NAME="lasterror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last error message, when laststatus is error."/>
+        <FIELD NAME="lasterror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last error message when laststatus is error; why there was nothing to send when it is empty."/>
         <FIELD NAME="timeingested" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When content last reached the index."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last row change."/>
       </FIELDS>

@@ -338,13 +338,71 @@ final class registry {
      * @return descriptor[] Keyed by descriptor id.
      */
     public static function visible(?\context $context = null): array {
+        return self::filter($context, false);
+    }
+
+    /**
+     * What the launcher shows: the visible features plus the locked ones.
+     *
+     * A premium feature this site is not licensed for used to vanish from
+     * the launcher. Nobody asks for what they cannot see, and on the
+     * Anwaltsinstitut's test system a switched-off grant was taken for a
+     * missing plugin (#29). The launcher keeps such a tile and draws it
+     * locked -- see {@see is_locked()}. Every other consumer keeps asking
+     * {@see visible()}, where a locked feature is still absent: it cannot be
+     * used, only seen.
+     *
+     * @param \context|null $context Context for the capability checks.
+     * @return descriptor[] Keyed by descriptor id.
+     */
+    public static function launcher(?\context $context = null): array {
+        return self::filter($context, true);
+    }
+
+    /**
+     * Whether the feature is installed but not part of this site's licence.
+     *
+     * @param descriptor $descriptor The feature.
+     * @return bool
+     */
+    public static function is_locked(descriptor $descriptor): bool {
+        return !policy::is_allowed($descriptor);
+    }
+
+    /**
+     * Whether the descriptor stands in for a feature that is not installed.
+     *
+     * The core announces such placeholders ("coming soon", "installable") so
+     * a demo shows the whole range. On a customer system they announce tools
+     * the customer neither has nor ordered (#31); they are only shown when
+     * `local_elediaai_core/showplaceholders` is on.
+     *
+     * @param descriptor $descriptor The feature.
+     * @return bool
+     */
+    public static function is_placeholder(descriptor $descriptor): bool {
+        return $descriptor->comingsoon || $descriptor->installrequired;
+    }
+
+    /**
+     * The shared filter behind {@see visible()} and {@see launcher()}.
+     *
+     * @param \context|null $context Context for the capability checks.
+     * @param bool $withlocked Keep premium features the licence does not cover.
+     * @return descriptor[] Keyed by descriptor id.
+     */
+    private static function filter(?\context $context, bool $withlocked): array {
         $context ??= \core\context\system::instance();
+        $showplaceholders = (bool) get_config('local_elediaai_core', 'showplaceholders');
         $out = [];
         foreach (self::all() as $descriptor) {
             if (!self::is_enabled($descriptor->id)) {
                 continue;
             }
-            if (!policy::is_allowed($descriptor)) {
+            if (!$showplaceholders && self::is_placeholder($descriptor)) {
+                continue;
+            }
+            if (!$withlocked && self::is_locked($descriptor)) {
                 continue;
             }
             // Das Audit hat eine eigene Zugangsregel, und sie hat das letzte

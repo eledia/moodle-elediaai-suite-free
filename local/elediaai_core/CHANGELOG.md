@@ -4,6 +4,27 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.0.2] – 2026-09-25
+### Geändert
+- **Nicht lizenzierte Premium-Funktionen bleiben in der Übersicht** (#29),
+  gesperrt gezeichnet mit „Nicht lizenziert" und einem Link ins Handbuch statt
+  in die Funktion. Vorher verschwand die Kachel, und eine abgeschaltete
+  Freigabe sah aus wie ein fehlendes Plugin. Neu: `registry::launcher()` und
+  `registry::is_locked()`; `registry::visible()` bleibt unverändert.
+- **Platzhalter für nicht installierte Funktionen sind per Vorgabe aus** (#31).
+  Neue Einstellung `showplaceholders` („Nicht installierte Funktionen als
+  Vorschau zeigen") für Demo- und Vertriebsinstanzen. Der Platzhalter des
+  Kursautors heißt nicht mehr „In Vorbereitung" — das Plugin existiert —,
+  sondern „Installierbar", und nur für die Administration.
+
+## [1.0.1] – 2026-09-25
+### Hinzugefügt
+- **`local\course_creator`**: Bereichswahl und Einschreibung des Erstellers
+  rund um `create_course()`, wie sie `course/edit.php` macht. Die MCP-Werkzeuge
+  und der Kursautor riefen `create_course()` allein auf; Kursersteller eines
+  Bereichs scheiterten am Standardbereich oder standen vor dem eigenen Kurs
+  ohne Zugang (#33, #34).
+
 ## [0.8.0] – 2026-09-19
 ### Hinzugefügt
 - **Der Reifegrad steht auf der Kachel.** Alles ist Beta außer Tutor, MCP,

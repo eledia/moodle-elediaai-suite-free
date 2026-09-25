@@ -303,7 +303,7 @@ class ingestion_manager {
         // as un-marking a course). Checked here rather than via uservisible,
         // because scheduled tasks run as a user who sees hidden modules.
         if (!self::visible_to_learners($cm)) {
-            $verdict = cm_state::get((int) $cm->id) !== null
+            $verdict = cm_state::may_hold_documents((int) $cm->id)
                 ? self::VERDICT_DELETE
                 : self::VERDICT_SKIP;
             return ['verdict' => $verdict, 'reason' => 'activityhidden'];
@@ -324,6 +324,32 @@ class ingestion_manager {
      * @return array Result array.
      */
     private function ingest_module_from_cm(\cm_info $cm, bool $force = false): array {
+        $result = $this->attempt_module($cm, $force);
+
+        // "Worked through, nothing to send" is written down, so the reconcile
+        // can tell it from "never tried" -- the second is what it has to catch
+        // up on (#32), the first it must leave alone or it would queue the
+        // course on every run.
+        if (!empty($result['nothingtosend'])) {
+            cm_state::record_empty(
+                (int) $cm->course,
+                (int) $cm->id,
+                source_id_helper::build($cm),
+                (string) ($result['message'] ?? ''),
+                $this->sink::id()
+            );
+        }
+        return $result;
+    }
+
+    /**
+     * One attempt at the module, without the bookkeeping for "nothing to send".
+     *
+     * @param \cm_info $cm The course module.
+     * @param bool $force Re-send even content the state records as unchanged.
+     * @return array Result array; 'nothingtosend' is set when the module has no sendable content.
+     */
+    private function attempt_module(\cm_info $cm, bool $force = false): array {
         $modulename = $cm->get_formatted_name();
 
         $verdict = $this->gate_verdict($cm);
@@ -344,6 +370,7 @@ class ingestion_manager {
                 'success' => false,
                 'status' => 'skipped',
                 'message' => get_string($verdict['reason'], 'local_elediaai_sources'),
+                'nothingtosend' => $verdict['reason'] === 'noextractor',
             ];
         }
 
@@ -399,6 +426,7 @@ class ingestion_manager {
                 'success' => false,
                 'status' => 'skipped',
                 'message' => $reason !== '' ? $reason : get_string('nocontent', 'local_elediaai_sources'),
+                'nothingtosend' => true,
             ];
         }
 
@@ -409,13 +437,14 @@ class ingestion_manager {
                 'success' => false,
                 'status' => 'skipped',
                 'message' => get_string('nocontent', 'local_elediaai_sources'),
+                'nothingtosend' => true,
             ];
         }
 
         $modulesourceid = source_id_helper::build($cm);
         $prepared = $this->prepare_document($cm, $document, $modulesourceid, $modulename);
         if (empty($prepared['ready'])) {
-            return $prepared['result'];
+            return $prepared['result'] + ['nothingtosend' => true];
         }
 
         $contenthash = cm_state::aggregate_hash([$prepared['hash']]);
@@ -517,6 +546,7 @@ class ingestion_manager {
                 'message' => empty($notices)
                     ? get_string('nocontent', 'local_elediaai_sources')
                     : self::notice_summary($notices),
+                'nothingtosend' => true,
             ];
         }
 
@@ -560,6 +590,7 @@ class ingestion_manager {
                 'message' => empty($notices)
                     ? get_string('nocontent', 'local_elediaai_sources')
                     : self::notice_summary($notices),
+                'nothingtosend' => true,
             ];
         }
 
@@ -1068,6 +1099,9 @@ class ingestion_manager {
         if ((string) $state->sink !== $activesinkid) {
             // Comparing hashes across destinations would be meaningless.
             return 'otherdestination';
+        }
+        if ($state->laststatus === cm_state::STATUS_EMPTY) {
+            return 'absent';
         }
         if ($state->laststatus !== cm_state::STATUS_SUCCESS) {
             return 'lastattemptfailed';
