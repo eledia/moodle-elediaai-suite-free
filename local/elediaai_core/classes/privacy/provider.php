@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\privacy;
 
-defined('MOODLE_INTERNAL') || die();
-
 use context;
 use core_privacy\local\metadata\collection;
 use core_privacy\local\request\approved_contextlist;
@@ -83,7 +81,10 @@ class provider implements
         $collection->add_database_table('local_elediaai_core_turn', [
             'askerkey' => 'privacy:metadata:local_elediaai_core_turn:askerkey',
             'component' => 'privacy:metadata:local_elediaai_core_turn:component',
+            'contextid' => 'privacy:metadata:local_elediaai_core_turn:contextid',
             'courseid' => 'privacy:metadata:local_elediaai_core_turn:courseid',
+            'cmid' => 'privacy:metadata:local_elediaai_core_turn:cmid',
+            'sourcetitle' => 'privacy:metadata:local_elediaai_core_turn:sourcetitle',
             'prompt' => 'privacy:metadata:local_elediaai_core_turn:prompt',
             'response' => 'privacy:metadata:local_elediaai_core_turn:response',
             'origin' => 'privacy:metadata:local_elediaai_core_turn:origin',
@@ -99,7 +100,9 @@ class provider implements
             'toolname' => 'privacy:metadata:local_elediaai_core_action:toolname',
             'iswrite' => 'privacy:metadata:local_elediaai_core_action:iswrite',
             'success' => 'privacy:metadata:local_elediaai_core_action:success',
+            'contextid' => 'privacy:metadata:local_elediaai_core_action:contextid',
             'courseid' => 'privacy:metadata:local_elediaai_core_action:courseid',
+            'turnid' => 'privacy:metadata:local_elediaai_core_action:turnid',
             'timecreated' => 'privacy:metadata:local_elediaai_core_action:timecreated',
         ], 'privacy:metadata:local_elediaai_core_action');
 
@@ -285,9 +288,12 @@ class provider implements
             $data[] = (object) [
                 'timecreated' => transform::datetime((int) $turn->timecreated),
                 'component' => $turn->component,
+                'contextid' => (int) $turn->contextid,
                 'courseid' => (int) $turn->courseid,
                 'origin' => $turn->origin,
                 'topic' => $turn->topic,
+                'sourcetitle' => $turn->sourcetitle,
+                'cmid' => $turn->cmid === null ? null : (int) $turn->cmid,
                 'prompt' => $turn->prompt,
                 'response' => $turn->response,
             ];
@@ -306,7 +312,17 @@ class provider implements
      * @return void
      */
     private static function export_actions(int $userid): void {
-        $rows = \local_elediaai_core\local\actions::for_user($userid, 1000);
+        global $DB;
+
+        // Read here rather than through actions::for_user(): that helper serves
+        // the report view, caps the rows and leaves out the place fields, and
+        // an export owes the person every row with every declared field.
+        $rows = $DB->get_records(
+            \local_elediaai_core\local\action_recorder::TABLE,
+            ['userid' => $userid],
+            'timecreated DESC, id DESC',
+            'id, toolname, component, iswrite, success, contextid, courseid, turnid, timecreated'
+        );
         if ($rows === []) {
             return;
         }
@@ -319,7 +335,9 @@ class provider implements
                 'component' => $row->component,
                 'iswrite' => transform::yesno((int) $row->iswrite),
                 'success' => transform::yesno((int) $row->success),
+                'contextid' => (int) $row->contextid,
                 'courseid' => (int) $row->courseid,
+                'turnid' => $row->turnid === null ? null : (int) $row->turnid,
             ];
         }
 

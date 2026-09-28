@@ -3,6 +3,43 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.2] – 2026-09-28
+
+### Behoben
+
+- **Der Block lässt sich wieder deinstallieren.** `db/uninstall.php` lud
+  `classes/local/service_user.php`, das seit DEL-517 als
+  `local_elediaai_chatengine\local\service_user` in der Chat-Engine liegt.
+  Die Deinstallation brach mit einem Fatal Error ab, und weil elediamcp,
+  Chat-Engine und Kern vom Tutor abhängen, ließen auch sie sich nicht mehr
+  entfernen. Neuer Test `uninstall_test` ruft die Uninstall-Funktion direkt auf.
+- **Tutor-Turns nur noch über den eigenen Block.** Der geteilte Endpunkt der
+  Chat-Engine nahm Tutor-Turns ohne Block an und umging damit dessen
+  Einstellungen (H-04).
+- **Abschalten wirkt.** Ist der Tutor im Kern abgeschaltet, verschwinden
+  Block, Startseite und Einzelseite; der Kern ist deshalb jetzt Pflicht-
+  abhängigkeit (K2, N-02).
+- **Ohne Backend erklärt sich der Tutor**, statt kommentarlos zu verschwinden:
+  der Hinweis steht an der Stelle des schwebenden Startknopfs (M-22).
+- **Datenschutzhinweis sagt, was gespeichert wird** – Gespräche im Volltext,
+  die Kopie bei LiteRAG, pseudonymisierte Fragen, der Nachweis je KI-Antwort –
+  und nennt das Langzeitgedächtnis nicht mehr „demnächst" (H-05).
+- **„Alle meine Tutor-Daten löschen"** widerruft auch den Zugangsschlüssel und
+  sagt, was als Aufzeichnung der Website bleibt (M-09).
+- **Dashboard-Starter** bieten im freien Paket nur an, was die freien
+  Werkzeuge können (M-24).
+- **Begrüßungstext und andere Textfelder** entfernen Skript- und Stilblöcke
+  samt Inhalt; aus `<script>alert(1)</script>` wurde vorher „alert(1)" (G-01).
+- **Die Hilfe ist für Lehrkräfte im Kurs lesbar** (`help.php?id=<Kurs>`,
+  Recht `block/elediaai_tutor:manage`) und von der Einrichtungsseite verlinkt
+  (G-05).
+- **Barrierefreiheit:** Das Overlay-Panel ist ein modaler Dialog, im
+  Block-Drawer per Tastatur erreichbar; Kontrast des aktiven Stil-Chips
+  5,6:1; ein wiederhergestellter Verlauf wird nicht mehr vorgelesen (H-13).
+- **Datenschutz:** Provider aufgeräumt, Löschung räumt die Zähler mit ab.
+- **Paket:** Lucide-Icons in `thirdpartylibs.xml` deklariert, LICENSE und
+  README auf den freien Stand gebracht.
+
 ## [0.29.8] – 2026-09-20
 
 ### Geändert

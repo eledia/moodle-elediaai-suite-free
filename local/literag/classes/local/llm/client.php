@@ -168,7 +168,10 @@ class client {
             throw new llm_exception('transport error: ' . $response['error']);
         }
         if ($response['status'] < 200 || $response['status'] >= 300) {
-            throw new llm_exception('http status ' . $response['status']);
+            throw new llm_exception(
+                'http status ' . $response['status'],
+                in_array((int) $response['status'], [400, 404, 422], true)
+            );
         }
 
         $decoded = json_decode($response['body'], true);
@@ -177,7 +180,7 @@ class client {
         }
         if (isset($decoded['error'])) {
             $message = is_array($decoded['error']) ? ($decoded['error']['message'] ?? 'unknown') : (string) $decoded['error'];
-            throw new llm_exception('LLM error: ' . $message);
+            throw new llm_exception('LLM error: ' . $message, true);
         }
 
         $message = $decoded['choices'][0]['message'] ?? null;

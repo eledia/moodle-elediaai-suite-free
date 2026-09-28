@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Perform the upgrade.
  *
@@ -36,7 +34,7 @@ function xmldb_local_elediaai_chatengine_upgrade(int $oldversion): bool {
     $dbman = $DB->get_manager();
 
     if ($oldversion < 2026082702) {
-        // block_elediaai_chat was removed rather than converted: its placement
+        // The block_elediaai_chat plugin was removed rather than converted: its placement
         // is now the tutor block in its ungrounded configuration. The other
         // three chat plugins drop their own conversation tables in their own
         // upgrade steps, but a deleted plugin has no upgrade step left to run,

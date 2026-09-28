@@ -55,7 +55,8 @@ If an optional tool name is left blank in the block, that feature is simply not 
 | `system_url` | string | yes | The Moodle site's `wwwroot`, e.g. `https://moodle.example.com`. Use it as the base for callbacks (Part C). |
 | `moodle_token` | string | yes | **User-scoped** Moodle MCP token. Treat as a secret. Use it to call back into Moodle as this learner (Part C). |
 | `user_message` | string | yes | The learner's message (already length-validated, ≤ configured max, default 4000 chars). |
-| `course_id` | string | only when the surface has a course scope | **One or more** Moodle course ids, comma-separated and without spaces (`"42"`, `"42,58,91"`). It is the **search scope** for your knowledge base: retrieve only from documents whose `course_id` metadata is one of these, on top of the tenant filter (B.4) and on top of the entitlement rule below. A single id is the ordinary case and is also the course this conversation belongs to; use the **first** id where you need one course for context (Part C, `moodle_verify_user_context`). Absent ⇒ no scope was named: fall back to the learner's own enrolments (see below), never to the whole tenant. |
+| `course_id` | string | only when the surface stands in a course | **Exactly one** Moodle course id (`"42"`): the course this question is being asked in, and the course this conversation belongs to. Use it wherever you need *one* course — for context in the system prompt, for `moodle_verify_user_context` (Part C), and as the course argument of any Moodle tool that acts on a single course. **Absent ⇒ the question comes from a surface without a course** (the tutor's start page), not from an unknown one. |
+| `search_course_ids` | string | only when something may be searched | **One or more** Moodle course ids, comma-separated and without spaces (`"42"`, `"42,58,91"`). The **search scope** for your knowledge base: retrieve only from documents whose `course_id` metadata is one of these, on top of the tenant filter (B.4) and on top of the entitlement rule below. Contains `course_id` when that is present, plus whatever knowledge base the surface was given. Absent ⇒ there is nothing to retrieve from; do not fall back to the whole tenant. |
 | `conversation_id` | string | only on follow-ups | Your own conversation id from a previous turn. **Absent ⇒ start a new conversation.** |
 | `ltm_enabled` | boolean | only when memory is configured | The user's long-term-memory consent **for this request**. Only sent when the Moodle admin has configured the memory opt-in tool (i.e. your server declared memory support). **Absent ⇒ treat as `false`**: do not read or write memory. Gate every memory read AND write on this request's value — it is the authoritative per-request consent signal. |
 | `answer_style` | string | yes (server-side enforced) | Pedagogical style: `explain` (full explanations, the default), `hint` (guide step by step, **never give the final solution**), or `quiz` (respond with practice questions and check the learner's answers). Absent ⇒ `explain`. The value is validated and lock-enforced by Moodle (teachers can pin a style per block), so honour it as authoritative. |
@@ -87,15 +88,17 @@ What that obliges each side to do:
 | **Moodle** | Send only courses this learner is entitled to. Never send a course they are not enrolled in. When there is nothing to name — the learner is enrolled nowhere — leave the argument out; you then resolve the same empty set and find nothing. Moodle does **not** send `rag_enabled: false` for that case: no *course* material is not the same as no retrieval, and the ban would also shut off a corpus that has no enrolments behind it, such as your Moodle documentation. |
 | **You** | Filter retrieval to exactly the ids you were given, on top of the tenant filter (B.4). Never widen beyond them — not for an administrator, not because a result looked relevant, not because the list was short. |
 
-**Absent `course_id` is the ordinary case, not an error.** Not every client
-resolves the set — an older Moodle, another integration, a direct MCP host —
-and a scope that would exceed your list limit is left out rather than
-truncated. Absent does **not** mean "search everything". It means "the
-learner's own courses", and then it is you who resolves them (Part C,
-`moodle_verify_user_context` returns them). Do it **before** you call your
-retrieval tool, not after: a tool that requires at least one course id will
-reject an empty list, and the learner gets a "search unavailable" where the
-answer was there to be found.
+**Absent `search_course_ids` means there is nothing to search — it never means
+"search everything".** Moodle resolves the set and sends it, cut to your list
+limit rather than dropped, so an absent field is a statement and not a gap.
+
+One exception, and it is for clients that are not Moodle: an older Moodle,
+another integration or a direct MCP host may send neither field. Then — and
+only then — resolve the learner's own enrolments yourself (Part C,
+`moodle_verify_user_context` returns them), **before** you call your retrieval
+tool: a tool that requires at least one course id will reject an empty list,
+and the learner gets a "search unavailable" where the answer was there to be
+found.
 
 Three consequences worth stating, because each has already been got wrong:
 
@@ -795,11 +798,12 @@ differently trustworthy depending on where the facts came from.
 ## Contract changelog
 
 The plugin version (in `version.php`) that introduced each contract change.
-Build against the newest row; all fields remain backwards-compatible (optional
-unless marked otherwise).
+Build against the newest row. Fields are optional and backwards-compatible
+unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.1.0 | **`course_id` and `search_course_ids` are two fields now — this one is not backwards-compatible and needs a coordinated deployment** (A.1). `course_id` goes back to meaning exactly one course: the one the question is asked in. The search scope moves to the new `search_course_ids`. *Why:* for eight days both travelled in `course_id`, and a server that reads it as "the current course" — ours does, into the system prompt and from there into tool arguments — was handed `"5,26,34"`. For retrieval that is harmless, a filter is a set. For a tool that acts on one course it is not: an activity created or a grade written in whichever course sorted first. *What breaks if only one side ships:* Moodle first ⇒ the knowledge base stops widening the search until the server reads the new field, because `course_id` then names one course. Server first ⇒ nothing, the field is simply absent. **So deploy the server side first, or both together.** *Absent from now on:* no `course_id` means the surface has no course (the tutor's start page), not that the course is unknown; no `search_course_ids` means there is nothing to retrieve from. |
 | chatengine 0.7.0 | **`course_id` may name several courses, and retrieval is bounded by enrolment** (A.1). Two halves, and they are independent. *The field:* `course_id` is defined as one or more comma-separated ids and is the search scope for the knowledge base; servers that already parse it this way (ours does) need no change. Moodle sends more than one from this version on — on a site-wide surface it names the learner's enrolled courses, where it previously sent nothing at all. *The rule:* the new **Entitlement** paragraph under A.1 binds retrieval to the learner's enrolled courses. Until this revision the only scope this document required was the tenant, i.e. the entire site. *Who draws the line:* **Moodle** — it sends the configured scope already intersected with the learner's enrolments, and the server filters on exactly what it gets. The tenant is authenticated and the `moodle_token` is scoped to the one learner, so the list is not a foreign input; enforcing the rule where the fact lives beats enforcing it twice in two places that can disagree. The absent case is settled in the same paragraph: no `course_id` means the learner's own enrolled courses, resolved by the server **before** it calls its retrieval tool, and never the whole tenant. |
 | 0.28.0 | **`moodle_tools_enabled`** chat argument (A.1): a per-turn ban on the Part C callbacks. When `false`, no `moodle_*` tool may be called for that turn; absent ⇒ permitted. It closes a gap rather than adding a feature -- Moodle has always had surfaces that must not act on the learner's behalf (`mod_elli`), but the only way it could say so was to degrade the undocumented `intent` hint to `knowledge`, which a server was free to ignore and which also suppressed retrieval as a side effect. Servers MUST read the ban from this field and MUST NOT infer it from `intent`, `system_prompt_id` or `persona`. Moodle keeps sending the old `intent` degradation alongside it for one release so that servers which have not caught up keep behaving as before; do not rely on it staying. |
 | 0.25.0 | **`system_prompt_id`** chat argument (A.1): names the kind of surface asking (`tutor`\|`aichat`\|`elli`) so the server picks the base prompt it embeds the turn into. Optional; absent or unrecognised ⇒ `tutor`, and an unknown value must never fail the turn. Three Moodle surfaces now share this contract through `local_elediaai_chatengine`, and until now every one of them was answered as a tutor. The `persona` row is clarified in the same revision: outside the `tutor` base prompt, `instructions` may carry behaviour rather than voice alone — which is what `mod_elli` and `mod_aichat` have in fact been sending. |

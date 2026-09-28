@@ -34,6 +34,7 @@ $courseid = required_param('id', PARAM_INT);
 $course = get_course($courseid);
 
 require_login($course);
+\local_elediaai_core\feature\registry::require_enabled('sources');
 $context = \core\context\course::instance($course->id);
 require_capability('local/elediaai_sources:selectactivities', $context);
 
@@ -56,6 +57,11 @@ $PAGE->set_heading(format_string($course->fullname));
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string('activities_title', 'local_elediaai_sources'));
+// Die Hilfe ist fuer Lehrkraefte lesbar, wenn sie aus dem Kurs geoeffnet wird (G-05).
+echo html_writer::div(html_writer::link(
+    new moodle_url('/local/elediaai_sources/help.php', ['id' => $course->id]),
+    get_string('shell_help_label', 'local_elediaai_sources')
+), 'les-activities-help mb-3');
 
 echo $OUTPUT->render_from_template(
     'local_elediaai_sources/activities_page',

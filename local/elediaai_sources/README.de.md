@@ -50,7 +50,8 @@ Kursoberflaeche.
 | Offiziell unterstuetzte Moodle-Versionen | `4.5` bis `5.2` in `version.php` |
 | Lokaler Kompatibilitaetscheck | Moodle `5.2.1` besteht die PHPUnit-Suite |
 | PHP | Moodle-unterstuetzte PHP-Version fuer die Zielversion |
-| Reifegrad | Beta |
+| Release | `1.0.1` (stable) |
+| Pflicht-Plugins | `local_elediaai_core` (eLeDia.ai Suite Core) |
 
 Moodle 5.2.1 wird lokal bereits fuer Entwicklung und Tests genutzt. Die
 offizielle `supported`-Angabe ist seit Release `0.12.3` auf `[405, 502]`
@@ -158,10 +159,10 @@ nicht mehr auf mehrere Moodle-Admin-Menues verteilt.
 Das Ziel wird ausdruecklich konfiguriert und nicht mehr aus der Form einer URL
 erraten. Jedes Ziel kennt seine eigenen Endpunkte:
 
-- **Ingestion-API** — die Basis-URL plus die in `docs/api-specification.md`
+- **Ingestion-API** — die Basis-URL plus die im Vertrag der Ingestion-API
   festgelegten Pfade `/documents/upsert`, `/documents/delete`, `/health`.
-  Einzutragen ist `http://rag-service:8001`, **nicht**
-  `http://rag-service:8001/documents/upsert`.
+  Einzutragen ist `https://rag.example.com`, **nicht**
+  `https://rag.example.com/documents/upsert`.
 - **LiteRAG** — nichts zu konfigurieren. Die Route wird aus `wwwroot`
   abgeleitet, der Schluessel stammt aus `local_literag` selbst.
 
@@ -352,8 +353,7 @@ Vor einem Multi-Dokument-Upsert loescht der Manager die bisherige Dokumentmenge
 per Prefix-Delete.
 
 Welche Content Types erlaubt sind, entscheidet die versionierte Support-Matrix
-(`classes/format_matrix.php`, beschrieben in
-[`docs/format-support-matrix.md`](docs/format-support-matrix.md)) — nicht die
+(`classes/format_matrix.php`) — nicht die
 Extraktoren:
 
 - **Kern, immer:** `text/plain`, `text/html`, `application/pdf`
@@ -389,7 +389,7 @@ Ziele:
 
 | Sink | Endpunkte | Konfiguration |
 |---|---|---|
-| `ingestion_api_sink` | Basis-URL plus die in `docs/api-specification.md` festgelegten Pfade | Basis-URL und Mandanten-Schluessel |
+| `ingestion_api_sink` | Basis-URL plus die im Vertrag der Ingestion-API festgelegten Pfade | Basis-URL und Mandanten-Schluessel |
 | `literag_sink` | `local/literag/ingest.php`, aus `wwwroot` abgeleitet | Keine — der Schluessel kommt aus `local_literag` |
 | *OERWEAVE* | — | Reservierter Platz; nicht implementiert |
 
@@ -508,74 +508,12 @@ Leitlinien:
 - fuer HTTP `api_client` nutzen, damit Wiederholungen, Zeitlimit und
   `X-API-Key` sich ueberall gleich verhalten
 
-## Lokale Entwicklung
-
-### Deployment in das lokale eledia.ai Moodle
-
-Das begleitende Docker-Setup im eledia.ai-Projekt stellt ein lokales Moodle
-bereit unter:
-
-```text
-http://localhost:8080
-```
-
-Typischer Ablauf:
-
-```bash
-cd /Users/moskaliuk/Documents/Code/eledia.ai
-./scripts/local-deploy.sh deploy
-```
-
-Wenn dieser Plugin-Checkout nicht ins Image eingebaut ist, muss er nach:
-
-```text
-/var/www/html/public/local/elediaai_sources
-```
-
-kopiert oder synchronisiert werden. Danach Moodle-Upgrade und Cache-Purge
-ausfuehren.
-
-### Debug Server
-
-Fuer lokale API-Tests gibt es einen kleinen Python-Mock-Server:
-
-```bash
-python3 local/elediaai_sources/debug_server.py
-python3 local/elediaai_sources/debug_server.py --port 9000
-python3 local/elediaai_sources/debug_server.py --fail
-python3 local/elediaai_sources/debug_server.py --delay 5
-```
-
-`debug_server.py` wird ueber `.gitattributes` aus Release-Archiven
-ausgeschlossen.
-
 ## Tests und Coding Style
 
 ### PHPUnit
 
-Das lokale Docker-Setup kann Moodle-PHPUnit initialisieren und die Plugin-Suite
-ausfuehren:
-
-```bash
-cd /Users/moskaliuk/Documents/Code/eledia.ai
-./scripts/local-deploy.sh phpunit-init
-./scripts/local-deploy.sh phpunit
-PHPUNIT_TESTSUITE=local_elediaai_sources_testsuite ./scripts/local-deploy.sh phpunit
-```
-
-Aktuelles lokales Ergebnis:
-
-```text
-Tests: 164
-Assertions: 373
-Failures: 0
-Errors: 0
-Skipped: 5
-PHPUnit Deprecations: 27
-Notices: 1
-```
-
-In einem Moodle-Checkout mit bereits initialisierter PHPUnit-Umgebung:
+Im Wurzelverzeichnis eines Moodle-Checkouts mit initialisierter
+PHPUnit-Umgebung (`php admin/tool/phpunit/cli/init.php`):
 
 ```bash
 vendor/bin/phpunit --testsuite local_elediaai_sources_testsuite
@@ -600,7 +538,7 @@ composer init --no-interaction --name=local-elediaai-sources/moodle-cs-tools
 composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
 composer require --dev moodlehq/moodle-cs
 
-cd /Users/moskaliuk/Documents/Code/local_elediaai_sources
+cd /path/to/moodle
 /tmp/local-elediaai-sources-moodle-cs/vendor/bin/phpcs \
     --standard=moodle \
     --extensions=php \
@@ -633,17 +571,15 @@ npx grunt rawcss --no-color
 `amd` fuehrt `ignorefiles`, `eslint:amd` und `rollup` aus und erzeugt
 `amd/build/*.min.js` neu. `rawcss` fuehrt Stylelint fuer CSS-Dateien aus.
 
-Dieses Plugin hat aktuell keine Mustache-Templates und keine gebuendelten
-Third-Party-Libraries. Mustache- und Third-Party-Library-Checks sind daher im
-Moment nicht anwendbar. Wenn spaeter Templates oder gebuendelte Libraries
-hinzukommen, gehoeren die entsprechenden Moodle-Prechecks vor die Submission.
+Das Plugin bringt Mustache-Templates unter `templates/` mit, daher gilt auch
+der Mustache-Lint-Check. Gebuendelte Code-Bibliotheken von Dritten gibt es
+nicht; die verwendeten Lucide-Symbolpfade sind in `thirdpartylibs.xml`
+deklariert.
 
 ## Dokumentation
 
 ```text
 docs/user_manual.md        — Handbuch fuer Administration und Nutzung (auch auf der Hilfeseite des Plugins)
-docs/api-specification.md  — der Aufnahme-API-Vertrag (v1.2), den ein Ziel erfuellen muss
-docs/submission-draft.md   — Notizen fuer die Einreichung im Moodle-Plugin-Verzeichnis
 ```
 
 ## Privacy

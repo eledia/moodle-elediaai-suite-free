@@ -80,8 +80,8 @@ final class developer_page {
         $aktuell = ['title' => '', 'tokens' => []];
 
         foreach (explode("\n", $css) as $zeile) {
-            // Eine Abschnittsueberschrift ist ein Kommentar mit Strichen:
-            // /* --- Flaechen. ---------------- */
+            // Eine Abschnittsueberschrift ist ein Kommentar mit Strichen wie
+            // /* --- Flaechen. ---------------- */ und beginnt eine neue Gruppe.
             if (preg_match('~/\*\s*-{2,}\s*(.+?)\s*-{2,}\s*\*/~', $zeile, $treffer)) {
                 if ($aktuell['tokens'] !== []) {
                     $gruppen[] = $aktuell;

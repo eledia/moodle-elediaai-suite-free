@@ -30,22 +30,22 @@ namespace local_elediaai_chatengine\local;
  * sender about an identified person (operator decision 20.09.2026). One rule in
  * one place beats the same rule in two that can disagree.
  *
- * Three outcomes, and they are not the same thing:
+ * Two outcomes, and they are not the same thing:
  *
  * - **Named** -- these courses, and only these. A course surface names its own
- *   course; a site-wide surface names what the person is enrolled in.
- * - **None** -- no course material may be searched, because the person is
- *   enrolled nowhere. The argument is left out and the server resolves the
+ *   course; a site-wide surface names what this person works in.
+ * - **None** -- there is nothing to search, because the person is in no course
+ *   and has opened none. The argument is left out and the server resolves the
  *   same empty set; what must not happen is that "nothing" turns into
  *   "everything" along the way.
- * - **Overflow** -- more courses than the protocol carries. The list is left
- *   out rather than truncated, and the server resolves the enrolments itself;
- *   silently dropping courses would make material unfindable with no signal.
  *
- * The two empty cases send the same thing -- no argument -- and mean it
- * differently, which is why they are told apart here: one is "there is nothing
- * for this person", the other is "there is too much to name". The server
- * arrives at the right answer for both by resolving the enrolments itself.
+ * More courses than the protocol carries used to be a third outcome: the list
+ * was left out, on the reasoning that truncating silently loses material and
+ * the server would resolve the enrolments itself. It does not -- it answers
+ * "the user is currently in no course", so somebody enrolled in twenty-five
+ * was told they were in none (28.09.2026). The list is cut now. That is the
+ * smaller untruth, and it is only bearable because the order stopped being
+ * arbitrary: what survives a cut are the courses this person opened last.
  *
  * What this deliberately does **not** do is change the answer mode. Nothing to
  * search in course material is not the same as nothing to retrieve: the
@@ -59,11 +59,8 @@ final class course_scope {
     /** @var string These courses, and only these. */
     public const STATE_NAMED = 'named';
 
-    /** @var string Nothing may be searched; the turn goes ungrounded. */
+    /** @var string Nothing to search; the argument is left out. */
     public const STATE_NONE = 'none';
-
-    /** @var string Too many to carry; the server resolves them itself. */
-    public const STATE_OVERFLOW = 'overflow';
 
     /**
      * A knowledge base was chosen and none of it is available to this person.
@@ -90,6 +87,14 @@ final class course_scope {
     public const LIMIT = 20;
 
     /**
+     * How far back to look for courses somebody opened without an enrolment.
+     *
+     * Each candidate costs a rights check, so the walk is bounded. Two hundred
+     * is far more than the limit will ever take and still one cheap query.
+     */
+    private const OPENED_CANDIDATES = 200;
+
+    /**
      * How many course ids may travel with this site's requests.
      *
      * @return int
@@ -109,6 +114,8 @@ final class course_scope {
         public readonly array $ids,
         /** @var string One of the STATE_* constants. */
         public readonly string $state,
+        /** @var int The course the surface stands in, 0 when it stands in none. */
+        public readonly int $surface = 0,
     ) {
     }
 
@@ -125,15 +132,14 @@ final class course_scope {
      * configured knowledge base adds to it: those of its courses the person is
      * enrolled in and that have an index.
      *
-     * **A surface without a course** -- the tutor's start page -- searches
-     * what the person is enrolled in, and a configured knowledge base does
-     * **not** apply there (operator decision 20.09.2026). That page belongs to
-     * the person, not to a course. It is also what keeps the protocol out of
-     * this: without it there would be a case in which Moodle must say "no
-     * courses at all", and an absent argument means the opposite.
+     * **A surface without a course** -- the tutor's start page -- searches what
+     * this person works in: their enrolments, and failing those the courses
+     * they have opened. A knowledge base set on that surface still counts; it
+     * was chosen on purpose, and a tutor with the course context switched off
+     * is how an operator builds a tutor for a named set of courses.
      *
-     * A guest has no enrolments and therefore no course material; that is the
-     * answer, not a case to work around.
+     * A guest has no enrolments and opens nothing; that is the answer, not a
+     * case to work around.
      *
      * @param int $courseid The course the surface names, or 0 for site-wide.
      * @param int $userid The acting person, 0 for a guest.
@@ -163,15 +169,16 @@ final class course_scope {
         $ids = self::tidy($ids);
 
         if (count($ids) > self::limit()) {
-            // Over the limit the argument cannot carry everything -- but here,
-            // unlike on the start page, leaving it out would *widen*: the
-            // server would fall back to every course this person is in. So the
-            // surface keeps its own course and nothing else, which is what it
-            // searched before anyone could configure a knowledge base.
-            return new self([$courseid], self::STATE_NAMED);
+            // The surface's own course is never what falls away -- it is what
+            // this person is looking at. The rest of the budget goes to the
+            // courses they opened most recently, so a knowledge base that no
+            // longer fits loses its dustiest corner rather than whatever sorts
+            // last by id.
+            $rest = self::by_recent_access(array_values(array_diff($ids, [$courseid])), $userid);
+            $ids = self::tidy(array_merge([$courseid], array_slice($rest, 0, self::limit() - 1)));
         }
 
-        return new self($ids, self::STATE_NAMED);
+        return new self($ids, self::STATE_NAMED, $courseid);
     }
 
     /**
@@ -207,6 +214,18 @@ final class course_scope {
     /**
      * The scope of a surface that has no course: the person's own courses.
      *
+     * Everything they are in, and only narrowed when it does not fit -- see
+     * {@see narrow()}. Narrowing late is deliberate: a site whose ingestion has
+     * not run yet would otherwise go from "search my courses" to "you are in no
+     * course", which is a worse answer than searching courses that happen to
+     * hold nothing.
+     *
+     * The fallback matters more than it looks: somebody who administers a site
+     * is usually enrolled nowhere, so this used to answer "nothing" and the
+     * backend told them they were in no course. What they have open in the
+     * browser is the better answer -- and they may read it, or it would not
+     * open.
+     *
      * @param int $userid The acting person, 0 for a guest.
      * @return self
      */
@@ -217,12 +236,147 @@ final class course_scope {
 
         $ids = self::enrolled($userid);
         if ($ids === []) {
+            $ids = self::opened($userid);
+        }
+        if ($ids === []) {
             return new self([], self::STATE_NONE);
         }
-        if (count($ids) > self::limit()) {
-            return new self($ids, self::STATE_OVERFLOW);
+
+        return new self(self::tidy(self::narrow($ids, $userid)), self::STATE_NAMED);
+    }
+
+    /**
+     * Cut a list down to what the protocol carries, spending the room well.
+     *
+     * Two preferences, in this order. A course with material in the index can
+     * answer something and one without cannot, so the indexed ones go first --
+     * unless none of them are, in which case the filter would empty the list
+     * and say nothing useful, and the unfiltered list is kept instead. Among
+     * what is left, the courses this person opened most recently win, because
+     * the course somebody was in yesterday is the one they are asking about.
+     *
+     * @param int[] $ids Course ids.
+     * @param int $userid The acting person.
+     * @return int[] At most {@see limit()} ids.
+     */
+    private static function narrow(array $ids, int $userid): array {
+        if (count($ids) <= self::limit()) {
+            return $ids;
         }
-        return new self($ids, self::STATE_NAMED);
+
+        $indexed = self::indexed_only($ids);
+        $pool = $indexed === [] ? $ids : $indexed;
+        if (count($pool) <= self::limit()) {
+            return $pool;
+        }
+
+        return array_slice(self::by_recent_access($pool, $userid), 0, self::limit());
+    }
+
+    /**
+     * Of these courses, the ones that have material in the index.
+     *
+     * Without the ingestion plugin nothing can be said about any of them, and
+     * the list stands as it is; whether the turn retrieves at all is decided
+     * elsewhere.
+     *
+     * @param int[] $ids Course ids.
+     * @return int[] Those with an index, in the order they came in.
+     */
+    private static function indexed_only(array $ids): array {
+        if ($ids === []) {
+            return [];
+        }
+
+        $state = '\local_elediaai_sources\course_state';
+        if (!class_exists($state)) {
+            return $ids;
+        }
+        return call_user_func([$state, 'ingested_within'], $ids);
+    }
+
+    /**
+     * These courses, the most recently opened one first.
+     *
+     * Ranking only -- it never adds a course and never drops one. A course
+     * this person has never opened sorts last and keeps its id order there, so
+     * the result is stable for everybody who has opened nothing.
+     *
+     * The consequence is worth naming: the list a turn carries now depends on
+     * when somebody last clicked, so two turns a week apart can search
+     * different courses. That is the price of cutting sensibly, and it only
+     * shows at all when there is more than the limit to carry.
+     *
+     * @param int[] $ids Course ids.
+     * @param int $userid The acting person.
+     * @return int[] The same ids, reordered.
+     */
+    private static function by_recent_access(array $ids, int $userid): array {
+        global $DB;
+
+        $ids = array_values($ids);
+        if (count($ids) < 2 || $userid <= 0) {
+            return $ids;
+        }
+
+        [$insql, $params] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED, 'c');
+        $params['userid'] = $userid;
+        $seen = $DB->get_records_select_menu(
+            'user_lastaccess',
+            "userid = :userid AND courseid $insql",
+            $params,
+            '',
+            'courseid, timeaccess'
+        );
+
+        usort($ids, static function (int $a, int $b) use ($seen): int {
+            $left = (int) ($seen[$a] ?? 0);
+            $right = (int) ($seen[$b] ?? 0);
+            return $right <=> $left ?: $a <=> $b;
+        });
+
+        return $ids;
+    }
+
+    /**
+     * Courses this person has opened and may still read.
+     *
+     * `user_lastaccess` records a course view whether or not there is an
+     * enrolment behind it, which is exactly why it helps here. It is a record
+     * of the past, though, and rights change -- so every candidate is checked
+     * again before it is used.
+     *
+     * @param int $userid The acting person.
+     * @return int[] Course ids, most recently opened first.
+     */
+    private static function opened(int $userid): array {
+        global $DB;
+
+        $rows = $DB->get_records_select(
+            'user_lastaccess',
+            'userid = :userid AND courseid <> :siteid',
+            ['userid' => $userid, 'siteid' => SITEID],
+            'timeaccess DESC',
+            'courseid, timeaccess',
+            0,
+            self::OPENED_CANDIDATES
+        );
+
+        $ids = [];
+        foreach ($rows as $row) {
+            $courseid = (int) $row->courseid;
+            try {
+                $course = get_course($courseid);
+            } catch (\Throwable $ex) {
+                // A row whose course is gone; the sweep has not caught up yet.
+                continue;
+            }
+            if (can_access_course($course, $userid)) {
+                $ids[] = $courseid;
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -255,19 +409,7 @@ final class course_scope {
             $visible[] = (int) SITEID;
         }
 
-        $allowed = array_values(array_intersect($wanted, $visible));
-        if ($allowed === []) {
-            return [];
-        }
-
-        // Without the ingestion plugin nothing is indexed and nothing can be
-        // said about it; the selection then stands as it is, and whether the
-        // turn is grounded at all is decided elsewhere.
-        $state = '\local_elediaai_sources\course_state';
-        if (!class_exists($state)) {
-            return $allowed;
-        }
-        return call_user_func([$state, 'ingested_within'], $allowed);
+        return self::indexed_only(array_values(array_intersect($wanted, $visible)));
     }
 
     /**
@@ -374,7 +516,7 @@ final class course_scope {
      * @return int[] Ascending, without the site course.
      */
     private static function enrolled(int $userid): array {
-        // onlyactive: a suspended enrolment, or one whose dates have passed, is
+        // Only active enrolments count: a suspended enrolment, or one whose dates have passed, is
         // not a course somebody may be answered from.
         $courses = enrol_get_users_courses($userid, true, 'id');
         $ids = [];
@@ -417,10 +559,8 @@ final class course_scope {
     /**
      * The `course_id` argument for the backend, or null to omit it.
      *
-     * Null for both of the cases that are not a list: nothing entitled, and too
-     * many to carry. The contract reads the absent argument as "the learner's
-     * own courses", and the server resolving them lands on the right answer
-     * either way -- on nothing for the first, on all of them for the second.
+     * Null only when there is nothing to name. Since 28.09.2026 this is the
+     * *only* way it goes missing: too many to carry is cut, not dropped.
      *
      * @return string|null Comma-separated ids, no spaces.
      */
@@ -429,5 +569,27 @@ final class course_scope {
             return null;
         }
         return implode(',', $this->ids);
+    }
+
+    /**
+     * The one course the question is being asked in, or null on a surface
+     * without a course.
+     *
+     * Separate from {@see as_argument()} on purpose, and the distinction is
+     * not cosmetic. Between 20.09. and 28.09.2026 both travelled in one field,
+     * because `course_id` was the only one there was -- with the effect that
+     * the agent put a comma-separated list where it expected a course: into
+     * the system prompt as "the current course", and from there into the
+     * arguments of tools that act on exactly one course. A written activity
+     * or a grade in the wrong course is not a retrieval problem.
+     *
+     * So: this answers *where somebody is*, {@see as_argument()} answers *what
+     * may be searched*. The first is also what the server resolves roles,
+     * groups and entitlement against.
+     *
+     * @return string|null The course id, or null outside any course.
+     */
+    public function surface_argument(): ?string {
+        return $this->surface > 0 ? (string) $this->surface : null;
     }
 }

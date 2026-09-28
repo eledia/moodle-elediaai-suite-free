@@ -26,12 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026092301;
+$plugin->version = 2026092802;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'block_elediaai_tutor';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.0';
+$plugin->release = '1.0.2';
 $plugin->dependencies = [
     // The block always talks to the backend through a user-scoped Moodle MCP
     // token, on grounded and model-only turns alike, so the connector is
@@ -40,7 +40,10 @@ $plugin->dependencies = [
     // The block is a placement on the shared chat engine: it owns where the
     // chat appears, who may use it and the tutor's voice; the engine owns the
     // conversation, the backend and the safety framing.
-    'local_elediaai_chatengine' => 2026083101,
+    'local_elediaai_chatengine' => 2026092801,
+    // Die Einstiege pruefen den Feature-Schalter der Suite
+    // (registry::require_enabled, K2), ohne Rueckfall fuer einen fehlenden
+    // Kern. Bisher fehlte die Angabe, und Moodle nannte bei der Installation
+    // nur MCP und Chat-Engine (N-02).
+    'local_elediaai_core' => 2026092800,
 ];
-// The local_elediaai_core companion stays optional and is guarded at runtime:
-// without it a turn is dispatched unmetered.

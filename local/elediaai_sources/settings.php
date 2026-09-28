@@ -165,7 +165,7 @@ if ($hassiteconfig) {
         'local_elediaai_sources/sink',
         get_string('sink', 'local_elediaai_sources'),
         get_string('sink_desc', 'local_elediaai_sources'),
-        \local_elediaai_sources\sink\sink_manager::DEFAULT_SINK,
+        \local_elediaai_sources\sink\sink_manager::default_id(),
         \local_elediaai_sources\sink\sink_manager::menu()
     );
     $sinksetting->set_updatedcallback(function () use ($queuecallback) {
@@ -190,7 +190,7 @@ if ($hassiteconfig) {
         'local_elediaai_sources/sink_ingestionapi_baseurl',
         get_string('sink_ingestionapi_baseurl', 'local_elediaai_sources'),
         get_string('sink_ingestionapi_baseurl_desc', 'local_elediaai_sources'),
-        'http://rag-service:8001',
+        '',
         PARAM_URL
     );
     $baseurlsetting->set_updatedcallback($queuecallback);

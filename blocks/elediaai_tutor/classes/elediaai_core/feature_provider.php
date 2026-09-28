@@ -46,7 +46,7 @@ final class feature_provider implements feature_provider_contract {
                 icon: 'graduation-cap',
                 audience: registry::AUDIENCE_STUDENT,
                 imagename: 'feature_tutor',
-                capability: null,
+                capability: 'block/elediaai_tutor:use',
                 configurl: new moodle_url('/local/elediaai_core/health.php'),
                 comingsoon: false,
                 detaildescription: get_string('suite_feature_detail', 'block_elediaai_tutor'),

@@ -30,7 +30,6 @@
 
 require_once(__DIR__ . '/../../config.php');
 
-use local_elediaai_core\health\check;
 use local_elediaai_core\health\registry as health_registry;
 use local_elediaai_core\output\plugin_page;
 use local_elediaai_core\output\plugin_shell;
@@ -73,13 +72,8 @@ if (empty($checks)) {
         \core\output\notification::NOTIFY_INFO
     );
 } else {
-    $offen = count(array_filter($checks, static fn(check $c): bool => $c->needs_attention()));
-    echo $OUTPUT->notification(
-        $offen > 0
-            ? get_string('health_summary_attention', 'local_elediaai_core', $offen)
-            : get_string('health_summary_quiet', 'local_elediaai_core', count($checks)),
-        $offen > 0 ? \core\output\notification::NOTIFY_WARNING : \core\output\notification::NOTIFY_SUCCESS
-    );
+    [$summary, $summarytype] = health_registry::summary($checks);
+    echo $OUTPUT->notification($summary, $summarytype);
 
     echo html_writer::start_tag('div', ['class' => 'lh-health']);
     foreach ($checks as $c) {
@@ -98,9 +92,10 @@ if (empty($checks)) {
         if (trim($c->detail) !== '') {
             echo html_writer::tag('p', s($c->detail), ['class' => 'lh-health__detail']);
         }
-        if ($c->actionurl !== null) {
+        $actionurl = health_registry::action_url($c);
+        if ($actionurl !== null) {
             echo html_writer::link(
-                $c->actionurl,
+                $actionurl,
                 s($c->actionlabel ?? get_string('settings')),
                 ['class' => 'btn btn-secondary btn-sm']
             );

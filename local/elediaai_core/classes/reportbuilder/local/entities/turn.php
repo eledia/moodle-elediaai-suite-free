@@ -39,8 +39,6 @@ use local_elediaai_core\output\lucide_icon;
 use moodle_url;
 use stdClass;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Columns and filters for `local_elediaai_core_turn`.
  *

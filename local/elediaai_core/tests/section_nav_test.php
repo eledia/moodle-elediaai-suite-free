@@ -28,8 +28,6 @@ namespace local_elediaai_core;
 use advanced_testcase;
 use local_elediaai_core\output\section_nav;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The suite's own pages must reach the suite's own reports.
  *

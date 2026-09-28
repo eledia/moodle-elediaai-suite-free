@@ -41,7 +41,7 @@ Die Einstellung **Aufnahmeziel** bietet:
 ### Ziel: eLeDia.ai Ingestion-API
 
 - **Basis-URL des Dienstes:** die Adresse des Dienstes ohne angehängten Pfad,
-  zum Beispiel `http://rag-service:8001`. Die Aktionen darunter
+  zum Beispiel `https://rag.example.com`. Die Aktionen darunter
   (`/documents/upsert`, `/documents/delete`, `/health`) ergänzt das Plugin
   selbst — sie stehen in der API-Spezifikation und werden nicht konfiguriert.
 - **API-Schlüssel:** wird serverseitig als Header `X-API-Key` gesendet. Ohne

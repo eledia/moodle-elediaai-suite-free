@@ -172,6 +172,9 @@ final class deletion_service_test extends \advanced_testcase {
         $this->setUser($user);
         $this->open_conversation((int) $user->id, 0, 'one');
         $this->open_conversation((int) $user->id, 0, 'two');
+        set_config('mcpserviceid', $service->id, 'local_elediaai_chatengine');
+        \local_elediaai_chatengine\local\token_provider::get_token((int) $user->id);
+        $this->assertTrue($DB->record_exists('external_tokens', ['userid' => $user->id]));
 
         $adapter = new fake_adapter();
         // A backend without a user-level tool: the per-conversation fallback
@@ -192,6 +195,8 @@ final class deletion_service_test extends \advanced_testcase {
         $this->assertSame(0, $result['externalfailed']);
         $this->assertSame(2, $result['localdeleted']);
         $this->assertSame(0, $this->count_conversations((int) $user->id));
+        // The access key issued for the person does not outlive the deletion.
+        $this->assertFalse($DB->record_exists('external_tokens', ['userid' => $user->id]));
     }
 
     /**

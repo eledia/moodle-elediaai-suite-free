@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\content;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Lightweight extractor for teacher-uploaded source documents.
  *

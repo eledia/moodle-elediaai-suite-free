@@ -188,7 +188,7 @@ class block_elediaai_tutor_edit_form extends block_edit_form {
 
             case 'textarea':
                 $mform->addElement('textarea', $field, $label, ['rows' => 3, 'cols' => 50]);
-                $mform->setType($field, PARAM_TEXT);
+                $mform->setType($field, PARAM_RAW); // Cleaned in instance_config_save(); PARAM_TEXT left script bodies behind.
                 break;
 
             case 'select':

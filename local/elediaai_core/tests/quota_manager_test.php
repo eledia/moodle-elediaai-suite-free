@@ -29,8 +29,6 @@ use advanced_testcase;
 use local_elediaai_core\local\quota_manager;
 use local_elediaai_core\local\quota_reservation;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the component behavior and contracts.
  *

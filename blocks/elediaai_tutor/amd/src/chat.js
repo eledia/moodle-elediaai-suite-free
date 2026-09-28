@@ -222,6 +222,18 @@ class TutorChat extends ChatPanel {
         return this.config.displaymode !== 'embedded';
     }
 
+    /**
+     * An open overlay is modal just as the enlarged view is.
+     *
+     * The overlay already kept Tab inside itself; saying so here is what lets
+     * the engine announce it as a dialog and hold Moodle's focus lock for it.
+     *
+     * @return {boolean}
+     */
+    isModal() {
+        return this.expanded || (this.isOverlay() && !this.isHidden());
+    }
+
 
 
 
@@ -253,6 +265,10 @@ class TutorChat extends ChatPanel {
             this.launch.setAttribute('aria-expanded', 'true');
         }
         this.updateDialogRole();
+        // Takes the focus lock over from a Boost drawer the launcher may sit
+        // in; without it the panel could not be reached by keyboard on a
+        // narrow screen (see ChatPanel#syncFocusLock).
+        this.syncFocusLock();
         window.setTimeout(() => this.input && this.input.focus(), 50);
     }
 
@@ -274,6 +290,9 @@ class TutorChat extends ChatPanel {
         }
         document.body.classList.remove('elediaai-chat-noscroll');
         this.updateDialogRole();
+        // Released before focus returns to the launcher, which the lock would
+        // otherwise pull straight back into the panel.
+        this.syncFocusLock();
         const launch = this.launch;
         if (launch) {
             launch.setAttribute('aria-expanded', 'false');

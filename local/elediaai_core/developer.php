@@ -79,7 +79,8 @@ $abschnitt = function (string $key, string $introkey, string $body): string {
     return html_writer::div($kopf . $body, 'lh-dev__section');
 };
 
-// --- Umgebung. -----------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Umgebung.
 $zeilen = '';
 foreach (developer_page::environment() as $name => $wert) {
     $zeilen .= html_writer::tag('dt', s($name));
@@ -87,7 +88,8 @@ foreach (developer_page::environment() as $name => $wert) {
 }
 echo $abschnitt('developer_environment', '', html_writer::tag('dl', $zeilen, ['class' => 'lh-dev__facts']));
 
-// --- Token, aufgeloest. --------------------------------------------------
+// ---------------------------------------------------------------------------
+// Token, aufgeloest.
 // Die Werte traegt der Browser nach: der Quelltext sagt, was dasteht, aber
 // nicht, was sich durchgesetzt hat. Genau diese Frage ist der Zweck der Seite.
 $tabellen = '';
@@ -121,7 +123,8 @@ foreach (developer_page::token_groups() as $gruppe) {
 }
 echo $abschnitt('developer_tokens', 'developer_tokens_intro', $tabellen);
 
-// --- Skalen. -------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Skalen.
 $proben = '';
 foreach (developer_page::type_scale() as $stufe) {
     $name = substr($stufe, strlen('--font-size-'));
@@ -141,7 +144,8 @@ foreach (developer_page::type_scale() as $stufe) {
 }
 echo $abschnitt('developer_scales', 'developer_scales_intro', $proben);
 
-// --- Bausteine. ----------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Bausteine.
 $bausteine = html_writer::div(
     html_writer::tag('button', 'Primär', ['class' => 'btn btn-primary', 'type' => 'button'])
     . html_writer::tag('button', 'Sekundär', ['class' => 'btn btn-secondary', 'type' => 'button'])
@@ -157,7 +161,8 @@ $bausteine .= html_writer::div(
 );
 echo $abschnitt('developer_blocks', 'developer_blocks_intro', $bausteine);
 
-// --- Vertrag. ------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Vertrag.
 $vertrag = developer_page::contract();
 echo $abschnitt('developer_contract', '', $vertrag === ''
     ? $OUTPUT->notification(

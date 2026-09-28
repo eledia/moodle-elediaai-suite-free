@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\output;
 
-defined('MOODLE_INTERNAL') || die();
-
 use html_writer;
 use moodle_url;
 

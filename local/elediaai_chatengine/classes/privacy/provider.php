@@ -26,6 +26,7 @@ use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
 use core_privacy\local\request\writer;
 use local_elediaai_chatengine\local\thread_store;
+use local_elediaai_chatengine\local\usage;
 
 /**
  * Privacy implementation for the shared conversation store.
@@ -38,6 +39,9 @@ use local_elediaai_chatengine\local\thread_store;
  * Guest conversations carry no user id and are therefore outside the subject
  * access mechanism, which is keyed by user. They are deleted with their
  * context and by the retention task instead.
+ *
+ * The daily message counters are kept per person across every placement and
+ * therefore live in the system context.
  *
  * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -53,9 +57,13 @@ class provider implements
             thread_store::THREAD_TABLE,
             [
                 'userid' => 'privacy:metadata:thread:userid',
+                'guestkey' => 'privacy:metadata:thread:guestkey',
                 'placement' => 'privacy:metadata:thread:placement',
+                'contextid' => 'privacy:metadata:thread:contextid',
                 'courseid' => 'privacy:metadata:thread:courseid',
+                'convkey' => 'privacy:metadata:thread:convkey',
                 'mode' => 'privacy:metadata:thread:mode',
+                'title' => 'privacy:metadata:thread:title',
                 'lastpreview' => 'privacy:metadata:thread:lastpreview',
                 'timecreated' => 'privacy:metadata:thread:timecreated',
                 'timemodified' => 'privacy:metadata:thread:timemodified',
@@ -75,6 +83,16 @@ class provider implements
             'privacy:metadata:msg'
         );
 
+        $collection->add_database_table(
+            usage::TABLE,
+            [
+                'userid' => 'privacy:metadata:usage:userid',
+                'daykey' => 'privacy:metadata:usage:daykey',
+                'messagecount' => 'privacy:metadata:usage:messagecount',
+            ],
+            'privacy:metadata:usage'
+        );
+
         $collection->add_external_location_link(
             'aibackend',
             [
@@ -92,11 +110,17 @@ class provider implements
 
     #[\Override]
     public static function get_contexts_for_userid(int $userid): contextlist {
+        global $DB;
+
         $contextlist = new contextlist();
         $contextlist->add_from_sql(
             'SELECT DISTINCT contextid FROM {' . thread_store::THREAD_TABLE . '} WHERE userid = :userid',
             ['userid' => $userid]
         );
+
+        if ($DB->record_exists(usage::TABLE, ['userid' => $userid])) {
+            $contextlist->add_system_context();
+        }
 
         return $contextlist;
     }
@@ -108,6 +132,10 @@ class provider implements
             'SELECT userid FROM {' . thread_store::THREAD_TABLE . '} WHERE contextid = :contextid AND userid > 0',
             ['contextid' => $userlist->get_context()->id]
         );
+
+        if ($userlist->get_context() instanceof \core\context\system) {
+            $userlist->add_from_sql('userid', 'SELECT userid FROM {' . usage::TABLE . '}', []);
+        }
     }
 
     #[\Override]
@@ -124,6 +152,7 @@ class provider implements
             foreach ($threads as $thread) {
                 $data = (object) [
                     'placement' => $thread->placement,
+                    'title' => $thread->title,
                     'mode' => $thread->mode,
                     'timecreated' => transform::datetime((int) $thread->timecreated),
                     'timemodified' => transform::datetime((int) $thread->timemodified),
@@ -143,12 +172,51 @@ class provider implements
                     $data
                 );
             }
+
+            if ($context instanceof \core\context\system) {
+                self::export_usage((int) $userid);
+            }
         }
+    }
+
+    /**
+     * Export the daily message counters of one user.
+     *
+     * @param int $userid The user id.
+     * @return void
+     */
+    private static function export_usage(int $userid): void {
+        global $DB;
+
+        $rows = $DB->get_records(usage::TABLE, ['userid' => $userid], 'daykey ASC', 'id, daykey, messagecount');
+        if (empty($rows)) {
+            return;
+        }
+
+        $days = [];
+        foreach ($rows as $row) {
+            $days[] = (object) [
+                'day' => (string) $row->daykey,
+                'messagecount' => (int) $row->messagecount,
+            ];
+        }
+
+        $path = [
+            get_string('pluginname', 'local_elediaai_chatengine'),
+            get_string('privacy:path:usage', 'local_elediaai_chatengine'),
+        ];
+        writer::with_context(\core\context\system::instance())->export_data($path, (object) ['days' => $days]);
     }
 
     #[\Override]
     public static function delete_data_for_all_users_in_context(\context $context): void {
+        global $DB;
+
         thread_store::delete_where(['contextid' => $context->id]);
+
+        if ($context instanceof \core\context\system) {
+            $DB->delete_records(usage::TABLE);
+        }
     }
 
     #[\Override]
@@ -156,14 +224,21 @@ class provider implements
         $userid = $contextlist->get_user()->id;
         foreach ($contextlist->get_contexts() as $context) {
             thread_store::delete_where(['contextid' => $context->id, 'userid' => $userid]);
+            if ($context instanceof \core\context\system) {
+                usage::delete_for_user((int) $userid);
+            }
         }
     }
 
     #[\Override]
     public static function delete_data_for_users(approved_userlist $userlist): void {
         $contextid = $userlist->get_context()->id;
+        $issystem = $userlist->get_context() instanceof \core\context\system;
         foreach ($userlist->get_userids() as $userid) {
             thread_store::delete_where(['contextid' => $contextid, 'userid' => (int) $userid]);
+            if ($issystem) {
+                usage::delete_for_user((int) $userid);
+            }
         }
     }
 }

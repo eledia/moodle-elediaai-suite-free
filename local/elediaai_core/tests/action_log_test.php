@@ -29,8 +29,6 @@ use advanced_testcase;
 use local_elediaai_core\local\action_recorder;
 use local_elediaai_core\local\actions;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft Schreiber, Lese-API und Aufbewahrung des Handlungsprotokolls.
  *

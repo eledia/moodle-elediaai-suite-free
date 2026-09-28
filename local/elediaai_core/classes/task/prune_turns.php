@@ -53,11 +53,15 @@ final class prune_turns extends \core\task\scheduled_task {
     public function execute(): void {
         $days = insights::retention_days();
         if ($days <= 0) {
-            mtrace('local_elediaai_core: Aufbewahrung der Turns unbegrenzt, nichts zu tun.');
+            mtrace('local_elediaai_core: ' . get_string('task_prune_turns_unlimited', 'local_elediaai_core'));
             return;
         }
 
         $removed = insights::prune();
-        mtrace("local_elediaai_core: {$removed} Turn(s) aelter als {$days} Tag(e) entfernt.");
+        mtrace('local_elediaai_core: ' . get_string(
+            'task_prune_turns_done',
+            'local_elediaai_core',
+            (object) ['count' => $removed, 'days' => $days]
+        ));
     }
 }

@@ -27,7 +27,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $capabilities = [
+    // A token acts as its owner: it reads their personal data and, through the
+    // write tools, can send messages and change or remove data (M-21).
     'webservice/elediamcp:use' => [
+        'riskbitmask' => RISK_PERSONAL | RISK_SPAM | RISK_DATALOSS,
         'captype' => 'read',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
@@ -42,7 +45,10 @@ $capabilities = [
         ],
     ],
     // Create, view and revoke one's own MCP tokens through the self-service UI.
+    // Operator decision: everyone may issue tokens, the form proposes an expiry
+    // of 90 days. The risks are those of what the token may do (see :use).
     'webservice/elediamcp:managetokens' => [
+        'riskbitmask' => RISK_PERSONAL | RISK_SPAM | RISK_DATALOSS,
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [

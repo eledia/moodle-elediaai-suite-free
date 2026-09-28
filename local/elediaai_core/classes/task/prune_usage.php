@@ -55,11 +55,15 @@ final class prune_usage extends \core\task\scheduled_task {
     public function execute(): void {
         $days = quota_manager::retention_days();
         if ($days <= 0) {
-            mtrace('local_elediaai_core: Aufbewahrung des Hauptbuchs unbegrenzt, nichts zu tun.');
+            mtrace('local_elediaai_core: ' . get_string('task_prune_usage_unlimited', 'local_elediaai_core'));
             return;
         }
 
         $removed = quota_manager::prune($days);
-        mtrace("local_elediaai_core: {$removed} Hauptbuchzeile(n) aelter als {$days} Tag(e) entfernt.");
+        mtrace('local_elediaai_core: ' . get_string(
+            'task_prune_usage_done',
+            'local_elediaai_core',
+            (object) ['count' => $removed, 'days' => $days]
+        ));
     }
 }

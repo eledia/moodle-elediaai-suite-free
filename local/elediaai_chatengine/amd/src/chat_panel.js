@@ -41,6 +41,7 @@ import Notification from 'core/notification';
 import ModalSaveCancel from 'core/modal_save_cancel';
 import ModalEvents from 'core/modal_events';
 import {get_strings as getStrings} from 'core/str';
+import * as FocusLock from 'core/local/aria/focuslock';
 import {renderInto as renderLiveMarkdown} from 'local_elediaai_chatengine/markdown_live';
 import {notifyFilterContentUpdated} from 'core_filters/events';
 import {typeset as typesetMaths} from 'filter_mathjaxloader/loader';
@@ -100,6 +101,10 @@ export class ChatPanel {
         this.busy = false;
         this.lastUserMessage = '';
         this.previousFocus = null;
+        this.expandReturnFocus = null;
+        this.focusLocked = false;
+        this.logMuted = false;
+        this.liveRaised = false;
         this.historyLoaded = false;
         this.expanded = false;
         this.expandHome = null;
@@ -242,7 +247,10 @@ export class ChatPanel {
      * @return {void}
      */
     expand() {
-        this.previousFocus = document.activeElement;
+        // Kept apart from previousFocus: a placement that opened the panel as
+        // an overlay remembers its launcher there, and leaving the enlarged
+        // view must not overwrite that with a control inside the panel.
+        this.expandReturnFocus = document.activeElement;
         if (!this.expandPlaceholder && this.panel.parentNode !== document.body) {
             this.expandHome = {parent: this.panel.parentNode, next: this.panel.nextSibling};
             this.expandPlaceholder = document.createComment(this.prefix + '-expanded-home');
@@ -259,6 +267,7 @@ export class ChatPanel {
         this.makeBackgroundInert();
         this.updateExpandButton();
         this.updateDialogRole();
+        this.syncFocusLock();
         window.setTimeout(() => this.input && this.input.focus(), 50);
     }
 
@@ -285,8 +294,51 @@ export class ChatPanel {
         this.releaseBackgroundInert();
         this.updateExpandButton();
         this.updateDialogRole();
-        if (this.previousFocus && typeof this.previousFocus.focus === 'function') {
-            this.previousFocus.focus();
+        // Released before focus goes back: while the lock holds, focus that
+        // leaves the panel is pulled straight back into it.
+        this.syncFocusLock();
+        const back = this.expandReturnFocus;
+        this.expandReturnFocus = null;
+        if (back && typeof back.focus === 'function' && document.contains(back)) {
+            back.focus();
+        }
+    }
+
+    /**
+     * Whether the panel is currently modal.
+     *
+     * The enlarged view always is. A placement with overlay display modes of
+     * its own overrides this to include them.
+     *
+     * @return {boolean}
+     */
+    isModal() {
+        return this.expanded;
+    }
+
+    /**
+     * Hold keyboard focus in the panel for as long as it is modal.
+     *
+     * Moodle's own focus lock, not only the Tab handler below, because the
+     * page may already hold one: on a narrow screen Boost traps focus in the
+     * open block drawer, and the chat is opened from a launcher inside that
+     * drawer. The panel itself lives on <body>, outside the drawer, so the
+     * drawer's lock pulled every focus that landed in the chat straight back
+     * - Tab only ever moved between the launcher and "Close block drawer".
+     * The core lock keeps a stack: pushing the panel on top of the drawer
+     * makes the chat the region that counts, and popping it hands the
+     * drawer its lock back unchanged.
+     *
+     * @return {void}
+     */
+    syncFocusLock() {
+        const want = this.isModal() && !this.isHidden();
+        if (want && !this.focusLocked) {
+            this.focusLocked = true;
+            FocusLock.trapFocus(this.panel);
+        } else if (!want && this.focusLocked) {
+            this.focusLocked = false;
+            FocusLock.untrapFocus();
         }
     }
 
@@ -300,7 +352,7 @@ export class ChatPanel {
      * @return {void}
      */
     updateDialogRole() {
-        if (this.expanded) {
+        if (this.isModal() && !this.isHidden()) {
             this.panel.setAttribute('role', 'dialog');
             this.panel.setAttribute('aria-modal', 'true');
             return;
@@ -590,14 +642,32 @@ export class ChatPanel {
 
         // The streamed bubble is dropped only once its finished replacement is
         // in the log, so the answer never blinks out of view in between.
+        // A bubble still being opened when the turn settles is waited for and
+        // dropped as well: it used to appear after the finished answer and stay
+        // next to it until the page was reloaded.
         const replaceLive = (render) => {
             const streamed = this.liveBubble;
+            const opening = this.liveOpening;
             this.cancelLive();
             this.liveBubble = null;
             this.liveOpening = null;
+            // Before the finished answer goes in, so that it is the one thing
+            // the transcript announces for this turn.
+            this.unmuteLog();
             return Promise.resolve(render()).then((node) => {
                 if (streamed) {
                     streamed.remove();
+                }
+                if (opening && !streamed) {
+                    opening.then((late) => {
+                        if (late) {
+                            late.remove();
+                        }
+                        if (this.liveBubble === late) {
+                            this.liveBubble = null;
+                        }
+                        return null;
+                    }).catch(() => null);
                 }
                 return node;
             });
@@ -797,6 +867,12 @@ export class ChatPanel {
      * @return {Promise} Resolves with the bubble node, or null when it failed.
      */
     openLiveBubble() {
+        // The growing answer is not announced. A live region around text that
+        // changes dozens of times a second makes a screen reader either read
+        // fragments without end or fall silent; neither is an answer. The
+        // transcript is muted until the finished answer replaces this bubble,
+        // and that one is announced once, as an addition to the log.
+        this.muteLog();
         return this.appendMessage({
             isassistant: true,
             html: '',
@@ -806,10 +882,6 @@ export class ChatPanel {
             if (node) {
                 node.classList.add(this.prefix + '-msg--live');
                 node.setAttribute('aria-busy', 'true');
-                const target = node.querySelector('.' + this.prefix + '-markdown');
-                if (target) {
-                    target.setAttribute('aria-live', 'polite');
-                }
             }
             return node;
         });
@@ -1011,8 +1083,43 @@ export class ChatPanel {
      * @return {void}
      */
     raiseLiveRegion() {
-        if (this.log) {
+        this.liveRaised = true;
+        if (this.log && !this.logMuted) {
             this.log.setAttribute('aria-live', 'polite');
+        }
+    }
+
+    /**
+     * Silence the transcript while an answer is being streamed into it.
+     *
+     * @return {void}
+     */
+    muteLog() {
+        this.logMuted = true;
+        if (this.log) {
+            this.log.setAttribute('aria-live', 'off');
+            this.log.setAttribute('aria-busy', 'true');
+        }
+    }
+
+    /**
+     * Let the transcript announce again once streaming has ended.
+     *
+     * Only back to polite if it was polite before: a transcript still waiting
+     * for its restored turns stays quiet until raiseLiveRegion() says so.
+     *
+     * @return {void}
+     */
+    unmuteLog() {
+        if (!this.logMuted) {
+            return;
+        }
+        this.logMuted = false;
+        if (this.log) {
+            this.log.removeAttribute('aria-busy');
+            if (this.liveRaised) {
+                this.log.setAttribute('aria-live', 'polite');
+            }
         }
     }
 
@@ -1310,7 +1417,12 @@ export class ChatPanel {
     }
 
     /**
-     * Copy the answer text of a bubble to the clipboard.
+     * Copy the answer of a bubble to the clipboard, with its AI marking.
+     *
+     * Only the bare text used to be copied, so the marking and the link to the
+     * provenance record were lost the moment an answer was pasted elsewhere.
+     * The plain text now ends with the notice and the verification link; the
+     * HTML flavour keeps the machine-readable attributes as well.
      *
      * @param {HTMLElement} el The copy button.
      * @return {void}
@@ -1318,11 +1430,33 @@ export class ChatPanel {
     copyAnswer(el) {
         const bubble = el.closest('[data-region="message"]');
         const md = bubble ? bubble.querySelector('.' + this.prefix + '-markdown') : null;
-        const text = md ? md.innerText : '';
-        if (!text || !navigator.clipboard) {
+        if (!md || !navigator.clipboard) {
             return;
         }
-        navigator.clipboard.writeText(text).then(() => {
+        const marked = md.querySelector('[data-ai-record]');
+        const notice = md.querySelector('.aitransparency-notice');
+        let text = (marked || md).innerText.trim();
+        if (notice) {
+            const label = notice.querySelector('.aitransparency-notice__text');
+            const link = notice.querySelector('a[href]');
+            text += '\n\n' + (label ? label.innerText.trim() : notice.innerText.trim());
+            if (link) {
+                text += ' ' + link.href;
+            }
+        }
+        if (!text) {
+            return;
+        }
+        let write;
+        if (window.ClipboardItem && navigator.clipboard.write) {
+            write = navigator.clipboard.write([new window.ClipboardItem({
+                'text/plain': new Blob([text], {type: 'text/plain'}),
+                'text/html': new Blob([md.innerHTML], {type: 'text/html'})
+            })]).catch(() => navigator.clipboard.writeText(text));
+        } else {
+            write = navigator.clipboard.writeText(text);
+        }
+        write.then(() => {
             this.setStatus(strings.copied);
             return null;
         }).catch(() => {

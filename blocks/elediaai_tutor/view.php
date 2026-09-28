@@ -64,6 +64,9 @@ if (isguestuser()) {
     throw new moodle_exception('noguest');
 }
 require_capability('block/elediaai_tutor:use', $context);
+if (class_exists(\local_elediaai_core\feature\registry::class)) {
+    \local_elediaai_core\feature\registry::require_enabled('tutor');
+}
 
 $useshell = !$embedded
     && $courseid === 0

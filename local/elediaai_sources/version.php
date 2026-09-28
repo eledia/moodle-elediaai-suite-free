@@ -24,17 +24,18 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026092500;
+$plugin->version   = 2026092800;
 $plugin->requires  = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'local_elediaai_sources';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.0.1';
+$plugin->release   = '1.0.2';
 
 // Die Design-Token der Suite (--eai-*, --font-size-*) stehen in
 // local_elediaai_core; dieses Plugin liest sie ohne Rueckfallwert. Ohne Core
 // gaebe es keine Skala, also ist die Abhaengigkeit echt und nicht kosmetisch
 // (adr05, task22).
 $plugin->dependencies = [
-    'local_elediaai_core' => 2026090806,
+    // Der Feature-Schalter registry::require_enabled() (K2) kam mit 2026092800.
+    'local_elediaai_core' => 2026092800,
 ];

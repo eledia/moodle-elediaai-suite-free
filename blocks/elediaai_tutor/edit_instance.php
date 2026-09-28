@@ -221,7 +221,7 @@ class block_elediaai_tutor_instance_shell_form extends moodleform {
                 break;
             case 'textarea':
                 $mform->addElement('textarea', $field, $label, ['rows' => 3, 'cols' => 50]);
-                $mform->setType($field, PARAM_TEXT);
+                $mform->setType($field, PARAM_RAW); // Cleaned in registry::sanitise(); PARAM_TEXT left script bodies behind.
                 break;
             case 'select':
                 $options = ['' => get_string('config_usesite', 'block_elediaai_tutor')];
@@ -312,6 +312,22 @@ class block_elediaai_tutor_instance_shell_form extends moodleform {
                 'scope_notallowed',
                 'local_elediaai_chatengine',
                 \local_elediaai_chatengine\local\knowledge_scope::label_rejected($rejected)
+            );
+            return $errors;
+        }
+
+        // Only the individually named courses are countable here -- a category
+        // is intersected with each person's enrolments before anything is
+        // counted, so its size says nothing about what a request will carry.
+        $toomany = \local_elediaai_chatengine\local\knowledge_scope::too_many_courses($wish);
+        if ($toomany !== null) {
+            $errors['config_coursescope'] = get_string(
+                'scope_toomanycourses',
+                'local_elediaai_chatengine',
+                (object) [
+                    'chosen' => $toomany,
+                    'limit' => \local_elediaai_chatengine\local\course_scope::limit(),
+                ]
             );
         }
 
@@ -520,6 +536,13 @@ echo html_writer::tag(
     get_string('instance_shell_intro', 'block_elediaai_tutor'),
     ['class' => 'text-muted']
 );
+// Die Hilfe liest die Lehrkraft im Kurs mit demselben Recht wie diese Seite (G-05).
+if ($courseid > 0 && $courseid != SITEID) {
+    echo html_writer::tag('p', html_writer::link(
+        new moodle_url('/blocks/elediaai_tutor/help.php', ['id' => $courseid]),
+        get_string('shell_help_label', 'block_elediaai_tutor')
+    ));
+}
 // Site admins keep one-click access to the site-wide settings hub (the per-instance
 // shell otherwise only exposes this block's own settings).
 if (has_capability('moodle/site:config', \core\context\system::instance())) {

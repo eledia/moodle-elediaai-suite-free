@@ -190,10 +190,47 @@ final class knowledge_scope {
         }
 
         $indexed = call_user_func([$state, 'ingested_within'], $resolved);
-        return get_string('scope_summary', 'local_elediaai_chatengine', (object) [
+        $summary = get_string('scope_summary', 'local_elediaai_chatengine', (object) [
             'indexed' => count($indexed),
             'total' => count($resolved),
         ]);
+
+        // A selection wider than one request can carry is not an error -- the
+        // intersection with each person's enrolments usually brings it well
+        // under the limit, and forbidding it would forbid what categories are
+        // for. But it may quietly search less than it names, and that belongs
+        // on the form rather than in a support ticket.
+        if (count($resolved) > course_scope::limit()) {
+            $summary .= ' ' . get_string(
+                'scope_summary_capped',
+                'local_elediaai_chatengine',
+                course_scope::limit()
+            );
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Whether more single courses were named than one request can carry.
+     *
+     * Only the individually chosen ones are counted. A category is an
+     * intention, not a list: it stands for whatever is below it today, it is
+     * intersected with each person's enrolments before anything is counted,
+     * and it grows without anybody opening this form again. Refusing one
+     * because it expands to too many would forbid the ordinary case -- a
+     * category of forty courses in which each learner sits in six.
+     *
+     * Individually named courses are different. There the number in the form
+     * is the number that travels, and more of them than the limit is a
+     * mistake somebody can see and fix.
+     *
+     * @param self $wish The selection being saved.
+     * @return int|null How many courses were named, or null when it fits.
+     */
+    public static function too_many_courses(self $wish): ?int {
+        $named = count($wish->courses);
+        return $named > course_scope::limit() ? $named : null;
     }
 
     /**

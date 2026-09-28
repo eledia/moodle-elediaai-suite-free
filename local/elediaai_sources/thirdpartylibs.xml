@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<libraries>
+  <!--
+    Lucide icons (https://lucide.dev), ISC licence; icons derived from Feather
+    are MIT-licensed (full text in LICENSE-lucide.txt).
+    Single icon paths inlined in classes/output/shell.php.
+    The Lucide release the icons were taken from is not recorded, so no version
+    is given.
+  -->
+  <library>
+    <location>LICENSE-lucide.txt</location>
+    <name>Lucide icons</name>
+    <license>ISC</license>
+    <repository>https://github.com/lucide-icons/lucide</repository>
+    <copyrights>
+      <copyright>Lucide Icons and Contributors</copyright>
+      <copyright>Cole Bemis (Feather-derived icons, MIT)</copyright>
+    </copyrights>
+  </library>
+  <library>
+    <location>LICENSE-lucide.txt</location>
+    <name>Lucide icons licence</name>
+    <license>ISC</license>
+  </library>
+</libraries>

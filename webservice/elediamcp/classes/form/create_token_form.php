@@ -34,6 +34,9 @@ use moodleform;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class create_token_form extends moodleform {
+    /** @var int Days a new token is valid unless the person changes it. */
+    public const DEFAULT_VALIDITY_DAYS = 90;
+
     /**
      * Define the form.
      *
@@ -60,6 +63,10 @@ class create_token_form extends moodleform {
             ['optional' => true]
         );
         $mform->addHelpButton('validuntil', 'token_validuntil', 'webservice_elediamcp');
+        // Every signed-in person may issue tokens, so a forgotten token must
+        // not stay valid forever: expiry is on by default (M-21). Clearing the
+        // checkbox still allows a token without end date on purpose.
+        $mform->setDefault('validuntil', time() + self::DEFAULT_VALIDITY_DAYS * DAYSECS);
 
         $this->add_action_buttons(true, get_string('token_create', 'webservice_elediamcp'));
     }

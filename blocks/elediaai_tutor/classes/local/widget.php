@@ -74,6 +74,27 @@ class widget {
     }
 
     /**
+     * The string holding the built-in dashboard starters for an audience.
+     *
+     * The teacher and manager lists lean on tools only the premium MCP add-on
+     * provides (course author, grading queue, forum, course creation). Without
+     * it they offered actions the tutor could only apologise for; the free
+     * lists use what the free catalogue answers.
+     *
+     * @param string $audience One of the user_audience constants.
+     * @return string The string identifier.
+     */
+    public static function default_starters_key(string $audience): string {
+        $key = 'default_promptstarters_' . $audience;
+        $premium = '\\webservice_elediamcp\\local\\premium';
+        $full = class_exists($premium) && $premium::has_mcp_tools();
+        if ($audience !== user_audience::STUDENT && !$full) {
+            $key .= '_free';
+        }
+        return $key;
+    }
+
+    /**
      * Whether a course has opted into the tutor.
      *
      * The opt-in signal is the teacher adding the tutor block to the course —
@@ -320,7 +341,7 @@ class widget {
         }
         $startersraw = (string) registry::effective($starterskey, $instance);
         if ($dashboard && trim($startersraw) === '') {
-            $startersraw = get_string('default_promptstarters_' . $audience, 'block_elediaai_tutor');
+            $startersraw = get_string(self::default_starters_key($audience), 'block_elediaai_tutor');
         }
         $starters = self::parse_starters($startersraw);
 

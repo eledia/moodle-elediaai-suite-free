@@ -321,6 +321,34 @@ final class agent_test extends \advanced_testcase {
     }
 
     /**
+     * A timeout is not retried without tools.
+     *
+     * The retry waited the whole timeout a second time; only a request the
+     * service refused as sent can succeed without the tool list.
+     */
+    public function test_a_transport_failure_is_not_retried(): void {
+        $this->resetAfterTest();
+        set_config('llm_api_key', 'test-key', 'local_literag');
+
+        $llmt = $this->queue_transport([
+            ['status' => 0, 'error' => 'Operation timed out', 'body' => ''],
+            $this->llm_answer('Never reached.'),
+        ]);
+        $agent = new agent(new client($llmt), new moodle_client('https://x', 'tok', $this->queue_transport([])));
+
+        try {
+            $agent->run(
+                [['role' => 'user', 'content' => 'hi']],
+                [['type' => 'function', 'function' => ['name' => 'moodle_me', 'parameters' => ['type' => 'object']]]]
+            );
+            $this->fail('The transport failure should have surfaced.');
+        } catch (\local_literag\local\llm\llm_exception $e) {
+            $this->assertFalse($e->requestrejected);
+            $this->assertCount(1, $llmt->bodies);
+        }
+    }
+
+    /**
      * The loop is bounded by max_tool_iterations.
      */
     public function test_iteration_cap(): void {

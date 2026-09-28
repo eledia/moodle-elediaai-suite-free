@@ -96,6 +96,23 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
     }
 
     /**
+     * The conversation table declares the answer style and the pending action.
+     */
+    public function test_get_metadata_declares_conversation_state_fields(): void {
+        $collection = provider::get_metadata(new collection('local_literag'));
+        $fields = [];
+        foreach ($collection->get_collection() as $item) {
+            if ($item->get_name() === 'local_literag_conversations') {
+                $fields = array_keys($item->get_privacy_fields());
+            }
+        }
+
+        $this->assertContains('lastanswerstyle', $fields);
+        $this->assertContains('pendingaction', $fields);
+        $this->assertContains('timemodified', $fields);
+    }
+
+    /**
      * A user with LiteRAG data is reported at the system context only.
      */
     public function test_get_contexts_for_userid_reports_system_context(): void {
@@ -136,9 +153,13 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
      * Export includes conversations, memory and query logs for the approved user.
      */
     public function test_export_user_data(): void {
+        global $DB;
+
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user();
         $conversation = $this->create_user_data((int) $user->id, 23);
+        $pending = json_encode(['tool' => 'moodle_send_message', 'summary' => 'Send a message']);
+        $DB->set_field('local_literag_conversations', 'pendingaction', $pending, ['id' => $conversation->id]);
         $context = \core\context\system::instance();
 
         $contextlist = new approved_contextlist($user, 'local_literag', [$context->id]);
@@ -151,6 +172,8 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
             $conversation->convkey,
         ]);
         $this->assertEquals(23, $conversationdata->courseid);
+        $this->assertSame('explain', $conversationdata->lastanswerstyle);
+        $this->assertSame($pending, $conversationdata->pendingaction);
         $this->assertCount(2, $conversationdata->messages);
         $this->assertSame('Explain photosynthesis.', $conversationdata->messages[0]->content);
 

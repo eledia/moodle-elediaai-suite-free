@@ -33,6 +33,7 @@ use local_elediaai_core\output\section_nav;
 use local_elediaai_core\reportbuilder\local\systemreports\aiactions;
 
 require_login();
+\local_elediaai_core\feature\registry::require_enabled('audit');
 
 $courseid = optional_param('courseid', 0, PARAM_INT);
 $quick = optional_param('actionquick', '', PARAM_ALPHANUMEXT);

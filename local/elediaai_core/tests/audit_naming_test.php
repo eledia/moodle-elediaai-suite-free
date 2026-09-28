@@ -28,8 +28,6 @@ namespace local_elediaai_core;
 use advanced_testcase;
 use local_elediaai_core\output\section_nav;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Haelt die Benennung der vier Audit-Flaechen fest.
  *
@@ -115,7 +113,7 @@ final class audit_naming_test extends advanced_testcase {
                 $inhalt,
                 "{$datei} setzt einen anderen Seitentitel als {$schluessel}."
             );
-            // audit_settings.php baut seine Huelle weiter unten; der Name
+            // Die Seite audit_settings.php baut ihre Huelle weiter unten; der Name
             // steht dort in derselben Zeile wie ueberall.
             $this->assertStringContainsString(
                 "'tagline' => get_string('{$schluessel}', 'local_elediaai_core'),",

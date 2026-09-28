@@ -31,7 +31,7 @@ Das Repository wird als Moodle-Plugin-Pfad eingebunden:
 
 ```bash
 export MOODLE_ROOT=/path/to/moodle
-ln -s /Users/moskaliuk/Documents/Code/eledia.ai/public/local/elediaai_core "$MOODLE_ROOT/local/elediaai_core"
+ln -s /path/to/ai_suite/public/local/elediaai_core "$MOODLE_ROOT/local/elediaai_core"
 cd "$MOODLE_ROOT"
 php admin/cli/upgrade.php
 ```

@@ -29,8 +29,6 @@ use advanced_testcase;
 use local_elediaai_core\content\content_extractor;
 use moodle_exception;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the component behavior and contracts.
  *

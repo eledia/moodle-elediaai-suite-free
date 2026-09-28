@@ -90,7 +90,10 @@
         <div class="elediaai-chat-backdrop" data-action="close" hidden></div>
 
         <div class="elediaai-chat-window" role="document">
-            <header class="elediaai-chat-header{{#dashboardmode}} elediaai-chat-header--hero{{/dashboardmode}}">
+            {{! A div, not <header>: inside the panel's region a header
+                element is exposed as a banner landmark nested in another
+                landmark, and a page has one banner - Moodle's. }}
+            <div class="elediaai-chat-header{{#dashboardmode}} elediaai-chat-header--hero{{/dashboardmode}}">
                 {{^dashboardmode}}
                     <div class="elediaai-chat-identity">
                         <a class="elediaai-chat-avatar" href="https://eledia.ai"
@@ -157,7 +160,7 @@
                         </button>
                     {{/embedded}}
                 </div>
-            </header>
+            </div>
 
             {{^dashboardmode}}
                 {{#llmonly}}
@@ -211,8 +214,13 @@
                 </div>
             {{/historyenabled}}
 
+            {{! Starts silent, like the engine's own transcript: the AMD
+                module raises aria-live to polite once a restored conversation
+                has been rendered, so reopening a chat does not read out every
+                past turn. Focusable, so the scrolled transcript can be read
+                with the keyboard. }}
             <div class="elediaai-chat-log" data-region="log"
-                 role="log" aria-live="polite" aria-atomic="false"
+                 role="log" aria-live="off" aria-atomic="false"
                  aria-label="{{#str}}conversation, block_elediaai_tutor{{/str}}" tabindex="0">
                 {{^dashboardmode}}
                     <div class="elediaai-chat-message elediaai-chat-assistant elediaai-chat-welcome">

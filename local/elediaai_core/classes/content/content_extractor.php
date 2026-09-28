@@ -27,8 +27,6 @@
 
 namespace local_elediaai_core\content;
 
-defined('MOODLE_INTERNAL') || die();
-
 use coding_exception;
 use context_module;
 use moodle_exception;

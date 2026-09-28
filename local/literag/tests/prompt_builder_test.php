@@ -110,6 +110,18 @@ final class prompt_builder_test extends \advanced_testcase {
     /**
      * Explain mode keeps the complete-explanation instruction.
      */
+    /**
+     * Die Sprache der Frage entscheidet, die Oberflaechensprache ist der Rueckfall.
+     *
+     * Eine englische Frage in einer deutschen Oberflaeche bekam eine deutsche Antwort.
+     */
+    public function test_the_question_decides_the_language(): void {
+        $messages = prompt_builder::build('What is photosynthesis?', [], [], 'explain', 'en', null, null, false);
+        $prompt = (string) $messages[0]['content'];
+        $this->assertStringContainsString('language the learner\'s last message is written in', $prompt);
+        $this->assertStringContainsString('"en"', $prompt);
+    }
+
     public function test_explain_mode(): void {
         $prompt = $this->system_prompt('explain');
         $this->assertStringContainsString('ANSWER MODE = explain', $prompt);

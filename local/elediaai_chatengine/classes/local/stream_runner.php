@@ -45,6 +45,16 @@ use local_elediaai_chatengine\chat_service;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class stream_runner {
+    /** @var array<string, string[]> Refusals written for the learner, by component. */
+    private const USER_FACING_ERRORS = [
+        'local_elediaai_chatengine' => [
+            'error_message_empty', 'error_message_too_long', 'error_rate_limited',
+            'error_daily_limit', 'error_mode_unsupported',
+        ],
+        'local_elediaai_core' => ['error_quota_token_exceeded', 'error_quota_unavailable'],
+        'block_elediaai_tutor' => ['error_consentrequired', 'error_course_chat_disabled', 'error_global_chat_disabled'],
+    ];
+
     /**
      * Run one turn and emit it as server-sent events.
      *
@@ -119,18 +129,32 @@ class stream_runner {
                 'confirmation' => is_array($result['confirmation'] ?? null) ? $result['confirmation'] : [],
             ]);
         } catch (\moodle_exception $e) {
-            // A detailed reason only for people who can act on it; everybody else
-            // gets the generic one, because a backend URL or a tool name in a
-            // learner's chat window helps nobody and tells an attacker something.
-            $candetail = has_capability('moodle/site:config', $context);
-            self::frame('error', [
-                'message' => $candetail
-                    ? $e->getMessage()
-                    : get_string('error_backend_unavailable', 'local_elediaai_chatengine'),
-            ]);
+            self::frame('error', ['message' => self::error_message($e, $context)]);
         }
 
         self::frame('done', '[DONE]');
+    }
+
+    /**
+     * The message a failed turn shows in the chat window.
+     *
+     * A detailed reason only for people who can act on it; everybody else gets
+     * the generic one, because a backend URL or a tool name in a learner's chat
+     * window helps nobody and tells an attacker something. The exception are
+     * refusals written for the learner: a spent quota or a waiting time is the
+     * learner's to know, and "the backend could not be reached" would send them
+     * to retry what cannot succeed.
+     *
+     * @param \moodle_exception $e The failure.
+     * @param \context $context The conversation's context.
+     * @return string
+     */
+    public static function error_message(\moodle_exception $e, \context $context): string {
+        $userfacing = self::USER_FACING_ERRORS[$e->module] ?? [];
+        if (in_array($e->errorcode, $userfacing, true) || has_capability('moodle/site:config', $context)) {
+            return $e->getMessage();
+        }
+        return get_string('error_backend_unavailable', 'local_elediaai_chatengine');
     }
 
     /**

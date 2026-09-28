@@ -1505,3 +1505,19 @@ body#page-local-aitransparency-report .main-inner {
        kommt man an ihr auch mit ID-Selektor nicht vorbei (nachgemessen). */
     max-width: none !important;
 }
+
+/* -------------------------------------------------------------------------
+ * Sichtbarer Tastaturfokus fuer den Suite-Knopf in der Navigationsleiste
+ *
+ * Der Knopf "AI Suite" (launcher.mustache) bringt sein Aussehen als <style>
+ * im Seitenkoerper mit, und dort nimmt `:focus-visible` den Umriss weg und
+ * setzt nur eine blasse Flaeche -- im Test (G-07) war der Fokus beim Tabben
+ * durch die Hauptnavigation nicht zu sehen. Der Ring steht hier, weil dieses
+ * Stylesheet auf jeder Seite geladen ist; der eine Selektor mehr sorgt dafuer,
+ * dass er gegen die spaeter im Dokument stehende Regel gewinnt. --eai-ai
+ * haelt auf Weiss wie auf seiner eigenen Flaeche mehr als 3:1 (WCAG 1.4.11).
+ * ------------------------------------------------------------------------- */
+.lh-ai-launcher-host .lh-ai-launcher .lh-ai-launcher__link:focus-visible {
+    outline: 2px solid var(--eai-ai);
+    outline-offset: 2px;
+}

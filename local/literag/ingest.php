@@ -122,7 +122,11 @@ if (!is_array($payload)) {
 $store = new document_store();
 try {
     if ($action === 'upsert') {
-        $store->upsert($payload);
+        // The parse state tells the sender whether the text could be read: an
+        // encrypted PDF is accepted but yields no chunks, and the sender should
+        // not report it as indexed.
+        $parsestate = $store->upsert($payload);
+        local_literag_ingest_respond(200, ['status' => 'ok', 'parsestate' => $parsestate]);
     } else {
         $scope = (string) ($payload['scope'] ?? 'exact');
         $store->delete((string) ($payload['source_id'] ?? ''), $scope === 'prefix' ? 'prefix' : 'exact');

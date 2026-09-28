@@ -35,10 +35,15 @@ $string['privacy:metadata:thread:mode'] = 'Ob aus Kursmaterial oder allein aus d
 $string['privacy:metadata:thread:lastpreview'] = 'Eine kurze Vorschau der letzten Nachricht für die Unterhaltungsliste.';
 $string['privacy:metadata:thread:timecreated'] = 'Wann die Unterhaltung begonnen wurde.';
 $string['privacy:metadata:thread:timemodified'] = 'Wann die Unterhaltung zuletzt genutzt wurde.';
+$string['privacy:metadata:thread:guestkey'] = 'Ein undurchsichtiger Schlüssel für nicht angemeldete Besucherinnen und Besucher, mit dem sie ihre eigene Unterhaltung fortsetzen können. Er wird nicht aus personenbezogenen Daten abgeleitet.';
+$string['privacy:metadata:thread:contextid'] = 'Der Moodle-Kontext, in dem die Unterhaltung geführt wurde.';
+$string['privacy:metadata:thread:convkey'] = 'Die Kennung, die das KI-Backend für die Unterhaltung vergeben hat; sie verbindet die Unterhaltung mit dem Verlauf, den das Backend speichert.';
+$string['privacy:metadata:thread:title'] = 'Ein optionaler Titel der Unterhaltung für die Unterhaltungsliste.';
 $string['privacy:metadata:msg'] = 'Die einzelnen Beiträge einer Unterhaltung.';
 $string['privacy:metadata:msg:role'] = 'Ob der Beitrag von der Person stammt oder von der Assistenz erzeugt wurde.';
 $string['privacy:metadata:msg:content'] = 'Der Text des Beitrags.';
 $string['privacy:metadata:msg:sources'] = 'Das Kursmaterial, das eine Antwort zitiert hat.';
+$string['privacy:metadata:msg:origin'] = 'Ob eine Antwort aus Kursmaterial, aus Moodle-Daten oder aus dem Allgemeinwissen des Modells stammt.';
 $string['privacy:metadata:msg:timecreated'] = 'Wann der Beitrag festgehalten wurde.';
 $string['privacy:metadata:backend'] = 'Nachrichten werden an das eingestellte KI-Backend gesendet, damit es eine Antwort erzeugen kann.';
 $string['privacy:metadata:backend:usermessage'] = 'Die eingegebene Nachricht.';
@@ -46,6 +51,11 @@ $string['privacy:metadata:backend:history'] = 'Frühere Beiträge derselben Unte
 $string['privacy:metadata:backend:userid'] = 'Ein personenbezogenes Token, das ausweist, wer fragt, damit das Backend die Rechte dieser Person anwendet.';
 $string['privacy:metadata:backend:courseid'] = 'Der Kurs, aus dessen Material geantwortet werden darf.';
 $string['privacy:metadata:backend:language'] = 'Die eingestellte Sprache, damit in ihr geantwortet wird.';
+$string['privacy:metadata:usage'] = 'Tägliche Nachrichtenzähler je Person, mit denen ein Tageslimit für Nachrichten durchgesetzt wird. Zähler, die älter als 60 Tage sind, werden automatisch gelöscht.';
+$string['privacy:metadata:usage:userid'] = 'Die Person, die die Nachrichten gesendet hat.';
+$string['privacy:metadata:usage:daykey'] = 'Der Tag, an dem die Nachrichten gesendet wurden.';
+$string['privacy:metadata:usage:messagecount'] = 'Wie viele Nachrichten die Person an diesem Tag gesendet hat.';
+$string['privacy:path:usage'] = 'Tägliche Nachrichtenzahl';
 
 // Backends.
 $string['backend_ingestionapi'] = 'RAG-Agent';
@@ -106,6 +116,7 @@ $string['mode_ungrounded'] = 'Nur Modell (ohne Wissensbasis)';
 // Cache-Definitionen.
 $string['cachedef_usertoken'] = 'Personenbezogene Rückruf-Token für das Backend';
 $string['cachedef_ratelimit'] = 'Zähler für Chat-Anfragen je Person';
+$string['cachedef_coursescope'] = 'Kursumfang konfigurierter Wissensbasen';
 
 // Geplante Aufgaben.
 $string['task_purge_threads'] = 'Abgelaufene KI-Unterhaltungen löschen';
@@ -154,7 +165,7 @@ $string['setting_ratelimitperminute_desc'] = 'Chat-Anfragen, die eine Person je 
 $string['setting_dailymessagelimit'] = 'Nachrichten je Tag';
 $string['setting_dailymessagelimit_desc'] = 'Nachrichten, die eine Person je Tag senden darf. 0 bedeutet unbegrenzt.';
 $string['setting_streamingenabled'] = 'Antworten fortlaufend anzeigen';
-$string['setting_streamingenabled_desc'] = 'Zeigt eine Antwort, während sie entsteht, sofern das Backend das unterstützt.';
+$string['setting_streamingenabled_desc'] = 'Zeigt eine Antwort, während sie entsteht, sofern das Backend das unterstützt. LiteRAG antwortet in einem Stück; mit LiteRAG wirkt diese Einstellung nicht.';
 $string['setting_retentiondays'] = 'Aufbewahrung von Unterhaltungen';
 $string['setting_retentiondays_desc'] = 'Tage, die eine Unterhaltung nach ihrem letzten Beitrag aufbewahrt wird. 0 bewahrt sie auf, bis eine Person oder die Administration sie löscht.';
 $string['setting_mcpserviceid'] = 'Webservice für Rückrufe';
@@ -246,5 +257,7 @@ $string['scope_notallowed'] = 'Sie können nur Kurse wählen, in denen Sie selbs
 $string['scope_summary'] = 'Von den hier gewählten Kursen sind {$a->indexed} von {$a->total} indexiert und damit durchsuchbar.';
 $string['scope_summary_plain'] = 'Diese Auswahl umfasst {$a} Kurse.';
 $string['scope_summary_none'] = 'Diese Auswahl umfasst derzeit keine Kurse.';
+$string['scope_summary_capped'] = 'Pro Anfrage werden höchstens {$a} Kurse durchsucht — was darüber liegt, wird nicht erreicht.';
+$string['scope_toomanycourses'] = 'Sie haben {$a->chosen} einzelne Kurse gewählt; pro Anfrage werden höchstens {$a->limit} durchsucht. Wählen Sie weniger Kurse — oder einen Kursbereich, der pro Person ohnehin auf die eingeschriebenen Kurse zusammenschrumpft.';
 $string['setting_maxscopecourses'] = 'Kurs-IDs pro Anfrage';
 $string['setting_maxscopecourses_desc'] = 'Wie viele Kurse eine Anfrage an das Backend nennen darf. <b>Das ist die Zahl des Backends.</b> Dessen Suchwerkzeug weist eine zu lange Liste ab; erhöhen Sie den Wert also erst, wenn das Backend seine eigene Grenze erhöht hat — ein zu hoher Wert weitet keine Suche, er lässt Anfragen scheitern. Löst eine Wissensbasis mehr Kurse auf als hier erlaubt, fällt eine Kursfläche auf den Kurs zurück, in dem sie steht, und eine Fläche ohne Kurs überlässt dem Backend die Auflösung der Einschreibungen.';

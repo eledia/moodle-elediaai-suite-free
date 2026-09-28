@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Deterministic fingerprint of the inputs a generated artefact depends on.
  *

@@ -57,6 +57,16 @@
     --eac-accent: var(--eai-accent);
     --eac-accent-dark: var(--eai-accent-hover);
     --eac-accent-contrast: var(--eai-accent-ink);
+    /* The accent one step deeper, for where it carries words: as text on a
+       light surface, or as the fill behind white text. The accent itself
+       holds 3:1 (enough for an icon or a border, WCAG 1.4.11) but not the
+       4.5:1 a word needs (1.4.3): the default orange made 2.62:1 on the
+       grounded badge and 3.0:1 under white on the selected answer style.
+       Derived rather than fixed, so an institution's own accent is deepened
+       the same way; with the default it reaches 5.6:1 under white and 4.9:1
+       on the grounded badge. */
+    /* design-lint: erlaubt — Schwarz ist hier kein Farbwert, sondern der Abdunkler in color-mix. */
+    --eac-accent-strong: color-mix(in srgb, var(--eac-accent) 70%, #000);
     /* eLeDia brand orange — used sparingly (logo only). */
     --eac-brand: var(--eai-brand);
     /* Neutral surfaces and hairlines. */
@@ -422,6 +432,18 @@ a.elediaai-chat-avatar:focus-visible {
     flex-direction: column;
     gap: var(--eac-gap);
     background: var(--eac-body-bg);
+}
+
+/* The transcript is focusable so its scrolled-away turns can be reached by
+   keyboard; focus on it has to be visible like on any other stop. Inset, so
+   the panel's rounded clip does not cut the ring off. */
+.elediaai-chat-log:focus {
+    outline: none;
+}
+
+.elediaai-chat-log:focus-visible {
+    outline: 2px solid var(--eac-accent-strong);
+    outline-offset: -2px;
 }
 
 .elediaai-chat-message {
@@ -843,7 +865,7 @@ a.elediaai-chat-avatar:focus-visible {
 
 .elediaai-chat-grounded {
     background: var(--eac-grounded-bg);
-    color: var(--eac-accent);
+    color: var(--eac-accent-strong);
     border: 1px solid var(--eac-grounded-line);
 }
 

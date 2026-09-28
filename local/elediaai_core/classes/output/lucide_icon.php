@@ -30,8 +30,6 @@
 
 namespace local_elediaai_core\output;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Resolves a Font-Awesome icon name to inline Lucide SVG markup.
  */

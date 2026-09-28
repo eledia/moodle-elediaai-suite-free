@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\feature;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Plugins that want to appear in the LernHive AI dashboard implement
  * this interface in a class named `<frankenstyle>\elediaai_core\feature_provider`.

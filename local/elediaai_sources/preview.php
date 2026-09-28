@@ -39,6 +39,7 @@ $cmid = required_param('cmid', PARAM_INT);
 // Log in before the lookup: the id is typed in by hand on the reindex page,
 // and a guest probing ids should meet the login form, not "no such module".
 require_login();
+\local_elediaai_core\feature\registry::require_enabled('sources');
 
 [$course, $cm] = get_course_and_cm_from_cmid($cmid);
 $modulecontext = \core\context\module::instance($cm->id);

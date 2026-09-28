@@ -54,11 +54,15 @@ final class anonymise_actions extends \core\task\scheduled_task {
     public function execute(): void {
         $days = actions::retention_days();
         if ($days <= 0) {
-            mtrace('local_elediaai_core: Personenbezug der Handlungen unbegrenzt, nichts zu tun.');
+            mtrace('local_elediaai_core: ' . get_string('task_anonymise_actions_unlimited', 'local_elediaai_core'));
             return;
         }
 
         $count = actions::anonymise();
-        mtrace("local_elediaai_core: Personenbezug bei {$count} Handlung(en) aelter als {$days} Tag(e) entfernt.");
+        mtrace('local_elediaai_core: ' . get_string(
+            'task_anonymise_actions_done',
+            'local_elediaai_core',
+            (object) ['count' => $count, 'days' => $days]
+        ));
     }
 }

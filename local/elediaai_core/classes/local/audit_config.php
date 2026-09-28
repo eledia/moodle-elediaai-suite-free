@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core\context;
 use context_system;
 use core_reportbuilder\local\helpers\database as reportbuilder_database;
@@ -105,7 +103,11 @@ final class audit_config {
      * @param moodle_url $url
      * @return never
      */
-    public static function render_unavailable_page(\moodle_page $page, \core_renderer|\bootstrap_renderer $output, moodle_url $url): never {
+    public static function render_unavailable_page(
+        \moodle_page $page,
+        \core_renderer|\bootstrap_renderer $output,
+        moodle_url $url
+    ): never {
         $page->set_url($url);
         $page->set_context(context_system::instance());
         $page->set_pagelayout('admin');

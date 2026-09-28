@@ -77,19 +77,24 @@ class guard {
             throw new \moodle_exception('error_rate_limited', 'local_elediaai_chatengine', '', 60);
         }
 
+        // A sliding minute: the times of the accepted requests of the last 60
+        // seconds. A counter per calendar minute let twice the limit through
+        // across a minute boundary. Refused requests are not recorded, so a
+        // refusal does not extend itself.
         $cache = cache::make('local_elediaai_chatengine', 'ratelimit');
-        $window = (int) floor(time() / MINSECS);
-        $key = $identity . '_m_' . $window;
-        $count = ((int) ($cache->get($key) ?: 0)) + 1;
-        $cache->set($key, $count);
+        $key = $identity . '_sliding';
+        $now = time();
+        $recent = array_values(array_filter(
+            (array) ($cache->get($key) ?: []),
+            static fn($t): bool => (int) $t > $now - MINSECS
+        ));
 
-        if ($count > $perminute) {
-            throw new \moodle_exception(
-                'error_rate_limited',
-                'local_elediaai_chatengine',
-                '',
-                MINSECS - (time() % MINSECS)
-            );
+        if (count($recent) >= $perminute) {
+            $wait = max(1, min($recent) + MINSECS - $now);
+            throw new \moodle_exception('error_rate_limited', 'local_elediaai_chatengine', '', $wait);
         }
+
+        $recent[] = $now;
+        $cache->set($key, $recent);
     }
 }

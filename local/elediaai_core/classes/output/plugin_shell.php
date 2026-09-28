@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\output;
 
-defined('MOODLE_INTERNAL') || die();
-
 use html_writer;
 use moodle_url;
 
@@ -57,7 +55,7 @@ final class plugin_shell {
         if ($cansiteconfig && $settingsurl !== null && $settingsurl !== '') {
             $resolvedsettingsurl = $settingsurl instanceof moodle_url ? $settingsurl->out(false) : $settingsurl;
         }
-        // `?:` und nicht `??`: ein Aufrufer, der '' uebergibt, meint „nimm die
+        // Der Operator `?:` und nicht `??`: ein Aufrufer, der '' uebergibt, meint „nimm die
         // Vorgabe", nicht „nimm nichts". Mit `??` fiel nur null zurueck, und
         // drei Seiten trugen deshalb oben rechts eine leere Pille -- ein
         // Knopf ohne Aufschrift, der in die Dokumentation fuehrte. Ein Link

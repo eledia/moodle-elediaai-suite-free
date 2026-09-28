@@ -31,8 +31,6 @@ use local_elediaai_core\local\turn_recorder;
 use local_elediaai_core\mcp\moodle_ai_course_insights;
 use local_elediaai_core\mcp\moodle_my_ai_data;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft Katalog, Grenzen und Antworten der beiden Werkzeuge.
  *

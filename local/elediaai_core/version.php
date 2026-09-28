@@ -17,12 +17,6 @@
 /**
  * Plugin version metadata for local_elediaai_core.
  *
- * Umbrella plugin that consolidates AI integrations LernHive ships out of
- * the box. Forked features from upstream community plugins are imported
- * here piece by piece, then re-licensed and re-namespaced under the
- * LernHive shell so they share UI, capabilities and config with the rest
- * of the suite.
- *
  * @package    local_elediaai_core
  * @copyright  2026 eLeDia GmbH
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -31,9 +25,10 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_elediaai_core';
-$plugin->version   = 2026092501;
-$plugin->release   = '1.0.2';
+$plugin->version   = 2026092800;
+$plugin->release   = '1.0.3';
 $plugin->requires  = 2024100700; // Moodle 4.5+.
+$plugin->supported = [405, 502];
 $plugin->maturity  = MATURITY_STABLE;
 
 // The AI Suite Core has no plugin dependencies. Its complete runtime UI is

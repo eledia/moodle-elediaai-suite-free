@@ -29,18 +29,34 @@ require_once(__DIR__ . '/classes/output/shell.php');
 
 use block_elediaai_tutor\output\shell;
 
-$context = \core\context\system::instance();
-$url = new moodle_url('/blocks/elediaai_tutor/help.php');
-
-require_login();
-require_capability('moodle/site:config', $context);
+// Aus einem Kurs heraus liest die Lehrkraft die Hilfe mit dem Recht, mit dem
+// sie den Tutor dort einrichtet (G-05); ohne Kurs bleibt es eine Seite fuer die
+// Administration.
+$courseid = optional_param('id', 0, PARAM_INT);
+$course = ($courseid && $courseid != SITEID) ? get_course($courseid) : null;
+require_login($course);
+if ($course) {
+    $context = \core\context\course::instance($course->id);
+    require_capability('block/elediaai_tutor:manage', $context);
+} else {
+    $context = \core\context\system::instance();
+    require_capability('moodle/site:config', $context);
+}
+$url = new moodle_url('/blocks/elediaai_tutor/help.php', $course ? ['id' => $course->id] : []);
+// Die Huelle fuehrt in die Administration; im Kurs bleibt die Lehrkraft in
+// ihrer gewohnten Umgebung.
+$useshell = $course === null && shell::is_available();
 
 $PAGE->set_context($context);
 $PAGE->set_url($url);
-$PAGE->set_pagelayout('report');
+$PAGE->set_pagelayout($course ? 'incourse' : 'report');
 $PAGE->blocks->show_only_fake_blocks(true);
 $PAGE->set_title(get_string('shell_help_label', 'block_elediaai_tutor'));
-$PAGE->set_heading(shell::is_available() ? '' : get_string('shell_help_label', 'block_elediaai_tutor'));
+if ($course) {
+    $PAGE->set_heading(format_string($course->fullname));
+} else {
+    $PAGE->set_heading($useshell ? '' : get_string('shell_help_label', 'block_elediaai_tutor'));
+}
 shell::require_css();
 
 $docfile = str_starts_with(current_language(), 'de')
@@ -60,7 +76,7 @@ $html = $markdown !== ''
 
 echo $OUTPUT->header();
 
-$header = shell::context(shell::ACTIVE_CONFIGURATION);
+$header = $useshell ? shell::context(shell::ACTIVE_CONFIGURATION) : null;
 if ($header) {
     $header['tagline'] = get_string('help', 'core');
     $header['sectionnav'] = shell::sectionnav('help');

@@ -35,15 +35,41 @@ Die Plugins hängen voneinander ab. Empfohlene Reihenfolge:
 Diese ZIPs lassen sich in Moodle unter *Website-Administration → Plugins → Plugin installieren*
 einzeln hochladen.
 
-**Aus dem Repository:** Die Ordner dieses Repos entsprechen den Moodle-Verzeichnissen und
-können direkt in eine Moodle-Installation kopiert werden.
+**Aus dem Repository:** Die Ordner `blocks/`, `local/` und `webservice/` dieses Repos
+entsprechen den Moodle-Verzeichnissen. Kopiert werden nur diese drei Ordner, damit
+`README.md` und `LICENSE` des Repos nicht im Webroot der Moodle-Installation landen.
+
+Ab Moodle 5.1 liegt der Code unter `public/`:
 
 ```bash
 git clone https://github.com/eledia/moodle-elediaai-suite-free.git
-rsync -a --exclude .git moodle-elediaai-suite-free/ /pfad/zu/moodle/public/
+cd moodle-elediaai-suite-free
+rsync -a blocks local webservice /pfad/zu/moodle/public/
+```
+
+Unter Moodle 4.5 und 5.0 gibt es kein `public/`, das Ziel ist das Moodle-Wurzelverzeichnis:
+
+```bash
+rsync -a blocks local webservice /pfad/zu/moodle/
 ```
 
 Danach *Website-Administration → Benachrichtigungen* aufrufen und die Installation bestätigen.
+
+## Umstieg vom früheren `block_eledia_aitutor`
+
+Wer eine frühere Fassung des Tutors mit dem Komponentennamen `block_eledia_aitutor`
+im Einsatz hat: Der Tutor in diesem Paket (`block_elediaai_tutor`) ist ein **eigenes
+Plugin** und wird neu installiert, nicht aus dem alten Block aktualisiert.
+
+- Einstellungen, Blockinstanzen und Zustimmungen der Nutzenden werden **nicht übernommen**.
+- Den neuen Tutor nach der Installation neu einrichten und die Blöcke in den Kursen neu
+  hinzufügen.
+- Den alten Block `block_eledia_aitutor` erst danach deinstallieren
+  (*Website-Administration → Plugins → Plugin-Übersicht*).
+
+`local_literag` und `webservice_elediamcp` tragen ihren Komponentennamen unverändert und
+werden direkt über die vorhandene Installation aktualisiert; ihre Daten und Einstellungen
+bleiben erhalten.
 
 ## Kostenpflichtige Ergänzungen
 
@@ -56,8 +82,8 @@ Betrieb siehe [eledia.de](https://eledia.de/moodle-ki/).
 
 ## Unterstützte Moodle-Versionen
 
-Entwicklungslinie ist Moodle 5.2. Welche Versionen ein Plugin unterstützt, steht in seiner
-`version.php`.
+Mindestversion ist Moodle 4.5; Entwicklungslinie ist Moodle 5.2. Welche Versionen ein
+Plugin unterstützt, steht in seiner `version.php`.
 
 ## Lizenz
 

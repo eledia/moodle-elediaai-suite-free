@@ -29,6 +29,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_elediaai_core\feature\registry;
+use local_elediaai_core\output\component_overview;
 use local_elediaai_core\output\feature_grid;
 use local_elediaai_core\output\plugin_page;
 use local_elediaai_core\output\plugin_shell;
@@ -149,6 +150,11 @@ if (empty($features)) {
 
     $PAGE->requires->js_call_amd('local_elediaai_core/feature_filter', 'init');
 }
+
+// Versionen und Schalter je Plugin -- nur fuer die Administration, und als
+// Tabelle statt als Kacheln: eine Kachel steht fuer eine Funktion, die jemand
+// oeffnet oder benutzt, nicht fuer ein Plugin (siehe component_overview).
+echo component_overview::render();
 
 plugin_shell::content_close();
 plugin_page::close();

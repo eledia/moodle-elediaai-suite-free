@@ -28,8 +28,6 @@ namespace local_elediaai_core;
 use advanced_testcase;
 use local_elediaai_core\content\upload_text_extractor;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Reading text out of the files a teacher drops in.
  *

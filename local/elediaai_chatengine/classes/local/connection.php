@@ -95,7 +95,7 @@ class connection {
             throw new \moodle_exception('error_agent_url_insecure', self::COMPONENT);
         }
 
-        // moodle_url normalises, and the cURL wrapper downstream applies the
+        // The moodle_url class normalises, and the cURL wrapper downstream applies the
         // site's blocked-hosts / allowed-ports policy as defence in depth.
         return new moodle_url($raw);
     }

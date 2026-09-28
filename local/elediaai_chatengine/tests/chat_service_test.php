@@ -592,4 +592,88 @@ final class chat_service_test extends \advanced_testcase {
         $this->assertStringNotContainsString('ingestionapi', $result['answerhtml']);
         $this->assertStringNotContainsString($adapter::id(), $result['answerhtml']);
     }
+
+    /**
+     * Eine Fehlermeldung wird nicht als Antwort gespeichert und nicht gekennzeichnet.
+     *
+     * Sie stand als Assistentenbeitrag im Verlauf, ging mit der naechsten Frage
+     * als Kontext zum Modell und bekam einen Nachweis als KI-Ausgabe.
+     */
+    public function test_an_error_is_not_stored_as_an_answer(): void {
+        global $DB;
+
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+
+        $adapter = new fake_adapter(new chat_response('Der Dienst ist gerade nicht erreichbar.', null, iserror: true));
+        $this->install($adapter, new fake_placement(\context_system::instance()));
+        $records = $DB->get_manager()->table_exists('local_aitransparency_rec')
+            ? $DB->count_records('local_aitransparency_rec') : 0;
+
+        $result = chat_service::send(self::COMPONENT, 0, (int) $user->id, 'Eine Frage');
+
+        $this->assertTrue($result['iserror']);
+        $messages = thread_store::messages($result['threadid']);
+        $this->assertCount(1, $messages);
+        $this->assertSame(message::ROLE_USER, $messages[0]->role);
+        $this->assertStringNotContainsString('data-ai-record', $result['answerhtml']);
+        if ($DB->get_manager()->table_exists('local_aitransparency_rec')) {
+            $this->assertSame($records, $DB->count_records('local_aitransparency_rec'));
+        }
+        if (class_exists('\local_elediaai_core\local\turn_recorder')) {
+            $turn = $DB->get_record_sql('SELECT * FROM {local_elediaai_core_turn} ORDER BY id DESC', null, IGNORE_MULTIPLE);
+            $this->assertSame(0, (int) $turn->success);
+            $this->assertSame('backend_error', $turn->errorcode);
+        }
+    }
+
+    /**
+     * Eine gekennzeichnete Antwort steht im Register als gekennzeichnet.
+     *
+     * Der Eintrag blieb auf "pending", die Pruefseite meldete "noch nicht
+     * gekennzeichnet" fuer eine Antwort mit Kennzeichnung.
+     */
+    public function test_a_marked_answer_is_recorded_as_marked(): void {
+        global $DB;
+        if (!class_exists('\\local_aitransparency\\marker')) {
+            $this->markTestSkipped('Ohne local_aitransparency gibt es keine Kennzeichnung.');
+        }
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+
+        $this->install(
+            new fake_adapter(new chat_response('Eine Antwort', 'conv-1')),
+            new fake_placement(\context_system::instance())
+        );
+        $result = chat_service::send(self::COMPONENT, 0, (int) $user->id, 'Eine Frage');
+
+        $this->assertMatchesRegularExpression('/data-ai-record="([0-9a-f-]+)"/', $result['answerhtml']);
+        preg_match('/data-ai-record="([0-9a-f-]+)"/', $result['answerhtml'], $m);
+        $this->assertSame('marked', $DB->get_field('local_aitransparency_rec', 'markstate', ['uuid' => $m[1]]));
+    }
+
+    /**
+     * Der Simulator erzeugt keine KI-Ausgabe und bekommt keinen Nachweis.
+     */
+    public function test_simulator_answers_are_not_recorded(): void {
+        global $DB;
+        if (!class_exists('\\local_aitransparency\\marker')) {
+            $this->markTestSkipped('Ohne local_aitransparency gibt es keine Kennzeichnung.');
+        }
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+        set_config('simulator', 1, 'local_elediaai_chatengine');
+
+        backend_resolver::override_for_testing(new \local_elediaai_chatengine\adapter\simulator_adapter());
+        registry::override_for_testing(self::COMPONENT, new fake_placement(\context_system::instance()));
+        $before = $DB->count_records('local_aitransparency_rec');
+
+        $result = chat_service::send(self::COMPONENT, 0, (int) $user->id, 'Hallo');
+
+        $this->assertStringNotContainsString('data-ai-record', $result['answerhtml']);
+        $this->assertSame($before, $DB->count_records('local_aitransparency_rec'));
+    }
 }

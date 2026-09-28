@@ -29,17 +29,28 @@ use local_elediaai_core\output\plugin_page;
 use local_elediaai_core\output\plugin_shell;
 use local_elediaai_sources\output\shell;
 
-require_login();
-$context = \core\context\system::instance();
-require_capability('moodle/site:config', $context);
+// Aus einem Kurs heraus geoeffnet liest die Lehrkraft die Hilfe mit dem Recht,
+// mit dem sie auch die Aktivitaetsauswahl bedient (G-05); ohne Kurs bleibt es
+// eine Seite fuer die Administration.
+$courseid = optional_param('id', 0, PARAM_INT);
+$course = ($courseid && $courseid != SITEID) ? get_course($courseid) : null;
+require_login($course);
+$context = \local_elediaai_sources\help_access::require_context($course);
+// Die Huelle der Suite fuehrt in die Administration; in einem Kurs bleibt die
+// Lehrkraft in ihrer gewohnten Umgebung, wie auf der Aktivitaetsauswahl.
+$useshell = $course === null && shell::is_available();
 
-$url = new moodle_url('/local/elediaai_sources/help.php');
+$url = new moodle_url('/local/elediaai_sources/help.php', $course ? ['id' => $course->id] : []);
 $PAGE->set_url($url);
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout($course ? 'incourse' : 'standard');
 $PAGE->blocks->show_only_fake_blocks(true);
 $PAGE->set_title(get_string('shell_help_label', 'local_elediaai_sources'));
-$PAGE->set_heading(shell::is_available() ? '' : get_string('shell_help_label', 'local_elediaai_sources'));
+if ($course) {
+    $PAGE->set_heading(format_string($course->fullname));
+} else {
+    $PAGE->set_heading($useshell ? '' : get_string('shell_help_label', 'local_elediaai_sources'));
+}
 $PAGE->activityheader->disable();
 shell::require_css();
 
@@ -59,7 +70,7 @@ $html = $markdown !== ''
 echo $OUTPUT->header();
 
 // Die gemeinsame Huelle des Kerns statt der Vorlage aus dem Tutor-Block.
-if (shell::is_available()) {
+if ($useshell) {
     plugin_page::open(shell::header_data(get_string('help', 'core'), 'help'), plugin_page::MODIFIER_READING);
     plugin_shell::content_open();
 } else {
@@ -68,7 +79,7 @@ if (shell::is_available()) {
 
 echo html_writer::tag('article', $html, ['class' => 'rg-docs-content rg-shell-card']);
 
-if (shell::is_available()) {
+if ($useshell) {
     plugin_shell::content_close();
     plugin_page::close();
 }

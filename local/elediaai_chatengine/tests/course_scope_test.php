@@ -147,14 +147,15 @@ final class course_scope_test extends \advanced_testcase {
     }
 
     /**
-     * More courses than the protocol carries: left out, never truncated.
+     * More courses than the protocol carries: cut, never left out.
      *
-     * Twenty-one enrolments, and the server's own validator stops at twenty.
-     * Sending twenty of them would make the other course unfindable with no
-     * signal anywhere; omitting the argument hands the question to the server,
-     * which resolves the enrolments itself.
+     * Until 28.09.2026 the argument was omitted here, on the assumption that
+     * the server would resolve the enrolments itself. It does not -- it answers
+     * "the user is currently in no course", so somebody enrolled in twenty-one
+     * was told they were in none. Twenty of twenty-one is an imperfect answer;
+     * "you are in no course" is a wrong one.
      */
-    public function test_more_than_the_limit_omits_the_argument(): void {
+    public function test_more_than_the_limit_is_cut_not_dropped(): void {
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user();
         for ($i = 0; $i <= course_scope::LIMIT; $i++) {
@@ -164,10 +165,86 @@ final class course_scope_test extends \advanced_testcase {
 
         $scope = course_scope::for_turn(0, (int) $user->id);
 
-        $this->assertSame(course_scope::STATE_OVERFLOW, $scope->state);
-        $this->assertCount(course_scope::LIMIT + 1, $scope->ids);
-        // Absent, like the empty case -- but it means "resolve them yourself",
-        // not "there is nothing", and the server lands right either way.
+        $this->assertSame(course_scope::STATE_NAMED, $scope->state);
+        $this->assertCount(course_scope::LIMIT, $scope->ids);
+        $this->assertNotNull($scope->as_argument());
+        $this->assertCount(course_scope::LIMIT, explode(',', $scope->as_argument()));
+    }
+
+    /**
+     * What survives the cut is what the person opened last.
+     *
+     * The cut has to drop something; which something is the whole point. Here
+     * the oldest three enrolments are the ones never opened, and they are the
+     * ones that go.
+     */
+    public function test_the_cut_keeps_the_recently_opened_courses(): void {
+        global $DB;
+        $this->resetAfterTest();
+        set_config('maxscopecourses', 2, 'local_elediaai_chatengine');
+        $user = $this->getDataGenerator()->create_user();
+
+        $ids = [];
+        for ($i = 0; $i < 5; $i++) {
+            $course = $this->getDataGenerator()->create_course();
+            $this->getDataGenerator()->enrol_user((int) $user->id, (int) $course->id);
+            $ids[] = (int) $course->id;
+        }
+
+        // The last two created are the two opened -- and the later one first,
+        // so neither id order nor creation order could produce this result.
+        $DB->insert_record('user_lastaccess', (object) [
+            'userid' => (int) $user->id, 'courseid' => $ids[4], 'timeaccess' => 1000,
+        ]);
+        $DB->insert_record('user_lastaccess', (object) [
+            'userid' => (int) $user->id, 'courseid' => $ids[3], 'timeaccess' => 2000,
+        ]);
+
+        $scope = course_scope::for_turn(0, (int) $user->id);
+
+        $this->assertSame([$ids[3], $ids[4]], $scope->ids);
+    }
+
+    /**
+     * Somebody enrolled nowhere is answered from what they have open.
+     *
+     * The normal state of an administrator: no enrolment anywhere, and until
+     * now therefore no tutor on the dashboard at all. A course they opened is
+     * a course they may read, and it is checked again here rather than trusted
+     * from the log.
+     */
+    public function test_without_enrolments_the_opened_courses_stand_in(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $admin = get_admin();
+        $course = $this->getDataGenerator()->create_course();
+
+        $DB->insert_record('user_lastaccess', (object) [
+            'userid' => (int) $admin->id, 'courseid' => (int) $course->id, 'timeaccess' => 1000,
+        ]);
+
+        $scope = course_scope::for_turn(0, (int) $admin->id);
+
+        $this->assertSame(course_scope::STATE_NAMED, $scope->state);
+        $this->assertSame([(int) $course->id], $scope->ids);
+    }
+
+    /**
+     * A course somebody may no longer read does not come back through the log.
+     */
+    public function test_an_opened_course_is_rechecked_before_it_counts(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $course = $this->getDataGenerator()->create_course(['visible' => 0]);
+
+        $DB->insert_record('user_lastaccess', (object) [
+            'userid' => (int) $user->id, 'courseid' => (int) $course->id, 'timeaccess' => 1000,
+        ]);
+
+        $scope = course_scope::for_turn(0, (int) $user->id);
+
+        $this->assertSame(course_scope::STATE_NONE, $scope->state);
         $this->assertNull($scope->as_argument());
     }
 
@@ -287,13 +364,13 @@ final class course_scope_test extends \advanced_testcase {
     }
 
     /**
-     * Over the limit on a course surface, the surface's course is what remains.
+     * Over the limit on a course surface, the surface's course is never cut.
      *
-     * Leaving the argument out would be worse than useless here: the server
-     * reads an absent scope as "all this person's courses", so a knowledge
-     * base that grew too large would end up *widening* the search. Falling
-     * back to the one course the surface sits in is what it searched before
-     * anybody could configure anything.
+     * It used to be the *only* one left: the whole knowledge base was dropped
+     * as soon as it grew past the limit. That threw away far more than it had
+     * to -- the budget was there, it was simply not spent. What is guaranteed
+     * is that the course somebody is looking at survives; the rest of the room
+     * goes to the knowledge base.
      */
     public function test_over_the_limit_a_course_surface_keeps_its_own(): void {
         $this->resetAfterTest();
@@ -308,8 +385,9 @@ final class course_scope_test extends \advanced_testcase {
 
         $scope = course_scope::for_turn((int) $surface->id, (int) $user->id, 'cat:' . $category->id);
 
-        $this->assertSame([(int) $surface->id], $scope->ids);
-        $this->assertSame((string) $surface->id, $scope->as_argument());
+        $this->assertContains((int) $surface->id, $scope->ids);
+        $this->assertCount(course_scope::LIMIT, $scope->ids);
+        $this->assertSame((string) $surface->id, $scope->surface_argument());
     }
 
     /**
@@ -355,17 +433,17 @@ final class course_scope_test extends \advanced_testcase {
         }
 
         $this->assertSame(3, course_scope::limit());
-        $this->assertSame(
-            course_scope::STATE_OVERFLOW,
-            course_scope::for_turn(0, (int) $user->id)->state,
-            'four enrolments are over a limit of three'
+        $this->assertCount(
+            3,
+            course_scope::for_turn(0, (int) $user->id)->ids,
+            'four enrolments are cut to a limit of three'
         );
 
         set_config('maxscopecourses', 20, 'local_elediaai_chatengine');
-        $this->assertSame(
-            course_scope::STATE_NAMED,
-            course_scope::for_turn(0, (int) $user->id)->state,
-            'and under a limit of twenty they fit again'
+        $this->assertCount(
+            4,
+            course_scope::for_turn(0, (int) $user->id)->ids,
+            'and under a limit of twenty they all fit again'
         );
     }
 
@@ -480,5 +558,55 @@ final class course_scope_test extends \advanced_testcase {
 
         $sitewide = new chat_request(usermessage: 'x');
         $this->assertNull($sitewide->course_argument());
+    }
+
+    /**
+     * Where somebody is and what may be searched are two answers.
+     *
+     * They travelled in one field for eight days, and the agent put the
+     * comma-separated list where it expected a course: into the prompt as "the
+     * current course", and from there into tool arguments. The course of the
+     * surface has to be nameable on its own.
+     */
+    public function test_the_surface_course_travels_apart_from_the_search_set(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $surface = $this->getDataGenerator()->create_course();
+        $other = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->enrol_user((int) $user->id, (int) $other->id);
+        $this->mark_ingested([(int) $surface->id, (int) $other->id]);
+
+        $scope = course_scope::for_turn(
+            (int) $surface->id,
+            (int) $user->id,
+            'course:' . $other->id
+        );
+        $request = new chat_request(usermessage: 'x', coursescope: $scope);
+
+        $this->assertSame((string) $surface->id, $request->course_argument());
+        $this->assertSame(
+            implode(',', course_scope::for_turn((int) $surface->id, (int) $user->id, 'course:' . $other->id)->ids),
+            $request->search_argument()
+        );
+        $this->assertStringContainsString((string) $other->id, (string) $request->search_argument());
+        $this->assertStringNotContainsString(',', (string) $request->course_argument());
+    }
+
+    /**
+     * On a surface without a course only the search set travels.
+     */
+    public function test_without_a_course_only_the_search_set_travels(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $course = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->enrol_user((int) $user->id, (int) $course->id);
+
+        $request = new chat_request(
+            usermessage: 'x',
+            coursescope: course_scope::for_turn(0, (int) $user->id)
+        );
+
+        $this->assertNull($request->course_argument());
+        $this->assertSame((string) $course->id, $request->search_argument());
     }
 }

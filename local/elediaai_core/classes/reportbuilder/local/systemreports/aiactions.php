@@ -29,8 +29,6 @@ use core_reportbuilder\system_report;
 use local_elediaai_core\local\action_recorder;
 use local_elediaai_core\reportbuilder\local\entities\action;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * What the AI did, for whom.
  *

@@ -5,6 +5,29 @@ All notable changes to the **local_literag** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] – 2026-09-28
+
+### Fixed
+
+- Search, rerank, the yes/no check, the query log and the length limit use the
+  learner's own question (`user_question`), not the framed message the chat
+  engine sends to the model (H-01, M-03).
+- An unreadable document is reported as skipped instead of indexed (M-02).
+- Retrying without tools happens only when the service rejected the request
+  (HTTP 400/404/422 or an error object); a timeout is no longer waited for
+  twice (M-06).
+- One provenance record per answer: when the chat engine calls in-process it
+  records the answer itself, and LiteRAG no longer adds a second one (M-11).
+- `pdftotext_path` is an executable setting (H-12).
+
+### Changed
+
+- The answer follows the language of the question; the interface language is
+  the fallback (N-01).
+- `tools/list` on `mcp.php` needs a valid `moodle_token` (N-07).
+- The plugin is switched off with the suite's feature switch (K2).
+- Privacy provider exports the stored fields completely.
+
 ## [Unreleased]
 
 ### Added

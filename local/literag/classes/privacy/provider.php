@@ -52,7 +52,10 @@ class provider implements
         $collection->add_database_table('local_literag_conversations', [
             'userid' => 'privacy:metadata:local_literag_conversations:userid',
             'courseid' => 'privacy:metadata:local_literag_conversations:courseid',
+            'lastanswerstyle' => 'privacy:metadata:local_literag_conversations:lastanswerstyle',
+            'pendingaction' => 'privacy:metadata:local_literag_conversations:pendingaction',
             'timecreated' => 'privacy:metadata:local_literag_conversations:timecreated',
+            'timemodified' => 'privacy:metadata:local_literag_conversations:timemodified',
         ], 'privacy:metadata:local_literag_conversations');
 
         $collection->add_database_table('local_literag_messages', [
@@ -152,7 +155,10 @@ class provider implements
             );
             $data = (object) [
                 'courseid' => $conversation->courseid,
+                'lastanswerstyle' => $conversation->lastanswerstyle,
+                'pendingaction' => $conversation->pendingaction,
                 'timecreated' => transform::datetime($conversation->timecreated),
+                'timemodified' => transform::datetime($conversation->timemodified),
                 'messages' => array_map(static function ($m) {
                     return (object) [
                         'role' => $m->role,

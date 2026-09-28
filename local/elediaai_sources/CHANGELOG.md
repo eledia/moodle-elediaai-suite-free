@@ -7,6 +7,34 @@ Format angelehnt an Keep a Changelog.
 Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 `local_ragingest` erschienen und nennen ihn deshalb weiterhin.
 
+## [1.0.2] – 2026-09-28
+
+### Behoben
+
+- **Deinstallation entfernt das Kursfeld „aisources"** mit Kategorie und
+  Kurswerten (M-08).
+- **Unlesbare Dokumente erscheinen nicht mehr als „Indexed"**; LiteRAG meldet
+  ein übersprungenes Dokument, und Sources führt es als leer (M-02).
+- **Ohne Einrichtung geht nichts nach außen:** Vorgabe-Ziel ist LiteRAG, wenn
+  installiert, sonst keines; keine Beispiel-URL als Vorgabe (M-12).
+- Ingest-Aufgaben für inzwischen gelöschte Kurse oder Aktivitäten werden still
+  verworfen (G-09).
+- Das Zahnrad der Kachel führte auf „Section error!".
+
+### Geändert
+
+- Die Health-Prüfung nennt beim gewählten, aber unvollständigen Ziel die
+  fehlende Einstellung und verlinkt die passende Seite (M-13).
+- Lehrkräfte lesen die Hilfe aus dem Kurs heraus; die Aktivitätsauswahl
+  verlinkt sie (G-05).
+- Verborgene Aktivitäten heißen in der Auswahl „Verborgen – nicht im Index"
+  (G-08).
+- Abschalten per Funktionsschalter des Kerns wirkt auf Navigation,
+  Aktivitätsauswahl und Vorschau; Kern ≥ 2026092800 ist Pflicht (K2).
+- Datenschutz: vollständiger Provider für die gespeicherten Stände; die
+  17 Extraktor-Subplugins bringen einen `null_provider` mit (H-07, M-20).
+- AMD-Module mit Grunt gebaut; Subplugins mit `$plugin->supported` (G-11).
+
 ## [1.0.1] – 2026-09-25
 
 ### Behoben

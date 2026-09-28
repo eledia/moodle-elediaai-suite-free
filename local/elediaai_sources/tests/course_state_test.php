@@ -37,6 +37,9 @@ final class course_state_test extends \advanced_testcase {
         $this->resetAfterTest();
         set_config('sink_ingestionapi_baseurl', 'http://localhost:8001', 'local_elediaai_sources');
         set_config('sink_ingestionapi_apikey', 'k', 'local_elediaai_sources');
+        // Seit M-12 ist LiteRAG die Vorgabe, sobald es installiert ist; diese
+        // Tests gelten der Ingestion API und waehlen sie ausdruecklich.
+        set_config('sink', 'ingestionapi', 'local_elediaai_sources');
     }
 
     /**

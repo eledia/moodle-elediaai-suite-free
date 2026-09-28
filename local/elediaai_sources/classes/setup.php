@@ -170,6 +170,48 @@ class setup {
     }
 
     /**
+     * Remove the per-course override field, its values and its category.
+     *
+     * Called on uninstall. Without it the field outlives the plugin and keeps
+     * showing up in every course form, where it no longer does anything (M-08).
+     *
+     * Goes through the course handler rather than raw SQL so that the
+     * customfield API does what it does for any deleted field: the data rows,
+     * the description files and the events. The category is looked up via the
+     * field, not by name: the name is a translated string and may have been
+     * renamed by an administrator. It is only removed when our field was the
+     * only one in it — an administrator may have added fields of their own.
+     *
+     * @return void
+     */
+    public static function remove_course_field(): void {
+        $handler = \core_course\customfield\course_handler::create();
+
+        foreach ($handler->get_categories_with_fields() as $category) {
+            $ours = [];
+            $others = 0;
+            foreach ($category->get_fields() as $field) {
+                if ($field->get('shortname') === course_gate::FIELD) {
+                    $ours[] = $field;
+                } else {
+                    $others++;
+                }
+            }
+            if ($ours === []) {
+                continue;
+            }
+
+            if ($others === 0) {
+                $handler->delete_category($category);
+                continue;
+            }
+            foreach ($ours as $field) {
+                $handler->delete_field_configuration($field);
+            }
+        }
+    }
+
+    /**
      * The custom-field category name (also used to locate it on re-runs).
      *
      * @return string

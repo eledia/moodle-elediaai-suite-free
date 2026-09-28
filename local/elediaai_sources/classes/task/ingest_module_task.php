@@ -53,6 +53,15 @@ class ingest_module_task extends \core\task\adhoc_task {
             return;
         }
 
+        // Between queueing and cron the course or the module may be deleted --
+        // an expected case, not an error. The deletion's own events clear
+        // the index; this task has nothing left to send (G-09).
+        if (!self::target_exists((int) $data->courseid, (int) $data->cmid)) {
+            mtrace("  [local_elediaai_sources] Course {$data->courseid} or cmid {$data->cmid} no longer exists, "
+                . "task discarded.");
+            return;
+        }
+
         mtrace("  [local_elediaai_sources] Ingesting cmid {$data->cmid} in course {$data->courseid}...");
 
         try {
@@ -75,5 +84,18 @@ class ingest_module_task extends \core\task\adhoc_task {
         } catch (\Exception $e) {
             mtrace("  [local_elediaai_sources] Ingestion error for cmid {$data->cmid}: " . $e->getMessage());
         }
+    }
+
+    /**
+     * Whether the course and the module in it still exist.
+     *
+     * @param int $courseid The course id.
+     * @param int $cmid The course module id.
+     * @return bool
+     */
+    private static function target_exists(int $courseid, int $cmid): bool {
+        global $DB;
+        return $DB->record_exists('course', ['id' => $courseid])
+            && $DB->record_exists('course_modules', ['id' => $cmid, 'course' => $courseid]);
     }
 }

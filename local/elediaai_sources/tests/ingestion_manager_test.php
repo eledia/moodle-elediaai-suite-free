@@ -101,6 +101,38 @@ final class ingestion_manager_test extends \advanced_testcase {
     }
 
     /**
+     * A document the destination accepted but could not read is not indexed.
+     *
+     * LiteRAG answers an encrypted PDF with parsestate "skipped": the source is
+     * recorded, but it holds no text. Reporting it as indexed told teachers the
+     * content was available when it was not.
+     */
+    public function test_unreadable_document_is_not_reported_as_indexed(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $page = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'name' => 'Locked',
+            'content' => '<p>Text</p>',
+        ]);
+        set_config('enabledcategories', (string) $course->category, 'local_elediaai_sources');
+
+        // Same answer twice: the external service is asked /health first,
+        // LiteRAG is not; either way the upsert reads parsestate "skipped".
+        \curl::mock_response('{"status": "ok", "parsestate": "skipped"}');
+        \curl::mock_response('{"status": "ok", "parsestate": "skipped"}');
+
+        ob_start();
+        $results = (new ingestion_manager())->reindex_course($course->id);
+        ob_end_clean();
+
+        $pageresult = array_values(array_filter($results, fn($r) => $r['cmid'] == $page->cmid))[0];
+        $this->assertFalse($pageresult['success']);
+        $this->assertSame('skipped', $pageresult['status']);
+        $this->assertSame(get_string('destinationunreadable', 'local_elediaai_sources'), $pageresult['message']);
+        $this->assertFalse(cm_state::may_hold_documents((int) $page->cmid));
+    }
+
+    /**
      * Test reindex_course skips modules without extractors.
      */
     public function test_reindex_course_skips_unsupported_module(): void {

@@ -138,6 +138,7 @@ class ingestionapi_adapter implements adapter {
             $request->allowtools ? $request->option('intent') : 'knowledge',
             $request->option('pendingdecision'),
             $request->ondelta,
+            searchcourseids: $request->search_argument(),
         );
 
         return new chat_response(

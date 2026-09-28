@@ -150,6 +150,9 @@ class placement implements placement_contract {
     #[\Override]
     public function require_access(int $instanceid, int $userid): void {
         require_login();
+        if (class_exists(\local_elediaai_core\feature\registry::class)) {
+            \local_elediaai_core\feature\registry::require_enabled('tutor');
+        }
 
         $courseid = $this->courseid($instanceid);
         if ($courseid > 0) {
@@ -184,6 +187,14 @@ class placement implements placement_contract {
      */
     #[\Override]
     public function require_send(int $instanceid, int $userid): void {
+        // A turn runs with the configuration of the block it was sent from:
+        // persona, answer style, knowledge base and the instance's daily limit.
+        // The tutor's own endpoints prove that block first (use_surface());
+        // the engine's generic send endpoint does not, and a turn through it
+        // would fall back to the site defaults and skip the instance's limit.
+        if (self::$surface === null) {
+            throw new \moodle_exception('error_invalid_context', 'block_elediaai_tutor');
+        }
         consent::require_consent($userid);
     }
 

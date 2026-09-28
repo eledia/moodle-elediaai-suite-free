@@ -29,8 +29,6 @@ use advanced_testcase;
 use local_elediaai_core\context\context_bundle;
 use local_elediaai_core\context\context_item;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the component behavior and contracts.
  *

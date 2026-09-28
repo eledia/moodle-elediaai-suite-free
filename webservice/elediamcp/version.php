@@ -26,11 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026092500;
-$plugin->requires = 2023041800;
+$plugin->version = 2026092801;
+$plugin->requires = 2024100700;
+$plugin->supported = [405, 502];
 $plugin->component = 'webservice_elediamcp';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.8.1';
+$plugin->release = '1.8.2';
 
 // Die Design-Token der Suite (--eai-*, --font-size-*) stehen in
 // local_elediaai_core; dieses Plugin liest sie ohne Rueckfallwert. Ohne Core

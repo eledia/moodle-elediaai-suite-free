@@ -147,7 +147,7 @@ class tutor_edit_form extends moodleform {
                 break;
             case 'textarea':
                 $mform->addElement('textarea', $name, $label, ['rows' => 3, 'cols' => 60]);
-                $mform->setType($name, PARAM_TEXT);
+                $mform->setType($name, PARAM_RAW); // Cleaned in registry::sanitise(); PARAM_TEXT left script bodies behind.
                 break;
             case 'select':
                 $options = ['' => get_string('tutor_notset', 'block_elediaai_tutor')];

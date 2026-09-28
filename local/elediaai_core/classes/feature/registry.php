@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\feature;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core_component;
 
 /**
@@ -33,6 +31,9 @@ use core_component;
  * `<frankenstyle>\elediaai_core\feature_provider`.
  */
 final class registry {
+    /** @var string[] Features that cannot be switched off. */
+    private const ALWAYS_ON = ['aitransparency'];
+
     /** Provider namespace segment plugins ship under. */
     private const PROVIDER_NAMESPACE = 'elediaai_core';
 
@@ -316,7 +317,7 @@ final class registry {
         return [[
             'title' => get_string('feature_origin_eledia_title', self::CONFIG_COMPONENT),
             'authors' => 'eLeDia GmbH',
-            'url' => 'https://github.com/jmoskaliuk/eledia.ai',
+            'url' => 'https://eledia.de',
             'note' => get_string('feature_origin_eledia_note', self::CONFIG_COMPONENT),
         ]];
     }
@@ -345,9 +346,8 @@ final class registry {
      * What the launcher shows: the visible features plus the locked ones.
      *
      * A premium feature this site is not licensed for used to vanish from
-     * the launcher. Nobody asks for what they cannot see, and on the
-     * Anwaltsinstitut's test system a switched-off grant was taken for a
-     * missing plugin (#29). The launcher keeps such a tile and draws it
+     * the launcher. Nobody asks for what they cannot see, and on a customer's
+     * test system a switched-off grant was taken for a missing plugin. The launcher keeps such a tile and draws it
      * locked -- see {@see is_locked()}. Every other consumer keeps asking
      * {@see visible()}, where a locked feature is still absent: it cannot be
      * used, only seen.
@@ -418,15 +418,39 @@ final class registry {
                 }
                 continue;
             }
-            if (
-                $descriptor->capability !== null
-                    && !has_capability($descriptor->capability, $context)
-            ) {
+            if ($descriptor->capability !== null && !self::may_use($descriptor, $context)) {
                 continue;
             }
             $out[$descriptor->id] = $descriptor;
         }
         return $out;
+    }
+
+    /**
+     * Whether the current user holds the feature's capability.
+     *
+     * A capability used inside a course is granted in the course, not on the
+     * site: a teacher who may select sources in one course does not have that
+     * right in the system context. For such a feature the overview asks
+     * whether any course grants it. A capability Moodle does not know -- its
+     * plugin's code is present but not installed -- counts as not held rather
+     * than raising a debugging notice on every page.
+     *
+     * @param descriptor $descriptor The feature.
+     * @param \context $context Context for the check.
+     * @return bool
+     */
+    private static function may_use(descriptor $descriptor, \context $context): bool {
+        if (!get_capability_info($descriptor->capability)) {
+            return false;
+        }
+        if (has_capability($descriptor->capability, $context)) {
+            return true;
+        }
+        if ($context->contextlevel !== CONTEXT_SYSTEM || self::kind($descriptor->id) !== descriptor::KIND_IN_COURSE) {
+            return false;
+        }
+        return !empty(get_user_capability_course($descriptor->capability, null, true, '', '', 1));
     }
 
     /**
@@ -500,8 +524,40 @@ final class registry {
      * @return bool
      */
     public static function is_enabled(string $featureid): bool {
+        if (!self::is_switchable($featureid)) {
+            return true;
+        }
         $value = get_config(self::CONFIG_COMPONENT, 'feature_' . $featureid . '_enabled');
         return $value === false || (int) $value === 1;
+    }
+
+    /**
+     * Whether the admin may switch the feature off.
+     *
+     * The AI marking is a legal duty (EU AI Act, Art. 50), not a feature a
+     * site chooses; a switch for it would only suggest otherwise.
+     *
+     * @param string $featureid
+     * @return bool
+     */
+    public static function is_switchable(string $featureid): bool {
+        return !in_array($featureid, self::ALWAYS_ON, true);
+    }
+
+    /**
+     * Refuse the request when the feature is switched off.
+     *
+     * Entry points of a feature call this so that switching it off takes the
+     * feature away, not only its dashboard tile.
+     *
+     * @param string $featureid
+     * @return void
+     * @throws \moodle_exception When the feature is switched off.
+     */
+    public static function require_enabled(string $featureid): void {
+        if (!self::is_enabled($featureid)) {
+            throw new \moodle_exception('feature_disabled', self::CONFIG_COMPONENT);
+        }
     }
 
     /**

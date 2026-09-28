@@ -30,8 +30,6 @@ use core_ai\manager;
 use local_elediaai_core\local\quota_manager;
 use local_elediaai_core\local\turn_recorder;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Owns reservation, Core AI dispatch, and quota settlement for one request.
  *

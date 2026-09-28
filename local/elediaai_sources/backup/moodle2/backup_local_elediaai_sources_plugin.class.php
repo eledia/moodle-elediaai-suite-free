@@ -22,8 +22,6 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Carries a teacher's ingestion decision along with the activity.
  *
@@ -53,7 +51,7 @@ class backup_local_elediaai_sources_plugin extends backup_local_plugin {
         $wrapper = new backup_nested_element($this->get_recommended_name());
         $plugin->add_child($wrapper);
 
-        // usermodified is deliberately absent: a user id from another site
+        // The usermodified field is deliberately absent: a user id from another site
         // means nothing here, and mapping it buys nothing the decision needs.
         $decision = new backup_nested_element('aisourcesdecision', ['id'], [
             'included',

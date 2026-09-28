@@ -134,5 +134,16 @@ function xmldb_webservice_elediamcp_upgrade($oldversion): bool {
         upgrade_plugin_savepoint(true, 2026080500, 'webservice', 'elediamcp');
     }
 
+    if ($oldversion < 2026092800) {
+        // Detach the MCP service from this component. Moodle deletes every
+        // service of a component that db/services.php does not declare, with
+        // all its tokens, right after this upgrade function returns. Clearing
+        // the component here is the last chance to keep the tokens.
+        $DB->set_field('external_services', 'component', null, ['component' => 'webservice_elediamcp']);
+
+        // MCP savepoint reached.
+        upgrade_plugin_savepoint(true, 2026092800, 'webservice', 'elediamcp');
+    }
+
     return true;
 }

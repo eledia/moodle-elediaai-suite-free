@@ -29,8 +29,6 @@
 
 namespace local_elediaai_core\reportbuilder\local\systemreports;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core_reportbuilder\local\entities\user;
 use core_reportbuilder\local\helpers\database as reportbuilder_database;
 use core_reportbuilder\system_report;

@@ -263,7 +263,7 @@ final class insights {
         $days = max(1, $days);
         [$where, $params] = self::scope($courseid, $days);
 
-        // get_fieldset_sql, nicht get_records_sql: letzteres schluesselt das
+        // Hier get_fieldset_sql, nicht get_records_sql: letzteres schluesselt das
         // Ergebnis nach der ersten Spalte und wirft, sobald sie doppelt
         // vorkommt. Zwei Turns in derselben Sekunde reichen -- und genau das
         // ist der Normalfall, wenn eine Klasse gleichzeitig fragt.

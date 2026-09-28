@@ -51,15 +51,24 @@ final class health_provider implements health_provider_contract {
         $offen = \local_elediaai_sources\course_state::pending_ingestion_count();
 
         if (!$ziel->is_configured()) {
+            // Gewaehlt ist immer ein Ziel -- sink_manager faellt auf einen
+            // Standard zurueck. "Kein Ziel eingerichtet" war deshalb die
+            // falsche Auskunft, wenn nur ein Schluessel fehlte (M-13). Die
+            // Senken melden ihre fehlende Voraussetzung in healthcheck(),
+            // bevor sie das Netz beruehren; genau diesen Grund nennen wir.
+            [$url, $label] = self::settings_link_for_gap();
             return [
                 new check(
                     id: 'destination',
                     component: self::COMPONENT,
                     label: get_string('health_destination', self::COMPONENT),
                     status: check::STATUS_UNCONFIGURED,
-                    detail: get_string('health_destination_unconfigured', self::COMPONENT),
-                    actionurl: new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_sources_settings']),
-                    actionlabel: get_string('health_configure', self::COMPONENT),
+                    detail: get_string('health_destination_incomplete', self::COMPONENT, (object) [
+                        'name' => $ziel::name(),
+                        'reason' => self::missing_precondition($ziel),
+                    ]),
+                    actionurl: $url,
+                    actionlabel: $label,
                 ),
             ];
         }
@@ -125,5 +134,49 @@ final class health_provider implements health_provider_contract {
         }
 
         return $pruefungen;
+    }
+
+    /**
+     * What the selected but unconfigured destination is missing, in its own words.
+     *
+     * Both sinks answer an unconfigured healthcheck() with the missing
+     * precondition and without a request. Should one ever go out anyway, the
+     * generic sentence is the fallback rather than an HTTP code.
+     *
+     * @param \local_elediaai_sources\sink\sink $ziel The active destination.
+     * @return string
+     */
+    private static function missing_precondition(\local_elediaai_sources\sink\sink $ziel): string {
+        try {
+            $grund = trim((string) ($ziel->healthcheck()['error'] ?? ''));
+        } catch (\Throwable $e) {
+            $grund = '';
+        }
+        return $grund !== '' ? $grund : get_string('health_destination_incomplete_generic', self::COMPONENT);
+    }
+
+    /**
+     * Where the missing setting lives.
+     *
+     * The LiteRAG destination has nothing to set up here: its key is
+     * LiteRAG's own ingestion key. Pointing at this plugin's settings would
+     * send the administrator to a page without the field in question.
+     *
+     * @return array{0: moodle_url, 1: string} URL and button label.
+     */
+    private static function settings_link_for_gap(): array {
+        if (
+            \local_elediaai_sources\sink\sink_manager::active_id() === \local_elediaai_sources\sink\literag_sink::id()
+            && class_exists('\\local_literag\\local\\config')
+        ) {
+            return [
+                new moodle_url('/admin/settings.php', ['section' => 'local_literag']),
+                get_string('health_configure_literag', self::COMPONENT),
+            ];
+        }
+        return [
+            new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_sources_settings']),
+            get_string('health_configure', self::COMPONENT),
+        ];
     }
 }

@@ -112,6 +112,12 @@ class block_elediaai_tutor extends block_base {
             $this->content->text = '';
             return $this->content;
         }
+        // Switched off in the suite's feature list: the block renders nothing.
+        $registry = '\\local_elediaai_core\\feature\\registry';
+        if (class_exists($registry) && !$registry::is_enabled('tutor')) {
+            $this->content->text = '';
+            return $this->content;
+        }
 
         // The block contributes its per-instance configuration as a registry-key =>
         // value map (the stored config keys already match the registry keys). It is
@@ -130,10 +136,29 @@ class block_elediaai_tutor extends block_base {
         $canmanage = has_capability('block/elediaai_tutor:manage', $context);
         $configerror = widget::config_error($courseid, $instance);
         if ($configerror !== null) {
+            // Mit schwebendem Startknopf sitzt der Block in der meist
+            // geschlossenen Blockleiste; der Hinweis stand dort, wo ihn niemand
+            // sah, und der Tutor war fuer alle einfach verschwunden. Er erscheint
+            // jetzt an der Stelle des Startknopfs.
+            $floating = (\block_elediaai_tutor\local\branding::resolve($instance)['launcherstyle'] ?? '') === 'fab';
+            $noticeid = html_writer::random_id('elediaai-tutor-unavailable');
             $this->content->text = $OUTPUT->render_from_template('block_elediaai_tutor/unavailable', [
+                'id' => $noticeid,
+                'floating' => $floating,
                 'isadmin' => $canmanage,
                 'message' => $canmanage ? $configerror : get_string('unavailable_user', 'block_elediaai_tutor'),
             ]);
+            if ($floating) {
+                // Wie beim Startknopf bleibt die leere Blockhuelle nicht stehen,
+                // ausser im Bearbeitungsmodus, wo der Block greifbar sein muss.
+                $hideshell = $this->page->user_is_editing() ? '' :
+                    "var b = n.closest('.block_elediaai_tutor'); "
+                    . "if (b) { b.classList.add('elediaai-chat-fab-shell-hidden'); b.setAttribute('aria-hidden', 'true'); } ";
+                $this->page->requires->js_amd_inline(
+                    "var n = document.getElementById('" . $noticeid . "'); "
+                    . "if (n) { " . $hideshell . "document.body.appendChild(n); }"
+                );
+            }
             return $this->content;
         }
 
@@ -188,6 +213,10 @@ class block_elediaai_tutor extends block_base {
         // read. Normalised here rather than in the form, so a value that
         // arrives from anywhere else is stored the same way.
         foreach (\block_elediaai_tutor\local\registry::all() as $key => $entry) {
+            if ($entry['type'] === 'textarea' && isset($data->$key)) {
+                $data->$key = (string) \block_elediaai_tutor\local\registry::sanitise($key, $data->$key);
+                continue;
+            }
             if ($entry['type'] !== 'coursescope' || !isset($data->$key)) {
                 continue;
             }

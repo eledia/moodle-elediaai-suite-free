@@ -5,7 +5,7 @@ The block implements the Moodle Privacy API
 
 ## Stored locally in Moodle
 
-Since DEL-517 the **conversation is not the block's**. It lives in
+The **conversation is not the block's**. It lives in
 `local_elediaai_chatengine`, together with every other chat surface in the
 suite, and that plugin's privacy provider reports, exports and erases it. The
 block deliberately does not name it a second time: two providers over the same
@@ -19,8 +19,6 @@ the other still held the data.
 
 What the block still holds itself:
 
-- `block_elediaai_tutor_qlog` — opt-in question analytics (questions, never
-  answers)
 - `block_elediaai_tutor_consent` — the documented acknowledgement
 - `block_elediaai_tutor_diag` — short, redacted admin diagnostics
 - the long-term memory preference (a user preference)
@@ -62,15 +60,13 @@ The user-scoped Moodle MCP token's own metadata is owned by
 `webservice_elediamcp` and is exported/erased by *that* plugin's privacy
 provider. The token secret is never persisted by either plugin.
 
-## Question analytics (opt-in)
+## Question analytics
 
-When the administrator enables **Question analytics**, the questions learners
-ask (never the answers) are stored in `block_elediaai_tutor_qlog` together with
-course, asker, grounding flag and answer style. The asker id exists so privacy
-export/erasure works — teacher reports never display identities. Rows are
-pruned by a daily scheduled task after the configurable retention (default
-180 days), are included in privacy export/delete, and are wiped by the user's
-own "Delete all my tutor data" action. Collection is **off by default**.
+Earlier releases kept opt-in question analytics in `block_elediaai_tutor_qlog`.
+That table is dropped on upgrade. The question statistics now come from the
+suite-wide turn store `local_elediaai_core_turn`, which records the asker only
+as a pseudonymous key; it is declared, exported and erased by the privacy
+provider of `local_elediaai_core`.
 
 When the **Recluster tool name** is additionally configured, a nightly task
 re-sends recent logged question texts (without user identities) to the RAG

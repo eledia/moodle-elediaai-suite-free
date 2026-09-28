@@ -25,8 +25,6 @@
 
 namespace local_elediaai_core\elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_elediaai_core\feature\descriptor;
 use local_elediaai_core\feature\registry;
 use local_elediaai_core\feature\feature_provider as feature_provider_contract;

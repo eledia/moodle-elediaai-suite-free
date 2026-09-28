@@ -172,6 +172,23 @@ final class registry_test extends \advanced_testcase {
     }
 
     /**
+     * Text fields drop script and style blocks together with their content.
+     *
+     * Stripping tags alone turned "<b>fett</b><script>alert(1)</script>" into
+     * "fettalert(1)" on the learner's screen.
+     */
+    public function test_sanitise_drops_script_bodies(): void {
+        $this->assertSame(
+            'fett und klar',
+            registry::sanitise('welcomemessage', '<b>fett</b><script>alert(1)</script> und <style>p{}</style>klar')
+        );
+        $this->assertSame(
+            "action | fa-book | Kurs::Aufbau | Zeig mir den Kurs.\nZweite Zeile",
+            registry::sanitise('promptstarters', "action | fa-book | Kurs::Aufbau | Zeig mir den Kurs.\nZweite Zeile")
+        );
+    }
+
+    /**
      * The knowledge base survives being saved, from either shape it arrives in.
      *
      * It did not, at first: the type was new, `sanitise()` fell through to its

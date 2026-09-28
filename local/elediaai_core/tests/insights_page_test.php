@@ -30,8 +30,6 @@ use local_elediaai_core\local\insights;
 use local_elediaai_core\local\insights_page;
 use local_elediaai_core\local\turn_recorder;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft die Darstellung der Kurs-Einblicke.
  *

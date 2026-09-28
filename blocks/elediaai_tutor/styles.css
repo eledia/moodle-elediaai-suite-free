@@ -1331,8 +1331,10 @@
 }
 
 .elediaai-chat-stylechip-active {
-    background: var(--eac-accent);
-    border-color: var(--eac-accent);
+    /* The deeper accent: white on the accent itself is 3.0:1, short of the
+       4.5:1 a chip label needs (WCAG 1.4.3). */
+    background: var(--eac-accent-strong);
+    border-color: var(--eac-accent-strong);
     color: var(--eac-accent-contrast);
 }
 
@@ -4310,4 +4312,19 @@ body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page
    would otherwise have carried. */
 .elediaai-chat-hero-sub--bare {
     margin-top: 0.35rem;
+}
+
+/* Unavailable notice in place of a floating launcher (portalled to <body>). */
+.elediaai-chat-unavailable.elediaai-chat-unavailable--floating {
+    position: fixed;
+    right: var(--eac-fab-right, 2rem);
+    bottom: var(--eac-fab-bottom, 5.5rem);
+    z-index: 1030;
+    max-width: min(20rem, calc(100vw - 2rem));
+    margin: 0;
+    padding: .75rem 1rem;
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius);
+    background-color: var(--eai-surface);
+    box-shadow: var(--eai-shadow-raised);
 }

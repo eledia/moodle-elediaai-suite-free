@@ -83,6 +83,22 @@ final class server_test extends advanced_testcase {
     }
 
     /**
+     * The anonymous server-info GET does not reveal the plugin release (N-07).
+     */
+    public function test_server_info_omits_version(): void {
+        $this->resetAfterTest(true);
+        $server = new server(WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN);
+        $method = (new ReflectionClass($server))->getMethod('send_server_info');
+        ob_start();
+        $method->invoke($server);
+        $info = json_decode(ob_get_clean(), true);
+
+        $this->assertSame(server::SERVER_NAME, $info['name']);
+        $this->assertArrayNotHasKey('version', $info);
+        $this->assertStringNotContainsString(server::get_server_version(), json_encode($info));
+    }
+
+    /**
      * Test server instantiation.
      */
     public function test_server_instantiation(): void {

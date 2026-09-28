@@ -86,8 +86,14 @@ final class selfstudy_tools_test extends advanced_testcase {
         }
         // The quiz flow tools must not leak solutions before submission.
         $this->assertStringContainsString('WITHOUT the solutions', moodle_selfstudy_get_quiz::description());
-        $this->assertStringContainsString('Do NOT call moodle_selfstudy_list_quizzes first', moodle_selfstudy_create_quiz::description());
-        $this->assertStringContainsString('Do NOT use this before creating a new quiz', moodle_selfstudy_list_quizzes::description());
+        $this->assertStringContainsString(
+            'Do NOT call moodle_selfstudy_list_quizzes first',
+            moodle_selfstudy_create_quiz::description()
+        );
+        $this->assertStringContainsString(
+            'Do NOT use this before creating a new quiz',
+            moodle_selfstudy_list_quizzes::description()
+        );
     }
 
     /**

@@ -109,7 +109,10 @@
     <div class="{{prefix}}-panel{{#inline}} {{prefix}}-inline{{/inline}}" data-region="panel" role="region" aria-label="{{transcriptlabel}}">
         <div class="{{prefix}}-window" role="document">
             {{#showheader}}
-                <header class="{{prefix}}-header">
+                {{! A div, not <header>: inside the panel's region a header
+                    element is exposed as a banner landmark nested in another
+                    landmark, and a page has one banner - Moodle's. }}
+                <div class="{{prefix}}-header">
                     <div class="{{prefix}}-identity">
                         <span class="{{prefix}}-avatar">
                             {{#avatarurl}}
@@ -147,7 +150,7 @@
                             </button>
                         {{/showexpand}}
                     </div>
-                </header>
+                </div>
             {{/showheader}}
             {{{headerhtml}}}
             {{! aria-live is raised to polite by the AMD module only after a

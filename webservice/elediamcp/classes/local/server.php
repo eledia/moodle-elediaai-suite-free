@@ -150,8 +150,15 @@ class server extends webservice_base_server {
         // discovery in tool_provider::get_tools(). Without the second check the
         // switch would only hide raw functions from tools/list while leaving
         // them directly callable (security-by-obscurity instead of enforcement).
+        // The caller is authenticated first, so a bad token still gets its 401;
+        // a valid caller gets a refusal that names the reason instead of
+        // "Internal tool error" (M-07).
         if (!premium::has_mcp_tools() || !security::expose_raw_functions()) {
-            throw new \webservice_access_exception('accessexception');
+            $this->authenticate_user();
+            $this->require_mcp_capability();
+            $this->emit_tool_unavailable((string) $this->functionname);
+            $this->session_cleanup();
+            die;
         }
 
         // Parent's run() ends with die; the rest of this method is unreachable.
@@ -204,6 +211,42 @@ class server extends webservice_base_server {
             'nopermissions',
             'error'
         );
+    }
+
+    /**
+     * Load the raw function, turning "not in this service" into a clear refusal.
+     *
+     * The core check throws a webservice_access_exception for a function the
+     * token's service does not contain, and a missing-record exception for a
+     * name that is no function at all. Both would reach the client as
+     * "Internal tool error", which reads like an outage (M-07).
+     *
+     * @return void
+     * @throws moodle_exception err_tool_unavailable
+     */
+    protected function load_function_info() {
+        try {
+            parent::load_function_info();
+        } catch (\webservice_access_exception | \dml_missing_record_exception $ex) {
+            throw new moodle_exception('err_tool_unavailable', 'webservice_elediamcp', '', (string) $this->functionname);
+        }
+    }
+
+    /**
+     * Refuse a tools/call for a tool this caller cannot use, as a JSON-RPC error.
+     *
+     * MCP reports unknown tools as -32602 (invalid params). Premium tools say
+     * so, so an administrator reading the log knows what is missing.
+     *
+     * @param string $name Requested tool name.
+     * @return void
+     */
+    protected function emit_tool_unavailable(string $name): void {
+        $premiumtool = in_array($name, tool_provider::premium_ai_tool_names(), true) && !premium::has_mcp_tools();
+        $message = get_string($premiumtool ? 'err_tool_premium' : 'err_tool_unavailable', 'webservice_elediamcp', $name);
+        $this->send_jsonrpc_error(-32602, $message);
+        $errorcode = $premiumtool ? 'toolpremium' : 'toolunavailable';
+        $this->record_tool_invocation($name, true, microtime(true), false, [], $errorcode);
     }
 
     /**
@@ -692,12 +735,15 @@ class server extends webservice_base_server {
     /**
      * Emit server-info JSON for GET requests (browser/debugging convenience).
      *
+     * The GET is anonymous, so it names the protocol but not the plugin
+     * release: a version number only helps someone matching known flaws
+     * (N-07). Authenticated clients still receive it in serverInfo.
+     *
      * @return void
      */
     protected function send_server_info(): void {
         echo $this->safe_json_encode([
             'name' => self::SERVER_NAME,
-            'version' => self::get_server_version(),
             'protocolVersion' => protocol::LATEST,
             'supportedProtocolVersions' => protocol::SUPPORTED,
             'capabilities' => [
@@ -945,15 +991,31 @@ class server extends webservice_base_server {
      * @return void
      */
     protected function send_error($ex = null): void {
+        // A tool this caller cannot use: clear JSON-RPC refusal (M-07).
+        // A refusal is no fault, so it is not logged as one.
+        if (
+            !empty($this->functionname) && $ex instanceof moodle_exception
+            && $ex->module === 'webservice_elediamcp' && $ex->errorcode === 'err_tool_unavailable'
+        ) {
+            $this->emit_tool_unavailable((string) $this->functionname);
+            return;
+        }
+
         if ($ex !== null && debugging('', DEBUG_MINIMAL)) {
             $this->log_exception_for_debug($ex);
+        }
+
+        // A failed authentication on tools/call is a 401 like on every other method.
+        if (!empty($this->functionname) && !$this->is_authenticated_for_request($ex)) {
+            $this->emit_authentication_required($ex);
+            return;
         }
 
         // Tools/call: surface as an isError result.
         if (!empty($this->functionname) && $ex !== null) {
             $name = (string) $this->functionname;
             $message = get_string('err_internal_tool_error', 'webservice_elediamcp');
-            if ($ex instanceof tool_exception) {
+            if ($ex instanceof tool_exception || $ex instanceof \core\exception\required_capability_exception) {
                 $message = $ex->getMessage();
             }
             $this->emit_tool_result(['error' => $message], true, $message);

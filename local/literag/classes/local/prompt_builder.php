@@ -182,8 +182,10 @@ class prompt_builder {
         if ($userlang !== null && trim($userlang) !== '') {
             $lang = clean_param(trim($userlang), PARAM_LANG);
             if ($lang !== '') {
-                $lines[] = 'Answer in the language with code "' . $lang
-                    . '" unless the learner explicitly asks for another language.';
+                // Die Frage entscheidet, nicht die Oberflaeche: eine englische
+                // Frage in einer deutschen Oberflaeche bekam eine deutsche Antwort.
+                $lines[] = 'Answer in the language the learner\'s last message is written in. If that is unclear, '
+                    . 'answer in the language with code "' . $lang . '".';
             }
         }
 

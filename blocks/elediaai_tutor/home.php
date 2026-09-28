@@ -46,6 +46,9 @@ if (isguestuser()) {
 }
 $context = \core\context\system::instance();
 require_capability('block/elediaai_tutor:use', $context);
+if (class_exists(\local_elediaai_core\feature\registry::class)) {
+    \local_elediaai_core\feature\registry::require_enabled('tutor');
+}
 
 $PAGE->set_url(new moodle_url('/blocks/elediaai_tutor/home.php'));
 $PAGE->set_context($context);

@@ -105,6 +105,9 @@ $string['default_persona'] = 'eLeDia.ai Tutor';
 $string['default_promptstarters_manager'] = 'action | fa-plus | Kurs anlegen::Einen neuen Kurs erstellen | Lege einen neuen Kurs in Moodle an. Frag mich zuerst nach vollständigem Namen, Kurznamen und Kategorie und lege den Kurs anschließend direkt an.
 action | fa-users | Nutzer finden::Suchen und verwalten | Finde eine Nutzerin oder einen Nutzer. Frag mich nach dem Namen und zeige mir dann Profil und Einschreibungen.
 action | fa-bar-chart | Plattform-Report::Nutzung und Aktivität | Erstelle mir einen kurzen Plattform-Überblick: Welche Kurse sind aktiv, welche verwaist?';
+$string['default_promptstarters_manager_free'] = 'action | fa-search | Kurs finden::Im Katalog suchen | Finde einen Kurs für mich. Frag mich zuerst nach Stichworten und liste dann die passenden Kurse mit ihren Kategorien auf.
+action | fa-folder-open | Kursbereiche::Wo Kurse liegen | Zeig mir die Kursbereiche dieser Website, in denen ich Kurse anlegen kann.
+action | fa-user-plus | Nutzerkonto anlegen::Eine neue Person | Lege ein neues Nutzerkonto an. Frag mich zuerst nach Vorname, Nachname und E-Mail-Adresse.';
 $string['default_promptstarters_student'] = 'action | fa-calendar-check-o | Was steht an?::Abgaben und Termine | Welche Abgaben, Tests und Termine stehen für mich diese Woche an? Sortiere nach Dringlichkeit.
 action | fa-line-chart | Mein Fortschritt::Bisher Erreichtes | Zeig mir meinen aktuellen Lernfortschritt in meinen Kursen. Wo hänge ich hinterher?
 action | fa-graduation-cap | Lernen starten::Da weitermachen, wo Sie aufgehört haben | Schlage mir vor, was ich heute am sinnvollsten lernen oder wiederholen sollte. Prüfe dazu meine Kurse und Termine.';
@@ -112,11 +115,15 @@ $string['default_promptstarters_teacher'] = 'action | fa-magic | Kurs entwerfen:
 action | fa-tasks | Anstehende Abgaben::Warten auf Korrektur | Welche Abgaben warten auf meine Korrektur? Liste sie pro Kurs mit der Anzahl wartender Einreichungen.
 action | fa-comments-o | Offene Forenfragen::Unbeantwortete Beiträge | Zeig mir unbeantwortete Forenbeiträge in meinen Kursen, sortiert nach Alter.
 action | fa-bar-chart | Kursaktivität::Wer ist gerade aktiv | Wie aktiv waren meine Kurse diese Woche? Gibt es Kurse mit auffällig wenig Aktivität?';
+$string['default_promptstarters_teacher_free'] = 'action | fa-book | Meine Kurse::Aufbau und Inhalt | Gib mir einen Überblick über meine Kurse: Abschnitte und Aktivitäten, und was unvollständig wirkt.
+action | fa-question-circle | Was Lernende fragen::Fragen an den Tutor | Was haben Lernende den KI-Tutor in meinen Kursen zuletzt gefragt? Welche Themen kommen am häufigsten vor?
+action | fa-calendar | Anstehende Termine::Fristen in meinen Kursen | Welche Abgaben und Termine stehen in meinen Kursen in den nächsten zwei Wochen an?
+action | fa-search | Material finden::In meinen Kursen suchen | Hilf mir, Material in meinen Kursen zu finden. Frag mich zuerst, wonach ich suche.';
 $string['default_welcome'] = 'Hallo! Ich bin Ihr eLeDia.ai Tutor. Fragen Sie mich zu Ihren Kursen, Aufgaben oder allem, was Sie gerade lernen.';
 $string['deleteall_confirm'] = 'Damit werden alle Ihre gespeicherten Tutor-Gespräche entfernt. Dies kann nicht rückgängig gemacht werden. Möchten Sie fortfahren?';
 $string['deleteall_confirm_title'] = 'Alle Tutor-Daten löschen?';
 $string['deleteall_confirmbutton'] = 'Ja, alles löschen';
-$string['deleteall_done'] = 'Lokale Tutor-Daten gelöscht: {$a} gespeicherte Einträge.';
+$string['deleteall_done'] = 'Lokale Tutor-Daten gelöscht: {$a} gespeicherte Einträge. Der Nachweis über KI-Antworten und die Verbrauchsabrechnung bleiben bis zum Ende der Aufbewahrungsfrist erhalten.';
 $string['deleteall_external_done'] = 'Der externe Tutor-Dienst hat die Löschanfrage ebenfalls abgeschlossen.';
 $string['deleteall_external_failed'] = 'Der externe Tutor-Dienst konnte {$a} Löschanfrage(n) nicht abschließen. Die lokalen Moodle-Daten wurden dennoch gelöscht.';
 $string['deleteall_external_unsupported'] = 'Der externe Tutor-Dienst unterstützt keine Fernlöschung; dort gespeicherte Transkripte unterliegen weiterhin seiner Aufbewahrungsrichtlinie.';
@@ -280,14 +287,14 @@ $string['privacy:metadata:rag_server:userid'] = 'Ihre Moodle-Nutzeridentität (�
 $string['privacy:questions'] = 'eLeDia.ai Tutor-Fragen';
 $string['privacy_accuracy_body'] = 'Der Tutor erzeugt Antworten mit künstlicher Intelligenz. Antworten können unvollständig oder falsch sein — prüfen Sie wichtige Informationen immer anhand Ihrer Kursmaterialien oder fragen Sie Ihre Lehrkraft.';
 $string['privacy_accuracy_title'] = 'KI-Antworten können falsch sein';
-$string['privacy_deletion_body'] = 'Sie können Ihre Tutor-Gespräche jederzeit über die Schaltfläche unten löschen. Lokale Einträge werden sofort entfernt. Unterstützt der externe Tutor-Dienst die Fernlöschung, werden Ihre Transkripte auch dort gelöscht; andernfalls unterliegen sie weiterhin der Aufbewahrungsrichtlinie des Dienstes — wenden Sie sich an Ihre Administration, wenn sie entfernt werden sollen.';
+$string['privacy_deletion_body'] = 'Sie können Ihre Tutor-Gespräche jederzeit über die Schaltfläche unten löschen. Entfernt werden Ihre Gespräche, die pseudonymisierten Fragen, Ihre Bestätigung, der Nachrichtenzähler und der Zugangsschlüssel des Tutors für Sie. Unterstützt der Tutor-Dienst die Fernlöschung, werden Ihre Transkripte auch dort gelöscht; andernfalls unterliegen sie weiterhin der Aufbewahrungsrichtlinie des Dienstes – wenden Sie sich an Ihre Administration, wenn sie entfernt werden sollen. Der Nachweis, dass Ihnen KI-Antworten gegeben wurden, und die Verbrauchsabrechnung der Website bleiben erhalten; sie werden nach der von Ihrer Administration festgelegten Frist anonymisiert oder entfernt.';
 $string['privacy_deletion_title'] = 'Ihre Daten löschen';
 $string['privacy_intro'] = 'So geht der eLeDia.ai Tutor mit Ihren Daten um.';
-$string['privacy_ltm_body'] = 'In einem zukünftigen Update kann sich der Tutor hilfreiche Fakten über Gespräche hinweg merken, um Sie persönlicher zu unterstützen. Dies ist standardmäßig deaktiviert und wird nur genutzt, wenn Sie unten ausdrücklich zustimmen. Es werden noch keine Gedächtnisdaten erhoben oder gesendet.';
-$string['privacy_ltm_title'] = 'Langzeitgedächtnis (optional, demnächst)';
+$string['privacy_ltm_body'] = 'Wenn Sie unten zustimmen, kann sich ein Tutor-Dienst, der das unterstützt, hilfreiche Fakten über Gespräche hinweg merken, um Sie persönlicher zu unterstützen. Das ist standardmäßig ausgeschaltet und wird erst nach Ihrer Zustimmung genutzt. Wenn Sie unten Ihre Daten löschen, wird auch das Gemerkte entfernt.';
+$string['privacy_ltm_title'] = 'Langzeitgedächtnis (optional)';
 $string['privacy_sent_body'] = 'Ihre Nachricht, der Kurskontext (falls vorhanden) und Ihre Moodle-Identität (über einen kurzlebigen, nutzerbezogenen Token) werden an den externen Tutor-Dienst gesendet, damit er in Ihrem Namen antworten kann. Der Tutor kann nur auf das zugreifen, was Sie selbst in Moodle sehen dürfen.';
 $string['privacy_sent_title'] = 'Was beim Chatten gesendet wird';
-$string['privacy_storage_body'] = 'Moodle speichert nur schlanke Gesprächs-Metadaten (eine Gesprächsreferenz, eine kurze Vorschau und Zeitstempel) sowie den Zeitpunkt Ihrer Bestätigung dieser Hinweise. Vollständige Transkripte speichert der externe Tutor-Dienst gemäß seiner Aufbewahrungsrichtlinie.';
+$string['privacy_storage_body'] = 'Moodle speichert Ihre Gespräche vollständig – Ihre Nachrichten und die Antworten des Tutors –, damit Sie sie später fortsetzen können, dazu den Zeitpunkt Ihrer Bestätigung dieser Hinweise und einen täglichen Nachrichtenzähler. Antwortet der Tutor über LiteRAG auf dieser Website, hält LiteRAG eine eigene Kopie des Gesprächs und ein Suchprotokoll. Außerdem erfasst die KI-Suite jede Frage und Antwort ohne Ihren Namen unter einem Pseudonym für Kursauswertungen und hält fest, dass Ihnen eine KI-Antwort gegeben wurde, wie es die KI-Verordnung verlangt. Antwortet ein externer Tutor-Dienst, speichert er das Gespräch nach seiner eigenen Aufbewahrungsrichtlinie. Wie lange all das aufbewahrt wird, legt Ihre Administration fest.';
 $string['privacy_storage_title'] = 'Was gespeichert wird';
 $string['privacyguidelines'] = 'Datenschutzhinweise';
 $string['ragmode_grounded'] = 'In Kursmaterialien verankert';

@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\feature;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Premium add-ons implement this interface in
  * `<frankenstyle>\elediaai_core_policy\policy_provider`.

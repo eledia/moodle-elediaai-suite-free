@@ -254,22 +254,27 @@ final class surface_test extends \advanced_testcase {
     }
 
     /**
-     * Without a surface the site defaults still apply.
+     * The engine's shared endpoint no longer answers for the tutor.
      *
-     * The shared endpoint keeps working for the tutor; it simply cannot resolve
-     * an instance, which is exactly what it did before.
+     * It names no block, so a turn through it ran with the site defaults and
+     * skipped the instance's daily limit, persona and answer style. The tutor's
+     * own surfaces never use it; a direct call is refused.
      *
      * @return void
      */
-    public function test_the_shared_endpoint_still_answers_with_site_defaults(): void {
-        $scope = $this->setup_instance(['answerstyle' => 'quiz']);
+    public function test_the_shared_endpoint_is_refused_for_the_tutor(): void {
+        $scope = $this->setup_instance(['answerstyle' => 'quiz', 'dailylimit' => 1]);
 
-        \local_elediaai_chatengine\external\send_message::execute(
-            'block_elediaai_tutor',
-            $scope['courseid'],
-            'Frage'
-        );
-
-        $this->assertSame('explain', $this->adapter->lastrequest->option('answerstyle'));
+        try {
+            \local_elediaai_chatengine\external\send_message::execute(
+                'block_elediaai_tutor',
+                $scope['courseid'],
+                'Frage'
+            );
+            $this->fail('A turn without its block should have been refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('error_invalid_context', $e->errorcode);
+        }
+        $this->assertNull($this->adapter->lastrequest);
     }
 }

@@ -37,13 +37,16 @@ Worauf zu achten ist: was Sie hier auswählen, kann der Tutor Lernenden gegenüb
 $string['guide_summary'] = 'Sie wählen je Kurs aus, welches Material die KI lesen darf. Was nicht gewählt ist, wird nicht indexiert.';
 $string['guide_title'] = 'Woraus der Tutor antwortet';
 $string['health_configure'] = 'Einstellungen';
+$string['health_configure_literag'] = 'LiteRAG-Einstellungen';
 $string['health_destination'] = 'Aufnahmeziel';
 $string['health_destination_ok'] = 'Erreichbar ({$a}).';
-$string['health_destination_unconfigured'] = 'Es ist kein Ziel eingerichtet, also wird nichts indexiert.';
+$string['health_destination_incomplete'] = 'Das Ziel „{$a->name}“ ist gewählt, aber nicht vollständig eingerichtet: {$a->reason} Bis dahin wird nichts indexiert.';
+$string['health_destination_incomplete_generic'] = 'Eine erforderliche Einstellung fehlt.';
 $string['health_pending'] = 'Kurse warten auf Indexierung';
 $string['health_pending_action'] = 'Jetzt indexieren';
 $string['health_pending_detail'] = '{$a} Kurs(e) sind zur Indexierung vorgemerkt, haben aber noch keinen Index. Bis dahin antwortet der Tutor dort allein aus dem Modell.';
 $string['pluginname'] = 'eLeDia.ai | KI Quellen';
+$string['cachedef_servicecapabilities'] = 'Vom Ingestion-Dienst gemeldete Dokumentformate';
 
 // Settings.
 $string['sink'] = 'Aufnahmeziel';
@@ -51,7 +54,7 @@ $string['sink_desc'] = 'Wohin Kursinhalte gesendet werden. Es ist immer genau ei
 $string['sink_ingestionapi'] = 'eLeDia.ai Ingestion-API (externer Dienst)';
 $string['sink_literag'] = 'LiteRAG (auf dieser Website)';
 $string['sink_ingestionapi_baseurl'] = 'Basis-URL des Dienstes';
-$string['sink_ingestionapi_baseurl_desc'] = 'Basis-URL des Ingestion-Dienstes, ohne angehängten Pfad (z. B. http://rag-service:8001). Das Plugin ergänzt die dokumentierten Aktionen /documents/upsert, /documents/delete und /health.';
+$string['sink_ingestionapi_baseurl_desc'] = 'Basis-URL des Ingestion-Dienstes, ohne angehängten Pfad (z. B. https://rag.example.com). Das Plugin ergänzt die dokumentierten Aktionen /documents/upsert, /documents/delete und /health.';
 $string['sink_ingestionapi_apikey'] = 'API-Schlüssel';
 $string['sink_ingestionapi_apikey_desc'] = 'Der API-Schlüssel zur Authentifizierung beim Ingestion-Dienst. Wird als X-API-Key-Header gesendet. Schlüssel werden pro Mandant ausgegeben.';
 $string['sink_ingestionapi_notconfigured'] = 'Basis-URL oder API-Schlüssel fehlt.';
@@ -230,6 +233,7 @@ $string['activities_status_indexed'] = 'Indexiert';
 $string['activities_status_error'] = 'Fehler';
 $string['activities_status_unknown'] = 'Unbekannt';
 $string['activities_status_empty'] = 'Nichts zu indizieren';
+$string['activities_status_hidden'] = 'Verborgen – nicht im Index';
 
 // Dry run.
 $string['preview_title'] = 'Probelauf';
@@ -287,7 +291,9 @@ $string['privacy:metadata:rag_service:course_id'] = 'Die Moodle-Kurs-ID wird üb
 $string['privacy:metadata:rag_service:cmid'] = 'Die Moodle-Kursmodul-ID wird übertragen, um die Aktivität zu identifizieren.';
 $string['privacy:metadata:rag_service:module_url'] = 'Die Moodle-Modul-URL wird für spätere Quellenangaben und Links übertragen.';
 $string['privacy:metadata:rag_service:content'] = 'Extrahierte Inhalte aus Kursaktivitäten werden zur Verarbeitung, Segmentierung und Indexierung übertragen.';
+$string['privacy:metadata:rag_service:usercontent'] = 'Extrahierte Inhalte können Beiträge von Teilnehmenden enthalten: freigegebene Einträge aus Datenbank-Aktivitäten, freigegebene Glossareinträge und Wiki-Seiten. Übertragen wird der Text dieser Beiträge, nicht die Namen der Verfassenden.';
 
 // Subplugin types.
 $string['subplugintype_aisourcesextractor'] = 'Content-Extractor';
 $string['subplugintype_aisourcesextractor_plural'] = 'Content-Extractors';
+$string['destinationunreadable'] = 'Das Ziel konnte den Text dieses Dokuments nicht lesen, etwa bei einer passwortgeschützten oder gescannten PDF. Nichts davon ist im Index.';

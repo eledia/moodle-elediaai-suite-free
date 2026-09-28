@@ -30,8 +30,6 @@
 
 namespace local_elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core\hook\output\before_standard_head_html_generation;
 use core\hook\output\before_standard_top_of_body_html_generation;
 use core\hook\navigation\primary_extend;
@@ -145,7 +143,7 @@ class hook_callbacks {
         }
 
         $hook->get_primaryview()->add(
-            // launcher_title ("AI Suite"), nicht shell_name: der Seitenkopf
+            // Der String launcher_title ("AI Suite"), nicht shell_name: der Seitenkopf
             // heisst "eLeDia.ai | AI Suite", und in einem Kachelraster neben
             // "Dashboard" bricht das ueber zwei Zeilen.
             get_string('launcher_title', 'local_elediaai_core'),

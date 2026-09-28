@@ -31,8 +31,6 @@ use core_ai\aiactions\responses\response_generate_text;
 use core_ai\manager;
 use local_elediaai_core\local\quota_manager;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Verifies dispatch and settlement outcomes.
  *
@@ -363,6 +361,12 @@ final class quota_aware_ai_manager_test extends advanced_testcase {
         return [$user, new generate_text(\context_system::instance()->id, $user->id, 'Prompt')];
     }
 
+    /**
+     * Tokens the student bucket has used today for the given user.
+     *
+     * @param int $userid
+     * @return int
+     */
     private function used_tokens(int $userid): int {
         return quota_manager::used_tokens(
             $userid,
@@ -371,6 +375,12 @@ final class quota_aware_ai_manager_test extends advanced_testcase {
         );
     }
 
+    /**
+     * Tokens currently reserved in the student bucket for today.
+     *
+     * @param int $userid
+     * @return int
+     */
     private function reserved_tokens(int $userid): int {
         global $DB;
         return (int) $DB->get_field(quota_manager::TABLE, 'reservedtokens', [

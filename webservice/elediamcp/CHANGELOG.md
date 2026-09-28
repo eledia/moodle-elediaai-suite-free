@@ -5,6 +5,42 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.2] – 2026-09-28
+### Fixed
+- The MCP service created by "Activate MCP service" survives plugin upgrades.
+  It was stored with this plugin's component, and because `db/services.php`
+  declares no service, Moodle deleted it together with every MCP token on each
+  upgrade; the chat engine was then left pointing at a missing service. The
+  service is now created without a component. An upgrade step detaches an
+  existing service before Moodle's service sync runs, so current tokens are
+  kept.
+### Added
+- `db/uninstall.php` removes the default MCP service and its tokens, which
+  Moodle no longer does on its own for a service without a component. Services
+  an administrator added to the MCP list are left alone.
+- `$plugin->supported = [405, 502]`.
+### Changed
+- The tool catalogue (`tools/list`) lists only the tools the person holds the
+  capabilities for; `moodle_create_user` no longer shows up for teachers.
+  Locked premium tools, raw functions that are not exposed and unknown names
+  are refused with JSON-RPC error -32602 and a reason instead of "Internal tool
+  error". Tools contributed by other suite plugins (`moodle_my_ai_data`,
+  `moodle_ai_course_insights`) count as free, and the configuration page
+  counts the free tools correctly (M-07).
+- `requires` is Moodle 4.5 (2024100700), as the core dependency already
+  demanded; the README says so (M-15).
+- New tokens expire after 90 days by default; the token capabilities declare
+  `RISK_PERSONAL`, `RISK_SPAM` and `RISK_DATALOSS` (M-21).
+- The help page is readable for everyone who may issue tokens (G-05).
+- An anonymous GET on the endpoint no longer reveals the version (N-07).
+- The plugin is switched off with the suite's feature switch (K2).
+- README separates the free and the premium scope.
+### Fixed
+- A stray "/>" on the token page (G-04).
+- After "Activate MCP service" the plugin cache is reset, so scheduled tasks
+  no longer run as "Plugin disabled" until caches are purged (G-10).
+- Missing `cachedef_*` strings.
+
 ## [1.8.1] – 2026-09-25
 ### Added
 - `moodle_list_course_categories` (read, free): the categories the user may

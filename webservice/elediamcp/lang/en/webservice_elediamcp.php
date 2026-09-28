@@ -57,6 +57,8 @@ $string['err_not_mcp_service'] = 'This token is not authorised for the MCP servi
 $string['err_rate_limit_exceeded'] = 'Rate limit exceeded. Retry after {$a} seconds.';
 $string['err_request_too_large'] = 'Request body exceeds the maximum allowed size';
 $string['err_token_in_query_disabled'] = 'Token in query string is disabled by site policy. Use the Authorization header instead.';
+$string['err_tool_premium'] = 'The tool "{$a}" belongs to the eLeDia.ai premium edition, which is not active on this site. It cannot be called here; do not retry.';
+$string['err_tool_unavailable'] = 'The tool "{$a}" is not available on this site or not released for this token. Call tools/list to see the tools you may use; do not retry.';
 
 // Capabilities.
 $string['elediamcp:managetokens'] = 'Create and revoke own MCP tokens';
@@ -84,6 +86,9 @@ $string['health_services_ok'] = '{$a} service(s) exposed over MCP.';
 $string['health_webservices'] = 'Moodle web services';
 $string['health_webservices_off'] = 'Web services are switched off site-wide. Nothing MCP offers can be reached until they are on.';
 $string['pluginname'] = 'Model Context Protocol';
+$string['cachedef_rate_limit'] = 'MCP rate-limit counters (per token or IP address)';
+$string['cachedef_responses'] = 'Short-lived AI tool responses';
+$string['cachedef_verify_context'] = 'Short-lived user context verification responses';
 $string['shell_help_label'] = 'Help for Model Context Protocol';
 $string['shell_settings_label'] = 'Model Context Protocol settings';
 $string['privacy:metadata:webservice_elediamcp_token'] = 'Metadata about MCP web service tokens issued to or on behalf of a user. The token secret itself is never stored here.';
@@ -137,7 +142,7 @@ $string['token_status_active'] = 'Active';
 $string['token_status_expired'] = 'Expired';
 $string['token_status_revoked'] = 'Revoked';
 $string['token_validuntil'] = 'Expires';
-$string['token_validuntil_help'] = 'An optional date after which the token stops working. Leave disabled for a token that never expires.';
+$string['token_validuntil_help'] = 'The date after which the token stops working. A new token expires after 90 days unless you choose another date. Untick the box only if the token really must never expire.';
 $string['tokens_heading'] = 'MCP tokens';
 $string['tokens_existing_heading'] = 'Existing tokens';
 $string['tokens_intro'] = 'Tokens let MCP clients and AI agents access Moodle on your behalf. Treat each token like a password.';

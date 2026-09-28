@@ -117,18 +117,31 @@ class token_manager {
      * token issuance and does not assign raw external functions to that service.
      * The curated MCP tools are served by the MCP endpoint itself.
      *
+     * The service is created without a component, like a service an administrator
+     * adds by hand. A service carrying this plugin's component would count as
+     * declared by it, and because db/services.php declares none, Moodle deletes
+     * such a service together with all of its tokens on every upgrade of this
+     * plugin (external_update_descriptions()).
+     *
      * @return int The configured external service id.
      */
     public static function ensure_default_service_configured(): int {
         global $CFG, $DB;
 
-        set_config('enablewebservices', 1);
-
-        $protocols = empty($CFG->webserviceprotocols) ? [] : explode(',', (string) $CFG->webserviceprotocols);
-        $protocols = array_values(array_unique(array_filter(array_map('trim', $protocols))));
-        if (!in_array('elediamcp', $protocols, true)) {
-            $protocols[] = 'elediamcp';
-            set_config('webserviceprotocols', implode(',', $protocols));
+        // Both switches decide whether Moodle counts this plugin as enabled.
+        // The plugin manager caches that answer; without a reset Moodle kept
+        // treating the plugin as disabled - its scheduled task showed "Plugin
+        // disabled" - until the caches were purged by hand (G-10). Core's own
+        // protocol switch logs the change and resets the caches itself.
+        $websiteswitched = false;
+        if (empty($CFG->enablewebservices)) {
+            add_to_config_log('enablewebservices', (string) ($CFG->enablewebservices ?? ''), '1', 'core');
+            set_config('enablewebservices', 1);
+            $websiteswitched = true;
+        }
+        $protocolswitched = \core\plugininfo\webservice::enable_plugin('elediamcp', 1);
+        if ($websiteswitched && !$protocolswitched) {
+            \core_plugin_manager::reset_caches();
         }
 
         $now = time();
@@ -138,7 +151,7 @@ class token_manager {
             $service->enabled = 1;
             $service->requiredcapability = 'webservice/elediamcp:use';
             $service->restrictedusers = 0;
-            $service->component = 'webservice_elediamcp';
+            $service->component = null;
             $service->timemodified = $now;
             $service->downloadfiles = 0;
             $service->uploadfiles = 0;
@@ -150,7 +163,7 @@ class token_manager {
                 'enabled' => 1,
                 'requiredcapability' => 'webservice/elediamcp:use',
                 'restrictedusers' => 0,
-                'component' => 'webservice_elediamcp',
+                'component' => null,
                 'timecreated' => $now,
                 'timemodified' => $now,
                 'shortname' => self::DEFAULT_SERVICE_SHORTNAME,

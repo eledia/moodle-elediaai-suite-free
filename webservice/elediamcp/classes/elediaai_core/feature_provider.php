@@ -24,8 +24,6 @@
 
 namespace webservice_elediamcp\elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_elediaai_core\feature\descriptor;
 use local_elediaai_core\feature\registry;
 use local_elediaai_core\feature\feature_provider as feature_provider_contract;
@@ -56,8 +54,8 @@ final class feature_provider implements feature_provider_contract {
                 icon: 'plug',
                 audience: registry::AUDIENCE_ADMIN,
                 imagename: 'feature_elediamcp',
-                capability: null,
-                configurl: new moodle_url('/admin/settings.php', ['section' => 'webservice_elediamcp']),
+                capability: 'moodle/site:config',
+                configurl: new moodle_url('/webservice/elediamcp/configuration.php'),
                 detaildescription: get_string('suite_feature_detail', 'webservice_elediamcp'),
                 keyfeatures: [
                     get_string('suite_feature_key_1', 'webservice_elediamcp'),

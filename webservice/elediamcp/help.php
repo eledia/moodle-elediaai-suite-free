@@ -27,10 +27,18 @@ require_once(__DIR__ . '/classes/output/shell.php');
 
 use webservice_elediamcp\output\shell;
 
-require_login();
+require_login(null, false);
 
 $context = \core\context\system::instance();
-require_capability('moodle/site:config', $context);
+if (isguestuser() || !shell::can_view_help()) {
+    // Named after the capability ordinary users are expected to hold.
+    throw new \core\exception\required_capability_exception(
+        $context,
+        'webservice/elediamcp:managetokens',
+        'nopermissions',
+        ''
+    );
+}
 
 $url = new moodle_url('/webservice/elediamcp/help.php');
 $PAGE->set_url($url);

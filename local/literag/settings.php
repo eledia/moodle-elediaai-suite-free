@@ -266,12 +266,13 @@ if ($hassiteconfig) {
         PARAM_TEXT
     ));
 
-    $settings->add(new admin_setting_configtext(
+    // An executable path, so Moodle's own rules apply: $CFG->preventexecpath
+    // locks it, and the setting refuses a path that is not an executable file.
+    $settings->add(new admin_setting_configexecutable(
         'local_literag/pdftotext_path',
         get_string('pdftotext_path', 'local_literag'),
         get_string('pdftotext_path_desc', 'local_literag'),
-        '',
-        PARAM_PATH
+        ''
     ));
 
     // Live Moodle tools (webservice_elediamcp).

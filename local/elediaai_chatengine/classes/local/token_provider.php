@@ -117,6 +117,8 @@ class token_provider {
      * @throws moodle_exception When provisioning fails.
      */
     private static function mint_token(int $userid, int $serviceid, cache $cache, string $cachekey): string {
+        global $SESSION;
+
         // Revoke any previous connector tokens for this user/service so we do not
         // accumulate orphaned credentials whose plain value we can no longer reach.
         try {
@@ -130,6 +132,13 @@ class token_provider {
         $validuntil = $lifetime > 0 ? time() + $lifetime : 0;
         $label = get_string('tokenlabel', 'local_elediaai_chatengine');
 
+        // Moodle's token generator notes the new token in the session, for the
+        // token page to show it once. That note is meant for an administrator
+        // issuing a token by hand, not for a connector token, and a streamed
+        // turn has already closed the session - the write was logged as a
+        // session change after close on every first turn of a person.
+        $hadnote = isset($SESSION->webservicenewlycreatedtoken);
+        $note = $SESSION->webservicenewlycreatedtoken ?? null;
         $result = call_user_func(
             [self::MCP_API, 'create_token'],
             self::COMPONENT,
@@ -138,6 +147,11 @@ class token_provider {
             $label,
             $validuntil
         );
+        if ($hadnote) {
+            $SESSION->webservicenewlycreatedtoken = $note;
+        } else {
+            unset($SESSION->webservicenewlycreatedtoken);
+        }
 
         $token = (string) ($result->token ?? '');
         if ($token === '') {
@@ -170,5 +184,27 @@ class token_provider {
         $serviceid = (int) connection::get('mcpserviceid', 0);
         $cache = cache::make('local_elediaai_chatengine', 'usertoken');
         $cache->delete($userid . '_' . $serviceid);
+    }
+
+    /**
+     * Revoke the engine's access tokens for a user and drop the cached one.
+     *
+     * Part of "delete all my data": the token is a credential issued for the
+     * person, and it stayed valid after everything else was gone.
+     *
+     * @param int $userid The owner.
+     * @return void
+     */
+    public static function revoke_for_user(int $userid): void {
+        self::forget_cached_token($userid);
+        $serviceid = (int) connection::get('mcpserviceid', 0);
+        if (!self::is_connector_available() || $serviceid <= 0) {
+            return;
+        }
+        try {
+            call_user_func([self::MCP_API, 'revoke_user_service_tokens'], self::COMPONENT, $userid, $serviceid);
+        } catch (moodle_exception $e) {
+            debugging('local_elediaai_chatengine: token revocation failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
     }
 }

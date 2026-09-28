@@ -59,6 +59,8 @@ $string['err_not_mcp_service'] = 'Dieses Token ist nicht für den MCP-Service be
 $string['err_rate_limit_exceeded'] = 'Rate Limit überschritten. Versuchen Sie es in {$a} Sekunden erneut.';
 $string['err_request_too_large'] = 'Der Anfragetext überschreitet die maximal zulässige Größe';
 $string['err_token_in_query_disabled'] = 'Token im Query-String ist durch die Richtlinie der Website deaktiviert. Verwenden Sie stattdessen den Authorization-Header.';
+$string['err_tool_premium'] = 'Das Werkzeug „{$a}“ gehört zur Premium-Edition von eLeDia.ai, die auf dieser Website nicht aktiv ist. Es kann hier nicht aufgerufen werden; bitte nicht erneut versuchen.';
+$string['err_tool_unavailable'] = 'Das Werkzeug „{$a}“ ist auf dieser Website nicht verfügbar oder für dieses Token nicht freigegeben. Mit tools/list sehen Sie die Werkzeuge, die Sie nutzen dürfen; bitte nicht erneut versuchen.';
 
 // Capabilities.
 $string['elediamcp:managetokens'] = 'Eigene MCP-Tokens erstellen und widerrufen';
@@ -86,6 +88,9 @@ $string['health_services_ok'] = '{$a} Dienst(e) über MCP freigegeben.';
 $string['health_webservices'] = 'Moodles Webservices';
 $string['health_webservices_off'] = 'Webservices sind website-weit abgeschaltet. Nichts, was MCP anbietet, ist erreichbar, solange das so ist.';
 $string['pluginname'] = 'Model Context Protocol';
+$string['cachedef_rate_limit'] = 'MCP-Zähler für Anfragegrenzen (je Token oder IP-Adresse)';
+$string['cachedef_responses'] = 'Kurzlebige Antworten der KI-Werkzeuge';
+$string['cachedef_verify_context'] = 'Kurzlebige Antworten der Nutzerkontext-Prüfung';
 $string['shell_help_label'] = 'Hilfe zu Model Context Protocol';
 $string['shell_settings_label'] = 'Einstellungen für Model Context Protocol';
 $string['privacy:metadata:webservice_elediamcp_token'] = 'Metadaten zu MCP-Webservice-Tokens, die für Nutzer/innen oder in deren Auftrag ausgestellt wurden. Der geheime Token-Wert selbst wird hier nie gespeichert.';
@@ -139,7 +144,7 @@ $string['token_status_active'] = 'Aktiv';
 $string['token_status_expired'] = 'Abgelaufen';
 $string['token_status_revoked'] = 'Widerrufen';
 $string['token_validuntil'] = 'Gültig bis';
-$string['token_validuntil_help'] = 'Ein optionales Datum, ab dem das Token nicht mehr funktioniert. Lassen Sie das Feld deaktiviert, wenn das Token nie ablaufen soll.';
+$string['token_validuntil_help'] = 'Das Datum, ab dem das Token nicht mehr funktioniert. Ein neues Token läuft nach 90 Tagen ab, wenn Sie kein anderes Datum wählen. Entfernen Sie das Häkchen nur, wenn das Token wirklich nie ablaufen soll.';
 $string['tokens_heading'] = 'MCP-Tokens';
 $string['tokens_existing_heading'] = 'Vorhandene Tokens';
 $string['tokens_intro'] = 'Mit Tokens können MCP-Clients und KI-Agenten in Ihrem Namen auf Moodle zugreifen. Behandeln Sie jedes Token wie ein Passwort.';

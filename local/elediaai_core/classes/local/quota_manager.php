@@ -31,8 +31,6 @@
 
 namespace local_elediaai_core\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Counts prompt + completion tokens in hourly, daily and monthly windows.
  */

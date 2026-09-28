@@ -58,6 +58,12 @@ class security {
      * @return bool
      */
     public static function is_emergency_disabled(): bool {
+        // Switched off in the suite's feature list counts like the emergency
+        // switch: every request to the endpoint answers 503.
+        $registry = '\\local_elediaai_core\\feature\\registry';
+        if (class_exists($registry) && !$registry::is_enabled('mcp')) {
+            return true;
+        }
         return (int) self::get_config('emergency_disable', 0) === 1;
     }
 

@@ -38,8 +38,6 @@ use local_elediaai_core\local\audit_config;
 use local_elediaai_core\output\lucide_icon;
 use moodle_url;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Shared navigation renderer for Core pages.
  */
@@ -234,7 +232,7 @@ class section_nav {
                 'label' => get_string('shell_name', 'local_elediaai_core'),
             ],
         ];
-        // „Uebersicht" ist der Punkt, auf dem der Leser steht, wenn er die
+        // Der Punkt „Uebersicht" ist der, auf dem der Leser steht, wenn er die
         // Startseite des Werkzeugs offen hat -- also zeigt er auch dorthin.
         // Bis hierher zeigte er auf die Erklaerseite im Kern: man stand auf
         // dem Werkzeug, der als aktuell markierte Punkt fuehrte woandershin,

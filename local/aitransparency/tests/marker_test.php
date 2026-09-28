@@ -27,8 +27,6 @@ namespace local_aitransparency;
 
 use advanced_testcase;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft Marker, Hinweis und die Lesewege des Nachweises.
  *

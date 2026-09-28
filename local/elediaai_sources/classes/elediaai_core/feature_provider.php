@@ -24,8 +24,6 @@
 
 namespace local_elediaai_sources\elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_elediaai_core\feature\descriptor;
 use local_elediaai_core\feature\registry;
 use local_elediaai_core\feature\feature_provider as feature_provider_contract;
@@ -56,8 +54,8 @@ final class feature_provider implements feature_provider_contract {
                 icon: 'database',
                 audience: registry::AUDIENCE_TEACHER,
                 imagename: 'feature_sources',
-                capability: null,
-                configurl: new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_sources']),
+                capability: 'local/elediaai_sources:selectactivities',
+                configurl: new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_sources_settings']),
                 detaildescription: get_string('suite_feature_detail', 'local_elediaai_sources'),
                 usagehint: get_string('feature_usagehint', 'local_elediaai_sources'),
                 keyfeatures: [

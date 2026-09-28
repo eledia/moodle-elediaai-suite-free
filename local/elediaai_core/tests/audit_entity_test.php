@@ -31,8 +31,6 @@ use local_elediaai_core\reportbuilder\local\entities\ai_action_audit;
 use local_elediaai_core\reportbuilder\local\systemreports\audit as audit_report;
 use ReflectionClass;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the component behavior and contracts.
  *
@@ -323,7 +321,7 @@ final class audit_entity_test extends advanced_testcase {
             'actionname' => 'generate_text',
             'actionid' => $detailid,
             'success' => 1,
-            'userid' => 2, // admin
+            'userid' => 2, // Admin.
             'contextid' => \core\context\system::instance()->id,
             'provider' => 'aiprovider_openai',
             'errorcode' => null,
@@ -435,7 +433,7 @@ final class audit_entity_test extends advanced_testcase {
             'actionname' => 'generate_text',
             'actionid' => $detailid,
             'success' => 1,
-            'userid' => 2, // admin
+            'userid' => 2, // Admin.
             'contextid' => \core\context\system::instance()->id,
             'provider' => 'aiprovider_openai',
             'errorcode' => null,

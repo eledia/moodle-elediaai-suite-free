@@ -30,8 +30,6 @@
 
 namespace local_elediaai_core\reportbuilder\local\entities;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core\context\system as context_system;
 use core_ai\reportbuilder\local\entities\ai_action_register as core_ai_action_register;
 use core_reportbuilder\local\entities\user as user_entity;
@@ -170,7 +168,11 @@ final class ai_action_audit extends core_ai_action_register {
             ->add_joins($this->get_joins())
             ->add_joins($joins)
             ->set_type(column::TYPE_LONGTEXT)
-            ->add_field("COALESCE({$generatetextalias}.prompt, {$summarisetextalias}.prompt, {$explaintextalias}.prompt, {$imageprompt})", 'prompt')
+            ->add_field(
+                "COALESCE({$generatetextalias}.prompt, {$summarisetextalias}.prompt, "
+                    . "{$explaintextalias}.prompt, {$imageprompt})",
+                'prompt'
+            )
             ->set_is_sortable(false)
             ->set_callback([self::class, 'format_preview_cell'], 'audit_preview_title_prompt');
 
@@ -184,7 +186,8 @@ final class ai_action_audit extends core_ai_action_register {
             ->add_joins($joins)
             ->set_type(column::TYPE_LONGTEXT)
             ->add_field(
-                "COALESCE({$generatetextalias}.generatedcontent, {$summarisetextalias}.generatedcontent, {$explaintextalias}.generatedcontent, {$imagerevisedprompt})",
+                "COALESCE({$generatetextalias}.generatedcontent, {$summarisetextalias}.generatedcontent, "
+                    . "{$explaintextalias}.generatedcontent, {$imagerevisedprompt})",
                 'generatedcontent'
             )
             ->set_is_sortable(false)
@@ -247,7 +250,8 @@ final class ai_action_audit extends core_ai_action_register {
                 'tokens_prompt'
             )
             ->add_field(
-                "COALESCE({$generatetextalias}.completiontoken, {$summarisetextalias}.completiontoken, {$explaintextalias}.completiontoken)",
+                "COALESCE({$generatetextalias}.completiontoken, {$summarisetextalias}.completiontoken, "
+                    . "{$explaintextalias}.completiontoken)",
                 'tokens_completion'
             )
             ->add_field("{$mainalias}.actionname", 'audit_actionname_for_cost')
@@ -528,7 +532,7 @@ final class ai_action_audit extends core_ai_action_register {
             ]
         );
 
-        // `<template>` keeps the full text in the DOM without rendering it;
+        // A `<template>` element keeps the full text in the DOM without rendering it;
         // the AMD module reads `.innerHTML` (already HTML-escaped via s()).
         $template = html_writer::tag('template', s($clean), ['class' => 'lh-audit-preview-content']);
 

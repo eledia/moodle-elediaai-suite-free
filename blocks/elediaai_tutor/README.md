@@ -23,15 +23,16 @@ degrading. **Every turn carries a user-scoped Moodle MCP token**, grounded or
 LLM-only: even a turn that retrieves nothing must tell the server who is asking,
 so the backend can attribute it to a tenant and user. `webservice_elediamcp` is
 therefore a **hard dependency** in `version.php` and must be installed first.
-The optional `local_elediaai_core` companion supplies the shared hourly/daily
-token quota; without it, the Tutor keeps its local fallback and chat continues
-to work.
+The conversation itself is run by `local_elediaai_chatengine` (also a hard
+dependency), which in turn requires `local_elediaai_core`; core supplies the
+shared suite shell and the hourly/daily token quota.
 
-- **Maturity:** Beta (`0.21.0`)
+- **Release:** `1.0.1` (stable)
 - **Moodle support:** 4.5–5.2 (minimum Moodle version: 4.5)
 - **PHP support:** 8.3+
-- **Required plugin dependency:** `webservice_elediamcp` — supplies the
-  user-scoped Moodle MCP token that every turn carries
+- **Required plugins:** `local_elediaai_core`, `local_elediaai_chatengine`,
+  `webservice_elediamcp` (supplies the user-scoped Moodle MCP token that every
+  turn carries)
 - **Required for grounded answers:** `local_elediaai_sources` for the knowledge base
 - **License:** GNU GPL v3 or later
 - **Author:** Christopher Reimann · © 2026 eLeDia GmbH, Berlin
@@ -60,12 +61,7 @@ to Moodle.
 
 See the consolidated documentation:
 
-- [Master / project context](docs/00-master.md)
-- [Features](docs/01-features.md)
 - [User, teacher and admin documentation](docs/02-user-doc.md)
-- [Developer and RAG/MCP integration documentation](docs/03-dev-doc.md)
-- [Tasks and open questions](docs/04-tasks.md)
-- [Quality, bugs and verification](docs/05-quality.md)
 - [Privacy](docs/privacy.md)
 - [Security notes](docs/security.md)
 
@@ -73,14 +69,15 @@ See the consolidated documentation:
 
 ## Installation
 
-Release 0.19.10 supports Moodle 4.5 through 5.2 and PHP 8.3 or newer. Moodle
+Release 1.0.1 supports Moodle 4.5 through 5.2 and PHP 8.3 or newer. Moodle
 4.2–4.4 are not supported because the block uses Moodle's Hooks API without
 legacy callback fallbacks; upgrade Moodle to 4.5 or newer before installing.
 
 1. Copy this directory to `blocks/elediaai_tutor` in your Moodle tree (the path
    must be exactly `elediaai_tutor`).
-2. Install and enable `webservice_elediamcp` **before** this block — it is a
-   hard dependency, and Moodle refuses the install without it.
+2. Install `local_elediaai_core`, `local_elediaai_chatengine` and
+   `webservice_elediamcp` **before** or together with this block — they are
+   required, and Moodle refuses the install without them.
 3. Visit **Site administration ▸ Notifications** to run the install.
 4. Build the front-end (only needed if you change `amd/src`):
    ```bash
@@ -217,37 +214,11 @@ vendor/bin/phpcs --standard=moodle public/blocks/elediaai_tutor
 > `local_elediaai_tutor_premium` add-on is **absent**; when it is installed they verify the
 > unlocked behaviour instead, so the suite is green with or without the add-on.
 
-## Continuous integration & publishing
-
-This plugin is developed inside a full Moodle tree but published to its own
-company repository, **wrapped under `public/`** so the repo mirrors a Moodle 5.x
-document root. The CI configuration lives at the repository root (one level above
-`public/`), not inside the plugin folder:
-
-```text
-<repo root>/
-├── .forgejo/
-│   └── workflows/moodle-ci.yml     # Forgejo Moodle Plugin CI
-└── public/
-    └── blocks/
-        └── elediaai_tutor/         # the plugin
-```
-
-- `.forgejo/workflows/moodle-ci.yml` runs on PHP 8.3. Pushes and pull requests
-  run the changed groups with hard install, PHP lint and PHPUnit gates on both
-  `MOODLE_405_STABLE` and `MOODLE_502_STABLE`. Tutor changes run once without
-  `local_elediaai_core` and once with it to cover both optional-quota contracts.
-  Nightly runs and the default manual dispatch cover `MOODLE_405_STABLE`,
-  `MOODLE_501_STABLE` and `MOODLE_502_STABLE`; Behat remains a Moodle 5.2
-  browser gate.
-- `tests/hook_callbacks_test.php` is part of the plugin PHPUnit suite, so the
-  Hooks API contract is exercised on both support boundaries.
-- For publishing, the plugin folder is flattened into a GitHub mirror so that
-  `README.md`, `version.php`, `db/`, `classes/` and the CI workflow sit at
-  the repository root, matching the Moodle Plugins Directory layout.
-
 ## What it stores
 
-Only lightweight conversation **pointers** (the RAG server's conversation id, a
-short last-message preview, timestamps). Full transcripts are owned by the RAG
-server. See [docs/privacy.md](docs/privacy.md).
+The conversation turns (questions and answers) are stored in Moodle by
+`local_elediaai_chatengine`, whose privacy provider exports and erases them.
+The block itself keeps the first-use consent, short redacted admin
+diagnostics and the long-term memory preference. A stateful
+RAG/Tutor server keeps its own transcript according to its own policy. See
+[docs/privacy.md](docs/privacy.md).

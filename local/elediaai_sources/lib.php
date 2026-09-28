@@ -119,6 +119,9 @@ function local_elediaai_sources_extend_navigation_course(\navigation_node $navig
     if (course_gate::marking_locked()) {
         return;
     }
+    if (!\local_elediaai_core\feature\registry::is_enabled('sources')) {
+        return;
+    }
     if (!has_capability('local/elediaai_sources:selectactivities', $context)) {
         return;
     }

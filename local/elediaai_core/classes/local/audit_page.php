@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\local;
 
-defined('MOODLE_INTERNAL') || die();
-
 use html_writer;
 use local_elediaai_core\output\plugin_shell;
 use moodle_url;
@@ -237,8 +235,8 @@ final class audit_page {
  * 8,5rem, die dritte genau 2,75rem, die sechste bis neunte zentriert. Sie
  * stammen aus der Zeit, als dieser Bericht eine feste Spaltenfolge hatte.
  * Er hat sie nicht mehr -- Frage, Antwort und Tokens haengen an den
- * Einstellungen der Website --, also traf `nth-child(3)` laengst eine
- * andere Spalte als gemeint. Zusammen mit `min-width: 48rem` waren sie der
+ * Einstellungen der Website --, also traf "nth-child(3)" laengst eine
+ * andere Spalte als gemeint. Zusammen mit "min-width: 48rem" waren sie der
  * Grund, warum die Tabelle seitlich geschoben werden musste: gemessen 1093
  * Pixel Bedarf in einer 718 Pixel breiten Spalte. Die Breiten kommen jetzt
  * aus dem Inhalt, und der Rest steht in styles.css.
@@ -277,9 +275,9 @@ final class audit_page {
 .lh-ai-audit .lh-audit-preview-btn {
     border: 0;
 }
-/* Der Nachdruck traegt und bleibt: `.text-success` und `.text-danger` sind
-   Bootstrap-Utilities, und Boost baut sie mit `$enable-important-utilities:
-   true`, also selbst mit !important. Ohne Nachdruck gewinnt die Utility und
+/* Der Nachdruck traegt und bleibt: ".text-success" und ".text-danger" sind
+   Bootstrap-Utilities, und Boost baut sie mit "$enable-important-utilities:
+   true", also selbst mit !important. Ohne Nachdruck gewinnt die Utility und
    die Farbe steht wieder unlesbar auf ihrer eigenen Wash-Flaeche -- genau der
    Kontrastfehler, der in task27 behoben wurde. */
 .lh-ai-audit .lh-audit-success.text-success {

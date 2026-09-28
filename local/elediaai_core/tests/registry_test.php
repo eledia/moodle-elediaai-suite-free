@@ -33,8 +33,6 @@ use local_elediaai_core\feature\registry;
 use local_elediaai_core\feature\tier;
 use local_elediaai_core\local\audit_config;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the component behavior and contracts.
  *
@@ -61,6 +59,11 @@ final class registry_test extends advanced_testcase {
 
     public function test_throwing_provider_is_reported(): void {
         $provider = new class implements feature_provider {
+            /**
+             * Fixture descriptors for this test.
+             *
+             * @return array
+             */
             public static function get_descriptors(): array {
                 throw new \RuntimeException('Fixture provider failed');
             }
@@ -89,6 +92,11 @@ final class registry_test extends advanced_testcase {
 
     public function test_unreadable_provider_file_is_reported(): void {
         $provider = new class implements feature_provider {
+            /**
+             * Fixture descriptors for this test.
+             *
+             * @return array
+             */
             public static function get_descriptors(): array {
                 return [];
             }
@@ -106,6 +114,11 @@ final class registry_test extends advanced_testcase {
 
     public function test_mixed_descriptor_values_keep_valid_entries_and_report_invalid_ones(): void {
         $provider = new class implements feature_provider {
+            /**
+             * Fixture descriptors for this test.
+             *
+             * @return array
+             */
             public static function get_descriptors(): array {
                 return [
                     new descriptor(
@@ -135,11 +148,21 @@ final class registry_test extends advanced_testcase {
 
     public function test_faulty_provider_does_not_suppress_healthy_provider(): void {
         $faultyprovider = new class implements feature_provider {
+            /**
+             * Fixture descriptors for this test.
+             *
+             * @return array
+             */
             public static function get_descriptors(): array {
                 throw new \RuntimeException('Fixture provider failed');
             }
         };
         $healthyprovider = new class implements feature_provider {
+            /**
+             * Fixture descriptors for this test.
+             *
+             * @return array
+             */
             public static function get_descriptors(): array {
                 return [
                     new descriptor(
@@ -238,11 +261,12 @@ final class registry_test extends advanced_testcase {
         }
         $unprivileged = $this->getDataGenerator()->create_user();
         $this->setUser($unprivileged);
+        $open = $this->ein_offenes_feature();
 
         $visible = registry::visible();
 
         $this->assertArrayNotHasKey('audit', $visible);
-        $this->assertArrayHasKey($this->ein_offenes_feature(), $visible);
+        $this->assertArrayHasKey($open, $visible);
     }
 
     /**
@@ -269,7 +293,6 @@ final class registry_test extends advanced_testcase {
         $this->assertArrayHasKey($id, registry::visible());
 
         registry::set_enabled($id, false);
-        registry::reset_cache();
 
         $this->assertArrayNotHasKey($id, registry::visible());
     }
@@ -287,12 +310,18 @@ final class registry_test extends advanced_testcase {
      * @return string Descriptor id.
      */
     private function ein_offenes_feature(): string {
-        foreach (registry::all() as $id => $descriptor) {
-            if (!$descriptor->is_premium() && $descriptor->capability === null && !$descriptor->comingsoon) {
-                return $id;
-            }
-        }
-        $this->fail('Kein freies, capability-loses Feature im Katalog — der Test braucht eines.');
+        $fixture = new descriptor(
+            id: 'openfixture',
+            component: 'local_elediaai_core',
+            name: 'Open fixture',
+            description: 'A free feature that demands no capability',
+            launchurl: null,
+            icon: 'star',
+            kind: descriptor::KIND_PAGE,
+        );
+        $property = new \ReflectionProperty(registry::class, 'descriptors');
+        $property->setValue(null, registry::all() + ['openfixture' => $fixture]);
+        return 'openfixture';
     }
 
     /**
@@ -898,7 +927,7 @@ final class registry_test extends advanced_testcase {
         $this->assertTrue(has_capability('moodle/ai:viewaiusagereport', $context));
         $this->assertArrayHasKey('audit', registry::visible($context));
 
-        // "Nur Administration": dieselbe Person, dieselbe Capability, keine
+        // Stufe "Nur Administration": dieselbe Person, dieselbe Capability, keine
         // Kachel -- weil audit.php sie ebenfalls abweisen wuerde.
         set_config('audit_access', audit_config::ACCESS_ADMINS_ONLY, 'local_elediaai_core');
         $this->assertFalse(audit_config::can_view($context));

@@ -15,8 +15,38 @@ Feature: Every suite tool with a page of its own reaches its settings
   # "Section error!" und sagt nichts ueber den Kern aus. Der Kernschritt
   # ueberspringt statt zu scheitern, und auf der Entwicklungsinstanz laeuft
   # weiterhin alles drei.
+  #
+  # Die drei Premium-Szenarien darunter werden im freien Paket uebersprungen --
+  # frueher die ganze Datei, denn andere gab es nicht. Deshalb vorneweg die
+  # Kacheln des freien Pakets, und zwar ueber das Zahnrad selbst: geprueft
+  # wird der Weg, den die Uebersicht anbietet, nicht eine von Hand getippte
+  # Adresse.
   Background:
     Given I log in as "admin"
+
+  Scenario: The settings cog of the AI Tutor leads to the suite health page
+    When I open the AI Suite
+    And I click on ".lh-ai-suite-card__settings" "css_element" in the "article[data-feature-id=tutor]" "css_element"
+    Then I should see "How the suite is doing"
+
+  Scenario Outline: The settings cog of a free suite tool leads to its settings page
+    When I open the AI Suite
+    And I click on ".lh-ai-suite-card__settings" "css_element" in the "article[data-feature-id=<feature>]" "css_element"
+    Then "Save changes" "button" should exist
+    And I should not see "Section error"
+
+    Examples:
+      | feature        |
+      | literag        |
+      | sources        |
+      | aitransparency |
+      | audit          |
+
+  Scenario: The settings cog of the Model Context Protocol leads to its configuration page
+    When I open the AI Suite
+    And I click on ".lh-ai-suite-card__settings" "css_element" in the "article[data-feature-id=mcp]" "css_element"
+    Then I should not see "Section error"
+    And I should see "MCP"
 
   Scenario: The settings cog leads to the course tools' own settings page
     Given the "local_elediaai_tactics" plugin is installed

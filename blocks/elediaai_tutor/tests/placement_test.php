@@ -165,7 +165,7 @@ final class placement_test extends \advanced_testcase {
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
-        $this->create_course_tutor_block((int) $course->id);
+        $blockcontext = $this->create_course_tutor_block((int) $course->id);
 
         $this->setUser($student);
         $placement = new placement();
@@ -174,6 +174,7 @@ final class placement_test extends \advanced_testcase {
         $placement->require_access((int) $course->id, (int) $student->id);
 
         // Sending is not.
+        placement::use_surface((int) $blockcontext->id, (int) $course->id);
         try {
             $placement->require_send((int) $course->id, (int) $student->id);
             $this->fail('Sending without consent should have been refused.');
@@ -183,6 +184,30 @@ final class placement_test extends \advanced_testcase {
 
         consent::give((int) $student->id, \core\context\course::instance($course->id));
         $placement->require_send((int) $course->id, (int) $student->id);
+        placement::forget_surface();
+    }
+
+    /**
+     * A turn without a proven block is refused, consent or not.
+     *
+     * The engine's generic send endpoint names no block. A turn through it ran
+     * with the site defaults and skipped the instance's daily limit, persona
+     * and knowledge base.
+     *
+     * @return void
+     */
+    public function test_sending_needs_the_block_it_came_from(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->create_course_tutor_block((int) $course->id);
+        consent::give((int) $student->id, \core\context\course::instance($course->id));
+        $this->setUser($student);
+        placement::forget_surface();
+
+        $this->expectException(\moodle_exception::class);
+        $this->expectExceptionMessage(get_string('error_invalid_context', 'block_elediaai_tutor'));
+        (new placement())->require_send((int) $course->id, (int) $student->id);
     }
 
     /**

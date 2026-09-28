@@ -38,6 +38,7 @@ use local_elediaai_core\output\plugin_shell;
 use local_elediaai_core\output\section_nav;
 
 require_login();
+\local_elediaai_core\feature\registry::require_enabled('audit');
 
 $context = \core\context\system::instance();
 if (!audit_config::can_view($context)) {

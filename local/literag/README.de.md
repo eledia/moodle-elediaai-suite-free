@@ -30,8 +30,7 @@ English documentation: [README.md](README.md)
 - Strukturierte Quellen, Gespraechsverlauf und optionale Langzeit-Memory.
 - Optionale Live-Moodle-Tools ueber `webservice_elediamcp`.
 - Moodle Privacy API Provider und Retention-Cleanup-Task.
-- Admin-Einstellungsseite mit optionaler LernHive/eLeDia.ai Plugin Shell und
-  Moodle-nativem Fallback, wenn die Shell nicht verfuegbar ist.
+- Admin-Einstellungsseite in der gemeinsamen Oberflaeche der eLeDia.ai Suite.
 
 ## Voraussetzungen
 
@@ -41,7 +40,7 @@ English documentation: [README.md](README.md)
 - Ein OpenAI-kompatibler Chat-Completions-Endpunkt mit API-Key.
 - Aktivierte `$CFG->slasharguments` fuer Ingest-URLs wie
   `/local/literag/ingest.php/documents/upsert`.
-- Optional: `local_lernhive` fuer die gemeinsame Plugin-Shell-Oberflaeche.
+- Pflicht: `local_elediaai_core` (eLeDia.ai Suite Core; gemeinsame Admin-Oberflaeche).
 - Optional: `webservice_elediamcp` fuer Live-Moodle-Tools.
 - Optional: Poppler `pdftotext` fuer bessere PDF-Textextraktion.
 
@@ -178,29 +177,9 @@ PHPUnit aus dem Moodle-Root ausfuehren:
 vendor/bin/phpunit --testsuite local_literag_testsuite
 ```
 
-Die lokale Docker-Verifikation am 2026-06-27 war erfolgreich mit:
-
-```text
-Tests: 57, Assertions: 188
-```
-
 PHPUnit 11 meldet Test-Runner-Deprecations fuer alte Docblock-Metadaten in den
 Testklassen. Das sind keine Testfehler, sollte aber vor PHPUnit 12 auf Attribute
 migriert werden.
-
-## Continuous Integration
-
-Im eLeDia.ai-Monorepo faehrt der Forgejo-Workflow
-`.forgejo/workflows/moodle-ci.yml` LiteRAG in der Katalog-Gruppe `rag`
-zusammen mit `local/elediaai_sources` und `webservice/elediamcp`; die Suite-
-Abhaengigkeiten `local/elediaai_core` und `local/elediaai_tutor_premium`
-werden dabei mitinstalliert.
-
-Der Cross-DB-Nachweis kommt aus diesem Workflow, nicht aus einer
-GitLab-Pipeline: die regulaere Matrix laeuft gegen PostgreSQL 16, der Nachtjob
-`crossdb` installiert dieselbe Gruppe ein zweites Mal gegen MariaDB 11.4 und
-faehrt dort die PHPUnit-Suiten. Welche Gruppen das betrifft, steht in
-`CROSS_DB_GROUPS` in `scripts/ci-matrix.php`.
 
 ## Drittanbieterbibliotheken
 
@@ -208,22 +187,9 @@ Gebundelt unter `vendor/` und in `thirdpartylibs.xml` deklariert:
 
 - `smalot/pdfparser` 2.12.5, LGPL-3.0, pure-PHP PDF-Textextraktion.
 
-## Status und Roadmap
+## Status
 
-Aktueller Release: `0.6.4`, Maturity `MATURITY_BETA`.
-
-Bekannte Folgearbeiten:
-
-- Ersten gruenen Forgejo-CI-Lauf fuer den eigenen LiteRAG-Job dokumentieren.
-- BETA-Ausstiegs- und Directory-Release-Kriterien sind als pruefbares
-  Zwei-Gate-Kriterienset in `docs/05-quality.md` (Abschnitt
-  "Reifegrad-/Release-Kriterien") definiert: Gate 1 ist das interne
-  BETA-zu-stable-Gate (gruene CI inkl. Cross-DB-Nachweis, vollstaendig gruene
-  Testsuite, phpcs, getroffene Behat-Entscheidung, konsistente Doku, ein
-  dokumentierter End-to-End-Lauf, danach der `MATURITY_STABLE`-Bump auf SemVer
-  `>= 1.0.0`); Gate 2 ergaenzt die Kriterien fuer eine optionale oeffentliche
-  moodle.org-Einreichung. Ob diese oeffentliche Einreichung verfolgt wird,
-  bleibt eine separate Produktentscheidung.
+Aktueller Release: `1.0.0`, Maturity `MATURITY_STABLE`.
 
 ## Lizenz
 

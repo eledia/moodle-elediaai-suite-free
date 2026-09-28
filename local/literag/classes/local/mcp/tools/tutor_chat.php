@@ -50,6 +50,9 @@ class tutor_chat implements tool {
     /** @var int Maximum accepted learner message length in characters. */
     private const MAX_MESSAGE_CHARS = 4000;
 
+    /** @var int Room for a client's safety frame around the learner's message. */
+    private const MAX_FRAME_CHARS = 1000;
+
     /** @var client|null Injected LLM client (tests), or null to build on demand. */
     private ?client $llm;
 
@@ -58,6 +61,30 @@ class tutor_chat implements tool {
 
     /** @var moodle_client|null Injected elediamcp client (tests), or null to build on demand. */
     private ?moodle_client $mcp;
+
+    /** @var int Nesting depth of in-process callers that record the provenance themselves. */
+    private static int $callerrecords = 0;
+
+    /**
+     * Run a call whose caller records the provenance of the answer itself.
+     *
+     * The chat engine calls this tool in-process and records the answer under
+     * the placement that showed it, linked to its turn. LiteRAG recording it a
+     * second time left two entries per answer, one of them never marked. The
+     * scope is a PHP call, not a tool argument, so a client over HTTP cannot
+     * switch the record off.
+     *
+     * @param callable $call The dispatch to run.
+     * @return mixed What the call returned.
+     */
+    public static function with_provenance_by_caller(callable $call): mixed {
+        self::$callerrecords++;
+        try {
+            return $call();
+        } finally {
+            self::$callerrecords--;
+        }
+    }
 
     /**
      * Constructor.
@@ -94,7 +121,19 @@ class tutor_chat implements tool {
         if ($message === '') {
             throw new tool_exception('missing user_message');
         }
-        if (\core_text::strlen($message) > self::MAX_MESSAGE_CHARS) {
+        // A client may frame the message as untrusted input for the model and
+        // send the learner's own words alongside. Searching, the length limit,
+        // the yes/no check and the query log all belong to those words: the
+        // frame's English boilerplate would otherwise dominate the full-text
+        // search, and its length would count against the learner.
+        $question = trim((string) ($arguments['user_question'] ?? ''));
+        if ($question === '') {
+            $question = $message;
+        }
+        if (\core_text::strlen($question) > self::MAX_MESSAGE_CHARS) {
+            throw new tool_exception('user_message too long');
+        }
+        if (\core_text::strlen($message) > self::MAX_MESSAGE_CHARS + self::MAX_FRAME_CHARS) {
             throw new tool_exception('user_message too long');
         }
         \local_literag\local\rate_limiter::check($userid);
@@ -163,14 +202,14 @@ class tutor_chat implements tool {
                     'conversation_id' => $conversation->convkey,
                 ]);
             }
-            // $moodletoolsenabled gates this too. A pending write can only have
+            // The $moodletoolsenabled flag gates this too. A pending write can only have
             // been previewed on a turn where the tools were allowed, but the
             // surface may have been reconfigured in between, and the pending
             // action outlives that change by one turn. Carrying it out now would
             // execute in Moodle exactly what the caller has since forbidden.
             if (
                 $moodletoolsenabled && config::enable_write_tools() && $systemurl !== ''
-                && ($decision === 'confirm' || confirmation::is_yes($message))
+                && ($decision === 'confirm' || confirmation::is_yes($question))
             ) {
                 $this->repo->add_message($conversation, 'user', $message);
                 return $this->confirm_pending(
@@ -192,14 +231,14 @@ class tutor_chat implements tool {
         $numcandidates = 0;
         if ($ragenabled && $intent !== 'action') {
             $courseids = $courseid > 0 ? [$courseid] : array_keys(enrol_get_users_courses($userid, true));
-            $candidates = (new retriever())->candidates($message, $courseids, config::retrieval_candidates());
+            $candidates = (new retriever())->candidates($question, $courseids, config::retrieval_candidates());
             $numcandidates = count($candidates);
 
             $candidates = (new permission_filter($user))->filter($candidates);
 
             if (config::enable_rerank() && count($candidates) > config::context_chunks()) {
                 $reranker = new reranker($this->client());
-                $candidates = $reranker->rerank($message, $candidates, config::context_chunks());
+                $candidates = $reranker->rerank($question, $candidates, config::context_chunks());
                 $turnusage = self::add_usage($turnusage, $reranker->get_usage());
             } else {
                 $candidates = array_slice($candidates, 0, config::context_chunks());
@@ -345,7 +384,7 @@ class tutor_chat implements tool {
         $this->repo->touch($conversation, (string) $answerstyle);
 
         $latencyms = (int) round((microtime(true) - $starttime) * 1000);
-        $this->log_query($userid, $courseid, $message, $numcandidates, count($contextchunks), $latencyms);
+        $this->log_query($userid, $courseid, $question, $numcandidates, count($contextchunks), $latencyms);
 
         $this->record_provenance($userid, $courseid, $answer);
 
@@ -386,7 +425,7 @@ class tutor_chat implements tool {
      * @param string $answer The generated answer delivered to the user
      */
     private function record_provenance(int $userid, int $courseid, string $answer): void {
-        if ($answer === '' || !class_exists(\local_aitransparency\provenance::class)) {
+        if ($answer === '' || self::$callerrecords > 0 || !class_exists(\local_aitransparency\provenance::class)) {
             return;
         }
         try {

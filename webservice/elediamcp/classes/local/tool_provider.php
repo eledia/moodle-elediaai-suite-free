@@ -73,14 +73,52 @@ class tool_provider {
     ];
 
     /**
+     * Capabilities a person needs before a tool shows up in their catalogue.
+     *
+     * The tools check these themselves when called; this list only keeps the
+     * catalogue honest. Listing moodle_create_user for a teacher who may not
+     * create accounts invites the model to try, fail and apologise (M-07).
+     *
+     * 'system' capabilities must be held in the system context, because that
+     * is where the tool checks them. 'anywhere' capabilities are course or
+     * category capabilities: holding them in at least one place is enough to
+     * make the tool useful. Tools not listed here are visible to everyone who
+     * may use MCP at all; they filter their results per course themselves.
+     *
+     * @var array<string, array<string, string[]>>
+     */
+    private const TOOL_CAPABILITIES = [
+        'moodle_create_user' => ['system' => ['moodle/user:create']],
+        'moodle_send_message' => ['system' => ['moodle/site:sendmessage']],
+        'moodle_create_course' => ['anywhere' => ['moodle/course:create']],
+        'moodle_update_course' => ['anywhere' => ['moodle/course:update']],
+        'moodle_manage_sections' => ['anywhere' => ['moodle/course:update']],
+        'moodle_enrol_user' => ['anywhere' => ['enrol/manual:enrol']],
+        'moodle_create_activity' => ['anywhere' => ['moodle/course:manageactivities']],
+        'moodle_update_activity' => ['anywhere' => ['moodle/course:manageactivities']],
+        'moodle_grading_queue' => ['anywhere' => ['mod/assign:grade']],
+        'moodle_read_submission' => ['anywhere' => ['mod/assign:grade']],
+        'moodle_grade_submission' => ['anywhere' => ['mod/assign:grade']],
+        'moodle_course_health' => ['anywhere' => ['moodle/course:viewparticipants', 'moodle/grade:viewall']],
+        'moodle_message_course_students' => [
+            'anywhere' => ['moodle/course:manageactivities', 'moodle/course:viewparticipants'],
+        ],
+        'moodle_generate_questions' => ['anywhere' => ['local/elediaai_questiongen:use', 'moodle/question:add']],
+        'moodle_generate_h5p' => ['anywhere' => ['local/elediaai_h5pauthor:use']],
+    ];
+
+    /**
      * Retrieve the full set of tools available to the supplied token.
+     *
+     * The AI-native part is limited to the tools the token owner holds the
+     * capabilities for, see {@see self::user_may_see()}.
      *
      * @param string $token External service token.
      * @param string $protocolversion Negotiated MCP protocol version.
      * @return array<int, array<string, mixed>> Tool definitions ready for tools/list.
      */
     public static function get_tools(string $token, string $protocolversion = protocol::LATEST): array {
-        $tools = self::get_ai_tools($protocolversion);
+        $tools = self::get_ai_tools($protocolversion, self::token_owner($token));
 
         if (premium::has_mcp_tools() && security::expose_raw_functions()) {
             $tools = array_merge($tools, self::get_raw_function_tools($token, $protocolversion));
@@ -133,12 +171,17 @@ class tool_provider {
      * Retrieve the AI-native tool definitions.
      *
      * @param string $protocolversion Negotiated MCP protocol version.
+     * @param int|null $userid Limit to the tools this user may use; null lists
+     *     the whole catalogue of the edition (administration views).
      * @return array<int, array<string, mixed>>
      */
-    public static function get_ai_tools(string $protocolversion = protocol::LATEST): array {
+    public static function get_ai_tools(string $protocolversion = protocol::LATEST, ?int $userid = null): array {
         $tools = [];
         foreach (registry::all() as $class) {
             if (!self::is_ai_tool_available($class::name())) {
+                continue;
+            }
+            if ($userid !== null && !self::user_may_see($class::name(), $userid)) {
                 continue;
             }
 
@@ -161,12 +204,22 @@ class tool_provider {
     }
 
     /**
-     * Return the AI-native tool names available in the free edition.
+     * Return the AI-native tool names available without the premium add-on.
+     *
+     * Tools contributed by other installed plugins count here: they are never
+     * premium-gated (see {@see self::is_ai_tool_available()}), so calling them
+     * premium on the configuration page contradicted tools/list (M-07).
      *
      * @return string[]
      */
     public static function free_ai_tool_names(): array {
-        return self::FREE_AI_TOOLS;
+        $names = [];
+        foreach (registry::names() as $name) {
+            if (in_array($name, self::FREE_AI_TOOLS, true) || registry::is_contributed($name)) {
+                $names[] = $name;
+            }
+        }
+        return $names;
     }
 
     /**
@@ -175,7 +228,76 @@ class tool_provider {
      * @return string[]
      */
     public static function premium_ai_tool_names(): array {
-        return array_values(array_diff(registry::names(), self::FREE_AI_TOOLS));
+        return array_values(array_diff(registry::names(), self::free_ai_tool_names()));
+    }
+
+    /**
+     * Whether a user holds the capabilities a tool needs to be listed for them.
+     *
+     * @param string $name Tool name.
+     * @param int $userid User id; 0 means nobody in particular and only passes
+     *     tools without capability requirements.
+     * @return bool
+     */
+    public static function user_may_see(string $name, int $userid): bool {
+        $requirements = self::TOOL_CAPABILITIES[$name] ?? [];
+        if ($requirements === []) {
+            return true;
+        }
+        if ($userid <= 0) {
+            return false;
+        }
+
+        $system = \core\context\system::instance();
+        foreach ($requirements['system'] ?? [] as $capability) {
+            if (!get_capability_info($capability) || !has_capability($capability, $system, $userid)) {
+                return false;
+            }
+        }
+        foreach ($requirements['anywhere'] ?? [] as $capability) {
+            if (!self::has_capability_anywhere($capability, $userid)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether the user holds a capability in the system context or in at
+     * least one course category or course.
+     *
+     * @param string $capability Capability name.
+     * @param int $userid User id.
+     * @return bool
+     */
+    private static function has_capability_anywhere(string $capability, int $userid): bool {
+        // An optional plugin that defines the capability may be missing;
+        // get_user_capability_contexts() would then emit a debugging notice.
+        if (!get_capability_info($capability)) {
+            return false;
+        }
+        if (has_capability($capability, \core\context\system::instance(), $userid)) {
+            return true;
+        }
+        [$categories, $courses] = get_user_capability_contexts($capability, true, $userid, true, '', '', '', '', 1);
+        return !empty($categories) || !empty($courses);
+    }
+
+    /**
+     * The user a token belongs to, or the current user when the token is unknown.
+     *
+     * @param string $token External service token.
+     * @return int
+     */
+    private static function token_owner(string $token): int {
+        global $DB, $USER;
+        if ($token !== '') {
+            $userid = $DB->get_field('external_tokens', 'userid', ['token' => $token], IGNORE_MISSING);
+            if ($userid) {
+                return (int) $userid;
+            }
+        }
+        return (int) ($USER->id ?? 0);
     }
 
     /**

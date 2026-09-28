@@ -38,8 +38,22 @@ class sink_manager {
         literag_sink::class,
     ];
 
-    /** @var string The destination used when nothing is configured yet. */
+    /** @var string The destination used when nothing is configured yet and LiteRAG is not installed. */
     public const DEFAULT_SINK = 'ingestionapi';
+
+    /**
+     * The destination used when nothing is configured yet.
+     *
+     * LiteRAG when it is installed: it keeps the content on this site. The
+     * external service otherwise, whose base URL has no default, so it counts
+     * as not configured and nothing leaves the site until an administrator
+     * names a service.
+     *
+     * @return string The sink id.
+     */
+    public static function default_id(): string {
+        return class_exists('\\local_literag\\local\\config') ? literag_sink::id() : self::DEFAULT_SINK;
+    }
 
     /**
      * The id of the configured destination.
@@ -52,7 +66,7 @@ class sink_manager {
      */
     public static function active_id(): string {
         $configured = (string) get_config('local_elediaai_sources', 'sink');
-        return isset(self::classes_by_id()[$configured]) ? $configured : self::DEFAULT_SINK;
+        return isset(self::classes_by_id()[$configured]) ? $configured : self::default_id();
     }
 
     /**

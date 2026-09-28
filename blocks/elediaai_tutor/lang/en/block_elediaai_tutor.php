@@ -105,6 +105,9 @@ $string['default_persona'] = 'eLeDia.ai Tutor';
 $string['default_promptstarters_manager'] = 'action | fa-plus | Create a course::Set up a new course | Create a new course in Moodle. First ask me for the full name, short name and category, then create the course directly.
 action | fa-users | Find a user::Search and manage | Find a user. Ask me for the name, then show me their profile and enrolments.
 action | fa-bar-chart | Platform report::Usage and activity | Give me a short platform overview: which courses are active and which are dormant?';
+$string['default_promptstarters_manager_free'] = 'action | fa-search | Find a course::Search the catalogue | Find a course for me. Ask me for keywords first, then list the matching courses with their categories.
+action | fa-folder-open | Course categories::Where courses live | Show me the course categories on this site in which I can create courses.
+action | fa-user-plus | Create a user account::A new person | Create a new user account. First ask me for the first name, last name and email address.';
 $string['default_promptstarters_student'] = 'action | fa-calendar-check-o | What is due?::Assignments and dates | Which assignments, quizzes and deadlines are coming up for me this week? Sort them by urgency.
 action | fa-line-chart | My progress::What you have achieved | Show me my current learning progress across my courses. Where am I falling behind?
 action | fa-graduation-cap | Start learning::Pick up where you left off | Suggest what I should most usefully study or revise today. Check my courses and deadlines first.';
@@ -112,11 +115,15 @@ $string['default_promptstarters_teacher'] = 'action | fa-magic | Design a course
 action | fa-tasks | Pending submissions::Waiting to be marked | Which submissions are waiting for me to grade? List them per course with the number of waiting submissions.
 action | fa-comments-o | Open forum questions::Posts without a reply | Show me unanswered forum posts in my courses, sorted by age.
 action | fa-bar-chart | Course activity::Who is active right now | How active were my courses this week? Are there courses with strikingly little activity?';
+$string['default_promptstarters_teacher_free'] = 'action | fa-book | My courses::Structure and content | Give me an overview of my courses: their sections and activities, and anything that looks incomplete.
+action | fa-question-circle | What learners ask::Questions to the tutor | What have learners asked the AI tutor in my courses recently? Which topics come up most often?
+action | fa-calendar | Upcoming dates::Deadlines in my courses | Which deadlines and events are coming up in my courses in the next two weeks?
+action | fa-search | Find material::Search my courses | Help me find material in my courses. Ask me what I am looking for first.';
 $string['default_welcome'] = 'Hi! I am your eLeDia.ai Tutor. Ask me about your courses, assignments or anything you are studying.';
 $string['deleteall_confirm'] = 'This removes all of your saved tutor conversations. This cannot be undone. Do you want to continue?';
 $string['deleteall_confirm_title'] = 'Delete all tutor data?';
 $string['deleteall_confirmbutton'] = 'Yes, delete everything';
-$string['deleteall_done'] = 'Local tutor data deleted: {$a} stored item(s).';
+$string['deleteall_done'] = 'Local tutor data deleted: {$a} stored item(s). The record that AI answers were given to you and the usage accounting are kept until the retention period ends.';
 $string['deleteall_external_done'] = 'The external tutor service also completed the deletion request.';
 $string['deleteall_external_failed'] = 'The external tutor service could not complete {$a} deletion request(s). Your local Moodle data was still deleted.';
 $string['deleteall_external_unsupported'] = 'The external tutor service does not support remote deletion; transcripts stored there remain subject to its retention policy.';
@@ -280,14 +287,14 @@ $string['privacy:metadata:rag_server:userid'] = 'Your Moodle user identity (via 
 $string['privacy:questions'] = 'eLeDia.ai Tutor questions';
 $string['privacy_accuracy_body'] = 'The tutor generates answers using artificial intelligence. Answers can be incomplete or incorrect — always check important information against your course materials or ask your teacher.';
 $string['privacy_accuracy_title'] = 'AI answers can be wrong';
-$string['privacy_deletion_body'] = 'You can delete your tutor conversations at any time using the button below. Local records are removed immediately. Where the external tutor service supports remote deletion, your transcripts are deleted there as well; otherwise they remain subject to that service\'s retention policy — contact your administrator if you need them removed.';
+$string['privacy_deletion_body'] = 'You can delete your tutor conversations at any time using the button below. This removes your conversations, the pseudonymised questions, your acknowledgement, the message count and the tutor\'s access key for you. Where the tutor service supports remote deletion, your transcripts are deleted there as well; otherwise they remain subject to that service\'s retention policy – contact your administrator if you need them removed. The record that AI answers were given to you and the site\'s usage accounting are kept; they are anonymised or removed after the period your administrator has set.';
 $string['privacy_deletion_title'] = 'Deleting your data';
 $string['privacy_intro'] = 'How the eLeDia.ai Tutor handles your data.';
-$string['privacy_ltm_body'] = 'In a future update the tutor will be able to remember helpful facts across conversations to personalise its support. This is switched off by default and is only ever used if you opt in below. No memory data is collected or sent yet.';
-$string['privacy_ltm_title'] = 'Long-term memory (optional, coming soon)';
+$string['privacy_ltm_body'] = 'If you opt in below, a tutor service that supports it may remember helpful facts across conversations to personalise its support. It is switched off by default and is only used after you opt in. Deleting your data below also removes what was remembered.';
+$string['privacy_ltm_title'] = 'Long-term memory (optional)';
 $string['privacy_sent_body'] = 'Your message, the course context (when available) and your Moodle identity (via a short-lived, user-scoped token) are sent to the external tutor service so it can answer on your behalf. The tutor can only access what you yourself are allowed to see in Moodle.';
 $string['privacy_sent_title'] = 'What is sent when you chat';
-$string['privacy_storage_body'] = 'Moodle stores only lightweight conversation metadata (a conversation reference, a short preview and timestamps) and the timestamp of your acknowledgement of these guidelines. Full transcripts are stored by the external tutor service according to its retention policy.';
+$string['privacy_storage_body'] = 'Moodle stores your conversations in full – your messages and the tutor\'s answers – so that you can continue them later, together with the time you acknowledged these guidelines and a daily message count. When the tutor answers through LiteRAG on this site, LiteRAG keeps its own copy of the conversation and a search log. In addition, the AI suite records each question and answer without your name, under a pseudonym, for course reports, and keeps a record that an AI answer was given to you, as the EU AI Act requires. If an external tutor service answers, it stores the conversation under its own retention policy. How long each of these is kept is set by your site administrator.';
 $string['privacy_storage_title'] = 'What is stored';
 $string['privacyguidelines'] = 'Privacy guidelines';
 $string['ragmode_grounded'] = 'Grounded in course materials';

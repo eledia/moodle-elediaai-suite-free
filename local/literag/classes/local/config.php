@@ -91,6 +91,12 @@ class config {
      * @return bool
      */
     public static function is_disabled(): bool {
+        // Switched off in the suite's feature list counts like the emergency
+        // switch: both endpoints answer 503 and the chat engine finds no backend.
+        $registry = '\\local_elediaai_core\\feature\\registry';
+        if (class_exists($registry) && !$registry::is_enabled('literag')) {
+            return true;
+        }
         return self::bool('emergency_disable', false);
     }
 

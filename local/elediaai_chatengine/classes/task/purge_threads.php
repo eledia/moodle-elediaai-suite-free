@@ -20,6 +20,7 @@ namespace local_elediaai_chatengine\task;
 
 use local_elediaai_chatengine\local\connection;
 use local_elediaai_chatengine\local\thread_store;
+use local_elediaai_chatengine\local\usage;
 
 /**
  * Deletes conversations that have passed the configured retention.
@@ -28,6 +29,12 @@ use local_elediaai_chatengine\local\thread_store;
  * to should not disappear because nobody made a decision. Once a site sets a
  * period, this is the one place that applies it, for every placement at once —
  * which is the point of a shared store.
+ *
+ * The same run also drops daily message counters older than
+ * {@see usage::RETENTION_DAYS}. That retention is fixed, not configurable, and
+ * applies even when conversation retention is off: a counter is only needed
+ * to enforce today's limit and to look back a short while, and a per-person,
+ * per-day row must not grow into a history of when somebody worked.
  *
  * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -41,6 +48,20 @@ class purge_threads extends \core\task\scheduled_task {
 
     #[\Override]
     public function execute(): void {
+        $pruned = usage::prune();
+        if ($pruned > 0) {
+            mtrace('local_elediaai_chatengine: deleted ' . $pruned . ' expired daily message counters.');
+        }
+
+        $this->delete_expired_threads();
+    }
+
+    /**
+     * Delete conversations older than the configured retention, if one is set.
+     *
+     * @return void
+     */
+    private function delete_expired_threads(): void {
         global $DB;
 
         $days = connection::retention_days();

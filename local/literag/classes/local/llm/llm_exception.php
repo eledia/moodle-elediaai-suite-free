@@ -26,4 +26,20 @@ namespace local_literag\local\llm;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class llm_exception extends \Exception {
+    /**
+     * Constructor.
+     *
+     * @param string $message What went wrong.
+     * @param bool $requestrejected The service answered and refused the request itself
+     *        (HTTP 400/404/422, or an error object in the body) - the one case where
+     *        sending it again without the tool list can help. A timeout, a refused
+     *        connection, a wrong key or a server fault is not.
+     */
+    public function __construct(
+        string $message,
+        /** @var bool Whether the service refused the request as sent. */
+        public readonly bool $requestrejected = false
+    ) {
+        parent::__construct($message);
+    }
 }

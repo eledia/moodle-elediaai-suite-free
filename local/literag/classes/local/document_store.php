@@ -37,10 +37,11 @@ class document_store {
      * Upsert one ingested document: validate, extract, chunk and store.
      *
      * @param array $payload Decoded JSON upsert body.
-     * @return void
+     * @return string 'ok' when text was extracted, 'skipped' when the document could
+     *         not be read (e.g. an encrypted PDF) and is recorded without chunks.
      * @throws ingest_exception On malformed payload, bad base64, or tenant mismatch (4xx).
      */
-    public function upsert(array $payload): void {
+    public function upsert(array $payload): string {
         global $CFG, $DB;
 
         $sourceid = trim((string) ($payload['source_id'] ?? ''));
@@ -111,7 +112,7 @@ class document_store {
         $existing = $DB->get_record('local_literag_sources', ['sourceid' => $sourceid]);
         if ($existing && $existing->contenthash === $contenthash && $existing->parsestate === 'ok') {
             // Unchanged — nothing to do, but the upsert is still a success.
-            return;
+            return 'ok';
         }
 
         $chunker = new chunker();
@@ -184,6 +185,7 @@ class document_store {
             $transaction->rollback($e);
             throw $e;
         }
+        return $parsestate;
     }
 
     /**

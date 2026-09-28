@@ -54,6 +54,8 @@ class chat_request {
      * @param string|null $language The user's language code, or null to omit.
      * @param array $options Backend-agnostic hints a backend may honour or ignore (e.g. answerstyle, intent).
      * @param callable|null $ondelta Called per streamed fragment as (string $text, bool $reset).
+     * @param string|null $question The same message as typed, validated but without the safety
+     *        frame, for searching and logging. Null when the caller only has the framed text.
      */
     public function __construct(
         /** @var string The validated, safety-framed user message. */
@@ -84,7 +86,22 @@ class chat_request {
         public readonly array $options = [],
         /** @var callable|null Streaming callback. */
         public $ondelta = null,
+        /** @var string|null The unframed message, for searching and logging. */
+        public readonly ?string $question = null,
     ) {
+    }
+
+    /**
+     * The learner's words without the safety frame.
+     *
+     * The frame is an instruction for the model. A search index reads it as
+     * part of the question, and its English boilerplate then outweighs the
+     * learner's own terms.
+     *
+     * @return string
+     */
+    public function question(): string {
+        return $this->question ?? $this->usermessage;
     }
 
     /**
@@ -97,14 +114,32 @@ class chat_request {
     }
 
     /**
-     * The `course_id` argument for the backend, or null to omit it.
+     * The `course_id` argument: the one course this question is asked in.
      *
      * One place, so the two adapters cannot drift apart on it. Without a scope
      * the answer is the single course, exactly as before the scope existed.
      *
-     * @return string|null Comma-separated course ids, no spaces.
+     * @return string|null The course id, or null on a surface without a course.
      */
     public function course_argument(): ?string {
+        if ($this->coursescope !== null) {
+            return $this->coursescope->surface_argument();
+        }
+        return $this->courseid > 0 ? (string) $this->courseid : null;
+    }
+
+    /**
+     * The `search_course_ids` argument: everything this turn may be answered
+     * from, or null when there is nothing.
+     *
+     * Always a superset of {@see course_argument()} when both are present. The
+     * two are separate fields because they answer different questions and a
+     * reader that conflates them acts on the wrong course -- see
+     * {@see \local_elediaai_chatengine\local\course_scope::surface_argument()}.
+     *
+     * @return string|null Comma-separated course ids, no spaces.
+     */
+    public function search_argument(): ?string {
         if ($this->coursescope !== null) {
             return $this->coursescope->as_argument();
         }

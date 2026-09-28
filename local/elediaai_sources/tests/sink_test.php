@@ -185,10 +185,27 @@ final class sink_test extends \advanced_testcase {
         $this->resetAfterTest();
 
         unset_config('sink', 'local_elediaai_sources');
-        $this->assertSame(sink_manager::DEFAULT_SINK, sink_manager::active_id());
+        $this->assertSame(sink_manager::default_id(), sink_manager::active_id());
 
         set_config('sink', 'oerweave-not-built-yet', 'local_elediaai_sources');
-        $this->assertSame(sink_manager::DEFAULT_SINK, sink_manager::active_id());
+        $this->assertSame(sink_manager::default_id(), sink_manager::active_id());
+    }
+
+    /**
+     * Without a configuration, content stays on the site: LiteRAG when it is
+     * installed, otherwise an external service without an address, which
+     * counts as not configured.
+     */
+    public function test_default_sends_nothing_off_site(): void {
+        $this->resetAfterTest();
+        unset_config('sink', 'local_elediaai_sources');
+
+        if (class_exists('\\local_literag\\local\\config')) {
+            $this->assertSame('literag', sink_manager::active_id());
+        } else {
+            $this->assertSame('ingestionapi', sink_manager::active_id());
+            $this->assertFalse(sink_manager::active()->is_configured());
+        }
     }
 
     /**

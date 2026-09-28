@@ -172,7 +172,8 @@ class mcp_client {
         ?string $systempromptid = null,
         ?string $intent = null,
         ?string $pendingdecision = null,
-        ?callable $ondelta = null
+        ?callable $ondelta = null,
+        ?string $searchcourseids = null
     ): array {
         $arguments = [
             'system_url' => $systemurl,
@@ -188,6 +189,9 @@ class mcp_client {
         }
         if ($courseid !== null && $courseid !== '') {
             $arguments['course_id'] = $courseid;
+        }
+        if ($searchcourseids !== null && $searchcourseids !== '') {
+            $arguments['search_course_ids'] = $searchcourseids;
         }
         if ($conversationid !== null && $conversationid !== '') {
             $arguments['conversation_id'] = $conversationid;

@@ -4,6 +4,14 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.0.3] – 2026-09-28
+### Geändert
+- LICENSE beigelegt; `$plugin->supported = [405, 502]`.
+- Die Chat-Engine legt je KI-Antwort genau einen Nachweis an und setzt ihn
+  beim Kennzeichnen auf „marked"; der doppelte Eintrag aus LiteRAG und der
+  ewige Zustand „pending" sind damit behoben (M-11, Änderung in der
+  Chat-Engine).
+
 ## [1.0.2] – 2026-09-25
 ### Neu
 - **Handbuchkapitel „KI-Transparenz: der Herkunftsbericht"** (Abschnitt

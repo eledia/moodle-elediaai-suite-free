@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use advanced_testcase;
 use local_elediaai_core\output\icon_kit;
 use local_elediaai_core\output\plugin_page;

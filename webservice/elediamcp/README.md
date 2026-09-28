@@ -17,9 +17,9 @@
 </p>
 
 <p align="center">
-  <a href="https://moodle.org"><img alt="Moodle 4.2+ / 5.x" src="https://img.shields.io/badge/Moodle-4.2%2B%20%E2%80%A2%205.x-003366?logo=moodle&logoColor=white"></a>
+  <a href="https://moodle.org"><img alt="Moodle 4.5+ / 5.x" src="https://img.shields.io/badge/Moodle-4.5%2B%20%E2%80%A2%205.x-003366?logo=moodle&logoColor=white"></a>
   <a href="https://www.php.net"><img alt="PHP 8.1+" src="https://img.shields.io/badge/PHP-8.1%2B-0066b3?logo=php&logoColor=white"></a>
-  <img alt="Maturity: Stable" src="https://img.shields.io/badge/Maturity-Stable%20%C2%B7%20v1.5.3-00834a">
+  <img alt="Maturity: Stable" src="https://img.shields.io/badge/Maturity-Stable%20%C2%B7%20v1.8.2-00834a">
   <img alt="MCP 2025-11-25" src="https://img.shields.io/badge/MCP-2025--11--25%20%E2%80%A2%202025--03--26-6b7280">
   <img alt="Privacy: GDPR ready" src="https://img.shields.io/badge/Privacy-GDPR%20provider-6b7280">
   <a href="LICENSE"><img alt="GPL v3+" src="https://img.shields.io/badge/License-GPL%20v3%2B-0066b3"></a>
@@ -47,7 +47,7 @@ interface.
 
 Instead of exposing Moodle's full raw web-service surface, it offers a **curated set
 of stable, denormalised, LLM-friendly tools** (`moodle_me`, `moodle_my_courses`,
-`moodle_forum_discussions`, …). Every tool runs **as the authenticated user** and
+`moodle_course_contents`, …). Every tool runs **as the authenticated user** and
 enforces the same capability, enrolment and visibility checks as the equivalent
 Moodle screen — it can never reach data the user could not otherwise see.
 
@@ -58,9 +58,12 @@ Moodle screen — it can never reach data the user could not otherwise see.
 ## 🚀 Quick start
 
 ```bash
-# 1. Drop the plugin into your Moodle install (Moodle 5.x with public/ root):
+# 1. Drop the plugin and its required dependency local_elediaai_core into your
+#    Moodle install. Moodle 5.1+ keeps plugins under public/; on Moodle 4.5 and 5.0
+#    use the Moodle root instead (drop "public/" from the target paths).
 git clone https://github.com/eledia/moodle-elediaai-suite-free.git /tmp/elediaai-suite-free
 cp -R /tmp/elediaai-suite-free/webservice/elediamcp path/to/moodle/public/webservice/elediamcp
+cp -R /tmp/elediaai-suite-free/local/elediaai_core path/to/moodle/public/local/elediaai_core
 
 # 2. Trigger the install:
 php path/to/moodle/admin/cli/upgrade.php --non-interactive
@@ -84,8 +87,11 @@ Then, as a site administrator:
 
 ## 🧩 Highlights
 
-- **AI-native tool layer** — 19 stable, curated tools layered on top of raw Moodle
-  Web Services, designed to be stable across Moodle minor releases.
+- **AI-native tool layer** — stable, curated tools layered on top of raw Moodle
+  Web Services, designed to be stable across Moodle minor releases. The free
+  edition ships 16 of them (plus tools contributed by installed suite plugins);
+  the optional premium add-on unlocks the full catalogue. See
+  [AI-native tools](#-ai-native-tools).
 - **Token management** — self-service UI for users to create, inspect metadata for,
   and revoke their own MCP tokens, plus an internal PHP API for trusted first-party
   plugins to provision and revoke user-scoped tokens. See [Token management](#-token-management).
@@ -112,8 +118,9 @@ Then, as a site administrator:
   flow, with Authorization Server Metadata and Dynamic Client Registration.
 - **Comprehensive audit logging** via Moodle events (`tool_invoked`,
   `write_performed`, `context_verified`, `token_created`, `token_revoked`).
-- **Service-scoped raw-function discovery** — when raw functions are exposed, only
-  the functions assigned to the authenticated external service are advertised.
+- **Service-scoped raw-function discovery** *(premium add-on)* — when raw functions
+  are exposed, only the functions assigned to the authenticated external service are
+  advertised.
 
 ---
 
@@ -131,8 +138,9 @@ capability check.
 
 | Component | Version |
 |-----------|---------|
-| Moodle    | **4.2 (build 2023041800) and newer**, including 5.x |
+| Moodle    | **4.5 and newer**, including 5.x (required by `local_elediaai_core`) |
 | PHP       | **8.1+** |
+| Required plugin | `local_elediaai_core` (eLeDia.ai Suite core) |
 | Web services | Must be enabled in Moodle |
 
 ---
@@ -140,8 +148,9 @@ capability check.
 ## 📥 Installation
 
 1. Place the plugin folder into your Moodle installation so it resolves to
-   `webservice/elediamcp` (on a Moodle 5.x `public/` root that is
-   `public/webservice/elediamcp`).
+   `webservice/elediamcp` (on a Moodle 5.1+ `public/` root that is
+   `public/webservice/elediamcp`). Install `local_elediaai_core` as well — it is a
+   required dependency.
 2. Visit **Site administration → Notifications** to complete the installation.
 3. The plugin is installed as `webservice_elediamcp`.
 
@@ -167,7 +176,7 @@ capability check.
 | **MCP external services** | _(none)_ | Which external services may issue MCP tokens. Only these appear in the self-service UI and the internal API. |
 | **Allowed CORS origins** | _(empty)_ | One origin per line. Empty = same-origin only. Wildcard is rejected by the form. |
 | **Allow token in query string** | Off | When off (recommended), only `Authorization: Bearer` is accepted. When on, `?wstoken=` is also accepted and a `Deprecation` header is emitted. |
-| **Expose raw Moodle Web Service functions** | Off | When off, only the curated AI-native tools are advertised. Recommended for production AI agents. |
+| **Expose raw Moodle Web Service functions** | Off | *Premium add-on only.* When off, only the curated AI-native tools are advertised. Recommended for production AI agents. Without the premium add-on the setting has no effect. |
 | **Rate limit per minute / per hour** | 60 / 600 | Per-token (or per-IP if unauthenticated). |
 | **Maximum request body size** | 1 MiB | Larger requests are rejected with HTTP 413. |
 | **Default page size for tools/list** | 50 | Larger catalogues are paginated through `nextCursor`. |
@@ -178,9 +187,9 @@ capability check.
 
 **Site administration → Server → Web services → External services**. Add an MCP
 service (e.g. *Name*: `MCP Service`, *Short name*: `mcp_service`, *Enabled*: Yes,
-*Authorized users only*: Yes — recommended), then add the raw external functions you
-want to expose. The AI-native tools are always available, independent of the
-service's function list. Finally select the service under **MCP external services**
+*Authorized users only*: Yes — recommended). With the premium add-on you can also add
+the raw external functions you want to expose. The AI-native tools are always
+available, independent of the service's function list. Finally select the service under **MCP external services**
 (step 3) so it can issue MCP tokens.
 
 ### 5. Create a token
@@ -281,14 +290,21 @@ WWW-Authenticate: Bearer realm="Moodle MCP", resource_metadata="https://.../webs
 These tools are stable, low-cost, and recommended for AI agents. Every tool runs **as
 the authenticated user** and enforces the same capability, enrolment and visibility
 checks as the equivalent Moodle screen — they cannot be used to reach data the user
-could not otherwise see. All but the three write tools are read-only; write tools
-require an explicit two-step confirmation.
+could not otherwise see. `tools/list` only advertises the tools the token owner
+holds the required capabilities for (for example, `moodle_create_user` is hidden
+from anyone without `moodle/user:create`). Calling a tool that is locked in this
+edition, or a raw function that is not released for the token, returns a JSON-RPC
+error (`-32602`) that names the reason. Write tools require an explicit two-step
+confirmation (preview first, then `confirm=true`).
+
+### Free edition
+
+Available without any add-on:
 
 | Tool | Type | Purpose |
 |---|---|---|
 | `moodle_me` | read | Identity probe: who is the authenticated user, on which site, in which language. Cheap to call every turn. |
 | `moodle_verify_user_context` | read | Compact bootstrap: enumerates active enrolments with roles and groups, optionally the user's capability set (gated by `webservice/elediamcp:viewcaps`). |
-| `moodle_find_user` | read | Resolves a free-text name fragment to messageable users (respects messaging privacy rules). |
 | `moodle_my_courses` | read | Lists the user's enrolled courses with progress classification and search. |
 | `moodle_search_courses` | read | Searches the visible course catalogue (respects course/category visibility). |
 | `moodle_list_course_categories` | read | Lists the course categories the user may create courses in, with id and path, so a named category can be turned into a `category_id`. |
@@ -296,23 +312,56 @@ require an explicit two-step confirmation.
 | `moodle_get_resource` | read | Returns the readable body of a page/book chapter/label/URL/resource by `cmid`. |
 | `moodle_search_content` | read | Full-text search across accessible content via global search (graceful fallback to activity names/descriptions when disabled). |
 | `moodle_get_announcements` | read | Recent news-forum posts across the user's enrolled courses. |
-| `moodle_forum_discussions` | read | Course forum discussions and posts (enforces groups, Q&A gating, timed posts and private replies via the forum API). |
 | `moodle_calendar_upcoming` | read | Upcoming deadlines and events scoped to the user's courses/groups. |
+| `moodle_due_work` | read | Due and overdue work across the user's courses. |
 | `moodle_my_assignments` | read | Assignment submission and grade status across enrolled courses. |
 | `moodle_my_grades` | read | Course-final grades, or per-item breakdown (respects hidden grade items). |
 | `moodle_my_progress` | read | Completion progress per enrolled course, optionally per-activity states for one course. |
 | `moodle_quiz_info` | read | Quizzes with timing/attempt limits and the user's **own** attempt history and best grade — never other users' attempts. |
-| `moodle_my_submission_files` | read | The user's **own** latest submission for one assignment: files and online-text content. Strictly self-scoped. |
-| `moodle_send_message` | **write** | Sends a one-to-one message. Two-step: preview, then `confirm=true`. Respects `can_send_message()`. |
 | `moodle_create_user` | **write** | Creates a user account. Two-step confirmation; requires `moodle/user:create`. |
-| `moodle_create_course` | **write** | Creates a course in a category. Two-step confirmation; requires `moodle/course:create` in the category context. |
-| `moodle_update_course` | **write** | Updates course title, shortname, visibility, summary and dates. Two-step confirmation; requires `moodle/course:update`. |
-| `moodle_enrol_user` | **write** | Enrols an existing user through manual enrolment. Two-step confirmation; requires `enrol/manual:enrol`. |
 
-When **Expose raw Moodle Web Service functions** is enabled, every external function
-assigned to the authenticated service is additionally exposed as an MCP tool. This is
-convenient for power users but enlarges the schema surface; disable it for production
-AI agents to restrict the catalogue to the curated set above.
+Installed plugins can contribute further tools; these are not subject to the
+premium gating. `local_elediaai_core`, which this plugin requires, contributes:
+
+| Tool | Type | Purpose |
+|---|---|---|
+| `moodle_my_ai_data` | read | What the AI suite stores about the caller, how long it is kept, and where to download or delete it. Answers only about the caller. |
+| `moodle_ai_course_insights` | read | For teachers: what learners asked the AI tutor in one course, grouped by topic, without personal data. |
+
+### Premium add-on
+
+The following tools are part of the catalogue but are only advertised and callable
+when the separate premium add-on (`local_elediaai_tutor_premium`, feature
+`mcp_tools`) is installed and enabled. It is **not** part of the free edition.
+
+| Tool | Type | Purpose |
+|---|---|---|
+| `moodle_find_user` | read | Resolves a free-text name fragment to messageable users (respects messaging privacy rules). |
+| `moodle_forum_discussions` | read | Course forum discussions and posts (enforces groups, Q&A gating, timed posts and private replies via the forum API). |
+| `moodle_my_submission_files` | read | The user's **own** latest submission for one assignment: files and online-text content. Strictly self-scoped. |
+| `moodle_grading_queue` | read | Assignments waiting for grading. |
+| `moodle_unanswered_forum_posts` | read | Unanswered forum discussions. |
+| `moodle_course_health` | read | Course health report. |
+| `moodle_read_submission` | read | Reads a student submission. |
+| `moodle_send_message` | **write** | Sends a one-to-one message. Respects `can_send_message()`. |
+| `moodle_message_course_students` | **write** | Messages course students. |
+| `moodle_create_course` | **write** | Creates a course in a category; requires `moodle/course:create` in the category context. |
+| `moodle_update_course` | **write** | Updates course title, shortname, visibility, summary and dates; requires `moodle/course:update`. |
+| `moodle_enrol_user` | **write** | Enrols an existing user through manual enrolment; requires `enrol/manual:enrol`. |
+| `moodle_create_activity` | **write** | Creates a course activity. |
+| `moodle_update_activity` | **write** | Updates a course activity. |
+| `moodle_manage_sections` | **write** | Manages course sections. |
+| `moodle_grade_submission` | **write** | Grades a student submission. |
+
+With the premium add-on, further generation tools appear when the plugin they wrap
+is installed: `moodle_generate_h5p`, `moodle_generate_questions` and the
+`moodle_selfstudy_*` practice-quiz tools.
+
+Also premium-only: when **Expose raw Moodle Web Service functions** is enabled, every
+external function assigned to the authenticated service is additionally exposed as
+an MCP tool. This is convenient for power users but enlarges the schema surface;
+disable it for production AI agents to restrict the catalogue to the curated set.
+Without the premium add-on the setting has no effect.
 
 ### Error semantics
 
@@ -341,13 +390,15 @@ remain JSON-RPC errors with the appropriate code.
 | `initialize` | Capability negotiation; honours the client's `protocolVersion`. |
 | `notifications/initialized` | Acknowledged with HTTP 202 per Streamable HTTP spec. |
 | `ping` | Lightweight health check. |
-| `tools/list` | Paginated list of curated AI-native tools + (optionally) raw Moodle Web Service functions. Supports `cursor` / `nextCursor`. |
-| `tools/call` | Invokes either an AI-native tool or a Moodle external function in the authenticated user's security context. |
+| `tools/list` | Paginated list of curated AI-native tools + (optionally, premium add-on) raw Moodle Web Service functions. Supports `cursor` / `nextCursor`. |
+| `tools/call` | Invokes either an AI-native tool or (premium add-on) a Moodle external function in the authenticated user's security context. |
 | `resources/list` | Currently returns an empty list. Reserved for an upcoming release. |
 | `prompts/list` | Paginated, token-filtered Suite workflow prompts. |
 | `prompts/get` | Renders a selected prompt with validated arguments. |
 
-`GET` without `Accept: text/event-stream` returns a server-info JSON. `OPTIONS`
+`GET` without `Accept: text/event-stream` returns a server-info JSON (server name,
+protocol versions and the OAuth metadata link; the plugin release is only reported
+to authenticated clients in `serverInfo`). `OPTIONS`
 returns 204 for CORS preflight. `DELETE` returns 405 (sessions are not currently
 issued).
 
@@ -389,10 +440,13 @@ services.
 ### Self-service UI
 
 Users holding `webservice/elediamcp:managetokens` (granted to the `user` archetype by
-default) get an **MCP tokens** entry on their **Preferences** page. There they can:
+default) get an **MCP tokens** entry on their **Preferences** page. Because a token
+acts as its owner, the capability carries the personal-data, spam and data-loss risk
+flags; remove it from the `user` role if only selected people should issue tokens.
+There they can:
 
 - **create** a token by choosing a label, an MCP service they are permitted to use,
-  and an optional expiry date;
+  and an expiry date (proposed 90 days ahead; it can be switched off deliberately);
 - **view metadata** for their existing tokens — label, service, creation date,
   expiry, last-used date and status (active / expired / revoked);
 - **revoke** a token, which immediately deletes the backing credential.
@@ -493,7 +547,7 @@ service" guidance.
 | 429 with `Retry-After` | Rate limit exceeded; wait the indicated number of seconds or raise the limits in settings. |
 | 413 "Request body exceeds the maximum allowed size" | Raise the **Maximum request body size** setting. |
 | 503 with `Retry-After: 3600` | **Emergency disable** is on in plugin settings. |
-| Empty tools list | Check that your service has functions added (raw tools), and that the user holds the required capabilities. AI-native tools are always present. |
+| Empty tools list | Check that the user holds the required capabilities. AI-native tools are always present; raw tools additionally need the premium add-on and functions added to the service. |
 | `?wstoken=` returns 401 | Enable **Allow token in query string** in plugin settings, or use the Authorization header. |
 
 ---
@@ -514,13 +568,6 @@ there. Existing bearer-token clients keep working regardless of the setting.
 > The extensionless `/.well-known/*` discovery URLs require the web server to
 > rewrite them to the matching `*.php` files (same requirement as the existing
 > Protected Resource Metadata document).
-
-## 🗺 Roadmap
-
-See the project roadmap for additional write tools, resources and prompts, and
-semantic search.
-
----
 
 ## 🤝 Contributing
 

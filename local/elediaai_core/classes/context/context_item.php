@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\context;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Plain DTO for one piece of Moodle context that may be sent to AI actions.
  */

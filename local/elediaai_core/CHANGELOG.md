@@ -4,6 +4,31 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.0.3] – 2026-09-28
+### Hinzugefügt
+- **Funktionsschalter** unter „Funktionen" in den Einstellungen: eine
+  abgeschaltete Funktion verschwindet aus Übersicht und Navigation, und ihre
+  Einstiege lehnen ab (`registry::require_enabled()`, `is_switchable()`). Die
+  KI-Kennzeichnung ist nicht abschaltbar (K2, N-05).
+- **Suite-Übersicht zeigt Administratoren alle Komponenten** mit Release,
+  Version und Status, auch die Chat-Engine (M-23).
+- `$plugin->supported = [405, 502]`.
+### Geändert
+- **Kacheln und Navigationspunkt folgen den Rechten.** Eine Rolle ohne
+  Plugin-Recht sieht weder „AI Suite" noch Kacheln (H-14); die Registry fragt
+  keine Capability eines nicht installierten Plugins mehr ab (N-06).
+- **Health-Seite:** die Zusammenfassung nennt Störungen und nicht
+  Eingerichtetes getrennt; Zeilen ohne eigenes Ziel verlinken die
+  Einstellungsseite ihres Plugins (M-13).
+- Aufgaben loggen über Sprachstrings statt fest auf Deutsch (G-06).
+- Der Knopf „AI Suite" in der Navigation zeigt einen Fokusring (G-07).
+### Behoben
+- Behat-Tests laufen mit dem freien Paket; die Zahnräder der Kacheln Sources
+  und MCP führten auf „Section error!" (M-25).
+- Irreführenden Lizenzkommentar aus version.php entfernt; Kommentar in der
+  Registry nennt keinen Kunden mehr (M-16, H-08).
+- Datenschutz: Provider exportiert die gespeicherten Felder vollständig.
+
 ## [1.0.2] – 2026-09-25
 ### Geändert
 - **Nicht lizenzierte Premium-Funktionen bleiben in der Übersicht** (#29),

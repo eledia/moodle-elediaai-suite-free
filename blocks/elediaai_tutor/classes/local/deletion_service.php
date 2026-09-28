@@ -111,6 +111,9 @@ class deletion_service {
         $consentsdeleted = consent::delete_for_user($userid);
         $diagnosticsdeleted = diagnostics::delete_for_user($userid);
         $ltmpreferencedeleted = ltm::delete_for_user($userid);
+        // Der Zugangsschluessel fuer die Person blieb gueltig, nachdem alles
+        // andere geloescht war. Ein neuer entsteht erst mit dem naechsten Turn.
+        \local_elediaai_chatengine\local\token_provider::revoke_for_user($userid);
         $localdeleted = $conversationsdeleted + $questionsdeleted + $consentsdeleted
             + $usagedeleted + $diagnosticsdeleted + $ltmpreferencedeleted;
 

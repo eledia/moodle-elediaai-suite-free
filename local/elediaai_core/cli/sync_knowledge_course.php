@@ -107,7 +107,6 @@ $USER = get_admin();
 
 // ---------------------------------------------------------------------------
 // Load the canonical catalog without storing it in the Moodle plugin/webroot.
-// ---------------------------------------------------------------------------
 $catalogsource = trim((string) $options['catalog']);
 if ($catalogsource === '') {
     cli_error('Missing required --catalog=PATH option (use --catalog=- for STDIN).');
@@ -132,7 +131,6 @@ if (!is_array($catalog) || $catalog === []) {
 
 // ---------------------------------------------------------------------------
 // Find or create the course.
-// ---------------------------------------------------------------------------
 $idnumber = (string) $options['idnumber'];
 $course = $DB->get_record('course', ['idnumber' => $idnumber]);
 if (!$course) {
@@ -164,7 +162,6 @@ $pagemodule = $DB->get_record('modules', ['name' => 'page'], '*', MUST_EXIST);
 
 // ---------------------------------------------------------------------------
 // Intro section (0).
-// ---------------------------------------------------------------------------
 sync_section(
     $course,
     0,
@@ -187,7 +184,6 @@ sync_page(
 
 // ---------------------------------------------------------------------------
 // One section + page per plugin.
-// ---------------------------------------------------------------------------
 $sectionnum = 0;
 foreach ($catalog as $plugin) {
     $sectionnum++;
@@ -219,7 +215,6 @@ rebuild_course_cache($course->id, true);
 
 // ---------------------------------------------------------------------------
 // Optional: guest access (public demo + citation targets for the chat).
-// ---------------------------------------------------------------------------
 if ($options['guest']) {
     enable_guest_access($course);
     cli_writeln('Guest access enabled and course set visible.');
@@ -227,7 +222,6 @@ if ($options['guest']) {
 
 // ---------------------------------------------------------------------------
 // Optional: trigger an AI Sources reindex so the chat can retrieve from it.
-// ---------------------------------------------------------------------------
 if ($options['reindex']) {
     if (class_exists('\\local_elediaai_sources\\ingestion_manager')) {
         if (class_exists('\\local_elediaai_sources\\course_state')) {
@@ -243,9 +237,8 @@ if ($options['reindex']) {
 cli_writeln('Done.');
 exit(0);
 
-// ===========================================================================
+// ---------------------------------------------------------------------------
 // Helpers.
-// ===========================================================================
 
 /**
  * Set a section's name and summary (idempotent).

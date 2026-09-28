@@ -35,6 +35,10 @@ $string['privacy:metadata:thread:mode'] = 'Whether the conversation was answered
 $string['privacy:metadata:thread:lastpreview'] = 'A short preview of the most recent message, shown in conversation lists.';
 $string['privacy:metadata:thread:timecreated'] = 'When the conversation was started.';
 $string['privacy:metadata:thread:timemodified'] = 'When the conversation was last used.';
+$string['privacy:metadata:thread:guestkey'] = 'An opaque key identifying a visitor who is not logged in, so they can resume their own conversation. It is not derived from personal data.';
+$string['privacy:metadata:thread:contextid'] = 'The Moodle context the conversation was held in.';
+$string['privacy:metadata:thread:convkey'] = 'The identifier the AI backend issued for the conversation, which links it to the transcript the backend keeps.';
+$string['privacy:metadata:thread:title'] = 'An optional title of the conversation, shown in conversation lists.';
 $string['privacy:metadata:msg'] = 'The individual turns of a conversation.';
 $string['privacy:metadata:msg:role'] = 'Whether the turn was written by the user or produced by the assistant.';
 $string['privacy:metadata:msg:content'] = 'The text of the turn.';
@@ -47,6 +51,11 @@ $string['privacy:metadata:backend:history'] = 'Earlier turns of the same convers
 $string['privacy:metadata:backend:userid'] = 'A user-scoped token identifying who is asking, so the backend can apply that user\'s permissions.';
 $string['privacy:metadata:backend:courseid'] = 'The course whose material may be retrieved.';
 $string['privacy:metadata:backend:language'] = 'The user\'s language, so the answer is given in it.';
+$string['privacy:metadata:usage'] = 'Daily message counters per person, used to enforce a daily message limit. Counters older than 60 days are deleted automatically.';
+$string['privacy:metadata:usage:userid'] = 'The user who sent the messages.';
+$string['privacy:metadata:usage:daykey'] = 'The day the messages were sent.';
+$string['privacy:metadata:usage:messagecount'] = 'How many messages the user sent that day.';
+$string['privacy:path:usage'] = 'Daily message counts';
 
 // Backends.
 $string['backend_ingestionapi'] = 'RAG agent';
@@ -107,6 +116,7 @@ $string['mode_ungrounded'] = 'Model only (no knowledge base)';
 // Cache definitions.
 $string['cachedef_usertoken'] = 'User-scoped backend callback tokens';
 $string['cachedef_ratelimit'] = 'Per-user chat request counters';
+$string['cachedef_coursescope'] = 'Course scope of configured knowledge bases';
 
 // Scheduled tasks.
 $string['task_purge_threads'] = 'Delete expired AI chat conversations';
@@ -155,7 +165,7 @@ $string['setting_ratelimitperminute_desc'] = 'Chat requests one user may send pe
 $string['setting_dailymessagelimit'] = 'Messages per day';
 $string['setting_dailymessagelimit_desc'] = 'Messages one user may send per day. 0 means unlimited.';
 $string['setting_streamingenabled'] = 'Stream answers';
-$string['setting_streamingenabled_desc'] = 'Show an answer as it is produced, where the backend supports it.';
+$string['setting_streamingenabled_desc'] = 'Show an answer as it is produced, where the backend supports it. LiteRAG answers in one piece; with LiteRAG this setting has no effect.';
 $string['setting_retentiondays'] = 'Conversation retention';
 $string['setting_retentiondays_desc'] = 'Days a conversation is kept after its last turn. 0 keeps conversations until a user or an administrator deletes them.';
 $string['setting_mcpserviceid'] = 'Callback web service';
@@ -246,5 +256,7 @@ $string['scope_notallowed'] = 'You may only choose courses you teach yourself. N
 $string['scope_summary'] = 'Of the courses chosen here, {$a->indexed} of {$a->total} have been indexed and can be searched.';
 $string['scope_summary_plain'] = 'This selection covers {$a} courses.';
 $string['scope_summary_none'] = 'This selection currently covers no courses.';
+$string['scope_summary_capped'] = 'At most {$a} courses are searched per request; anything beyond that is not reached.';
+$string['scope_toomanycourses'] = 'You chose {$a->chosen} individual courses; at most {$a->limit} are searched per request. Choose fewer — or a category, which narrows to each learner\'s own courses anyway.';
 $string['setting_maxscopecourses'] = 'Course ids per request';
 $string['setting_maxscopecourses_desc'] = 'How many courses may be named in one request to the backend. <b>This is the backend\'s number.</b> Its retrieval tool refuses a list longer than it accepts, so raise this only once the backend has raised its own limit — a higher value widens no search, it makes requests fail. When a knowledge base resolves to more courses than this, a course surface falls back to the course it sits in, and a surface without a course leaves the enrolments for the backend to resolve.';

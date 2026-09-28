@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\context;
 
-defined('MOODLE_INTERNAL') || die();
-
 use coding_exception;
 
 /**

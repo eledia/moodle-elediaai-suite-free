@@ -30,8 +30,6 @@ use local_elediaai_core\local\audit_config;
 use local_elediaai_core\local\turn_recorder;
 use local_elediaai_core\reportbuilder\local\entities\turn;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Every AI turn the suite made.
  *

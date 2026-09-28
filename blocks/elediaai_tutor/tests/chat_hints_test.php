@@ -50,6 +50,7 @@ final class chat_hints_test extends \advanced_testcase {
     #[\Override]
     protected function tearDown(): void {
         backend_resolver::override_for_testing(null);
+        \block_elediaai_tutor\chatengine\placement::forget_surface();
         parent::tearDown();
     }
 
@@ -71,13 +72,18 @@ final class chat_hints_test extends \advanced_testcase {
 
         $course = $this->getDataGenerator()->create_course();
         $coursecontext = \core\context\course::instance($course->id);
-        $this->getDataGenerator()->create_block('elediaai_tutor', [
+        $block = $this->getDataGenerator()->create_block('elediaai_tutor', [
             'parentcontextid' => $coursecontext->id,
         ]);
 
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         consent::give((int) $student->id, $coursecontext);
         $this->setUser($student);
+        // A tutor turn is sent from its block; the shared endpoint alone is refused.
+        \block_elediaai_tutor\chatengine\placement::use_surface(
+            (int) \core\context\block::instance($block->id)->id,
+            (int) $course->id
+        );
 
         return (int) $course->id;
     }

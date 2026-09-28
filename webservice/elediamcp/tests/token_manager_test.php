@@ -75,6 +75,44 @@ final class token_manager_test extends advanced_testcase {
     }
 
     /**
+     * After activation Moodle counts the plugin as enabled at once, without a
+     * manual cache purge (G-10).
+     *
+     * @dataProvider activation_states
+     * @param int $webservices Initial enablewebservices.
+     * @param string $protocols Initial webserviceprotocols.
+     */
+    public function test_activation_refreshes_plugin_state(int $webservices, string $protocols): void {
+        $this->resetAfterTest();
+        set_config('enablewebservices', $webservices);
+        set_config('webserviceprotocols', $protocols);
+        \core_plugin_manager::reset_caches();
+
+        $info = \core_plugin_manager::instance()->get_plugin_info('webservice_elediamcp');
+        $this->assertFalse((bool) $info->is_enabled(), 'Precondition: plugin counted as disabled.');
+
+        token_manager::ensure_default_service_configured();
+
+        $info = \core_plugin_manager::instance()->get_plugin_info('webservice_elediamcp');
+        $this->assertTrue((bool) $info->is_enabled());
+        $task = \core\task\manager::get_scheduled_task(\webservice_elediamcp\task\prune_revoked_tokens::class);
+        $this->assertTrue($task->is_component_enabled());
+    }
+
+    /**
+     * Initial switch states that leave the plugin disabled.
+     *
+     * @return array<string, array{0: int, 1: string}>
+     */
+    public static function activation_states(): array {
+        return [
+            'protocol missing' => [1, 'rest'],
+            'web services off' => [0, 'rest,elediamcp'],
+            'both off' => [0, ''],
+        ];
+    }
+
+    /**
      * The default one-click setup enables the protocol and configures a dedicated
      * MCP external service without exposing raw external functions.
      */
@@ -97,8 +135,31 @@ final class token_manager_test extends advanced_testcase {
         $this->assertEquals(1, (int) $service->enabled);
         $this->assertEquals('webservice/elediamcp:use', $service->requiredcapability);
         $this->assertEquals(0, (int) $service->restrictedusers);
-        $this->assertEquals('webservice_elediamcp', $service->component);
+        $this->assertNull($service->component);
         $this->assertEquals(0, $DB->count_records('external_services_functions', ['externalserviceid' => $serviceid]));
+    }
+
+    /**
+     * The service and its tokens survive a plugin upgrade.
+     *
+     * Moodle runs external_update_descriptions() for the component after every
+     * upgrade and deletes each service of the component that db/services.php
+     * does not declare, tokens included. The one-click service must not be one
+     * of them.
+     */
+    public function test_default_service_survives_upgrade_sync(): void {
+        global $CFG, $DB;
+        require_once($CFG->libdir . '/upgradelib.php');
+
+        $serviceid = token_manager::ensure_default_service_configured();
+        $user = $this->getDataGenerator()->create_user();
+        token_manager::create_token($user->id, $serviceid, 'Laptop');
+
+        external_update_descriptions('webservice_elediamcp');
+
+        $this->assertTrue($DB->record_exists('external_services', ['id' => $serviceid]));
+        $this->assertEquals(1, $DB->count_records('external_tokens', ['externalserviceid' => $serviceid]));
+        $this->assertEquals([$serviceid], token_manager::get_configured_service_ids());
     }
 
     /**

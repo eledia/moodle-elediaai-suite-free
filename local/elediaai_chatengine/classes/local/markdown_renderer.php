@@ -162,9 +162,12 @@ class markdown_renderer {
      * @return string Markdown mit Platzhaltern an den Formelstellen.
      */
     private static function mathematik_sichern(string $markdown, array &$mathe): string {
-        $muster = '~(?<!\\\\)\\\\\\((?:[^\\\\]|\\\\(?!\\)))*?\\\\\\)'      // \( ... \)
-            . '|(?<!\\\\)\\\\\\[(?:[^\\\\]|\\\\(?!\\]))*?\\\\\\]'          // \[ ... \]
-            . '|\$\$(?:[^$]|\$(?!\$))+?\$\$~s';                          // $$ ... $$
+        // Erkannt werden, in dieser Reihenfolge, die Inline-Formel in Klammern
+        // mit Backslash, die abgesetzte Formel in eckigen Klammern mit Backslash
+        // und die abgesetzte Formel zwischen doppelten Dollarzeichen.
+        $muster = '~(?<!\\\\)\\\\\\((?:[^\\\\]|\\\\(?!\\)))*?\\\\\\)'
+            . '|(?<!\\\\)\\\\\\[(?:[^\\\\]|\\\\(?!\\]))*?\\\\\\]'
+            . '|\$\$(?:[^$]|\$(?!\$))+?\$\$~s';
 
         $zeilen = explode("\n", $markdown);
         $imblock = false;

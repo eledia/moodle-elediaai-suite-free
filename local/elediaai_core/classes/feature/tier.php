@@ -24,8 +24,6 @@
 
 namespace local_elediaai_core\feature;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * The licensing tier a feature belongs to.
  */

@@ -55,7 +55,6 @@ class provider implements
      * @return collection
      */
     public static function get_metadata(collection $collection): collection {
-
         // Data sent to the external RAG/Tutor server, where full history lives.
         $collection->add_external_location_link('rag_server', [
             'userid' => 'privacy:metadata:rag_server:userid',
@@ -63,10 +62,6 @@ class provider implements
             'courseid' => 'privacy:metadata:rag_server:courseid',
             'conversationid' => 'privacy:metadata:rag_server:conversationid',
         ], 'privacy:metadata:rag_server');
-
-        // Opt-in question analytics (questions only, never answers).
-
-        // Daily message counters for quota enforcement.
 
         // Short admin diagnostics for failed tutor calls; no prompts or answers.
         $collection->add_database_table('block_elediaai_tutor_diag', [

@@ -24,8 +24,6 @@
 
 namespace local_literag\elediaai_core;
 
-defined('MOODLE_INTERNAL') || die();
-
 use local_elediaai_core\feature\descriptor;
 use local_elediaai_core\feature\registry;
 use local_elediaai_core\feature\feature_provider as feature_provider_contract;
@@ -56,7 +54,7 @@ final class feature_provider implements feature_provider_contract {
                 icon: 'server',
                 audience: registry::AUDIENCE_ADMIN,
                 imagename: 'feature_literag',
-                capability: null,
+                capability: 'local/literag:manage',
                 configurl: new moodle_url('/admin/settings.php', ['section' => 'local_literag']),
                 detaildescription: get_string('suite_feature_detail', 'local_literag'),
                 keyfeatures: [

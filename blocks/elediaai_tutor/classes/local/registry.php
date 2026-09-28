@@ -674,7 +674,11 @@ class registry {
                 $clean = trim((string) $value);
                 return $clean === '' ? null : $clean;
             case 'textarea':
-                $clean = trim((string) $value);
+                // Plain text. Stripping tags alone kept what stood between them,
+                // so "<b>fett</b><script>alert(1)</script>" came back as
+                // "fettalert(1)": script and style blocks go with their content.
+                $clean = preg_replace('#<(script|style)\b[^>]*>.*?</\1\s*>#is', '', (string) $value);
+                $clean = trim(clean_param($clean, PARAM_TEXT));
                 return $clean === '' ? null : $clean;
             case 'coursescope':
                 // The form hands back option keys, an older value or an import

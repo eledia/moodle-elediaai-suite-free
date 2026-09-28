@@ -156,6 +156,7 @@ class chat_service {
 
         $request = new chat_request(
             usermessage: prompt_safety::frame_user_input($message),
+            question: $message,
             history: $history,
             persona: $persona,
             // The placement says what kind of conversation this is; the backend
@@ -194,7 +195,13 @@ class chat_service {
             $response = $response->without_sources();
         }
 
-        self::record_turn($thread, $message, $response);
+        // Eine Fehlermeldung ist keine Antwort. Sie landete bisher als
+        // Assistentenbeitrag im Verlauf, reiste mit der naechsten Frage als
+        // Kontext zum Modell, bekam eine Kennzeichnung als KI-Ausgabe und einen
+        // Nachweis im Transparenzregister -- fuer einen Satz, den kein Modell
+        // geschrieben hat. Gespeichert wird nur die Frage; das Turn-Protokoll
+        // haelt den Fehlschlag mit Code fest.
+        self::record_turn($thread, $message, $response->iserror ? null : $response);
         $turnid = self::record_in_turn_log(
             $component,
             $instanceid,
@@ -206,7 +213,10 @@ class chat_service {
             $turnstarted,
             $booked
         );
-        $provenanceuuid = self::audit(
+        // Der Simulator erzeugt keinen Text mit einem Modell; seine Antworten
+        // tragen schon den Hinweis "Simulation" und sind keine KI-Ausgabe.
+        $generated = !$response->iserror && $adapter::id() !== 'simulator';
+        $provenanceuuid = !$generated ? null : self::audit(
             $component,
             $adapter,
             $response,
@@ -255,6 +265,9 @@ class chat_service {
         }
 
         $wrapped = call_user_func([$markerclass, 'wrap_text'], $html, $uuid);
+        // Der Eintrag blieb auf "pending", und die Pruefseite meldete "noch nicht
+        // gekennzeichnet" fuer eine Antwort, die es war.
+        \local_aitransparency\provenance::set_mark_state($uuid, 'marked');
         // Ohne Namen in Klammern. Hier stand die Kennung des Backends, und das
         // war zweimal falsch: einmal als rohe Kennung („ingestionapi"), und
         // einmal in der Sache -- dieser Dienst fuellt die Vektordatenbank und
@@ -466,21 +479,23 @@ class chat_service {
      *
      * @param \stdClass $thread The thread record.
      * @param string $message The plain user message.
-     * @param chat_response $response The backend's answer.
+     * @param chat_response|null $response The backend's answer, null when the turn failed.
      * @return void
      */
-    private static function record_turn(\stdClass $thread, string $message, chat_response $response): void {
+    private static function record_turn(\stdClass $thread, string $message, ?chat_response $response): void {
         $threadid = (int) $thread->id;
 
         thread_store::add_message($threadid, message::ROLE_USER, $message);
-        thread_store::add_message(
-            $threadid,
-            message::ROLE_ASSISTANT,
-            $response->answer,
-            $response->sources,
-            $response->origin
-        );
-        if ($response->convkey !== null && $response->convkey !== (string) $thread->convkey) {
+        if ($response !== null) {
+            thread_store::add_message(
+                $threadid,
+                message::ROLE_ASSISTANT,
+                $response->answer,
+                $response->sources,
+                $response->origin
+            );
+        }
+        if ($response !== null && $response->convkey !== null && $response->convkey !== (string) $thread->convkey) {
             thread_store::set_convkey($threadid, $response->convkey);
         }
         thread_store::touch($threadid, $message);
@@ -542,7 +557,7 @@ class chat_service {
             return null;
         }
 
-        // sources[0] is the primary citation; the rest are ordered behind it.
+        // The first entry, sources[0], is the primary citation; the rest are ordered behind it.
         $primary = $response->sources[0] ?? null;
         $sourcetitle = null;
         $cmid = null;
@@ -559,6 +574,7 @@ class chat_service {
             'prompt' => $message,
             'response' => $response->answer,
             'success' => !$response->iserror,
+            'errorcode' => $response->iserror ? 'backend_error' : null,
             // Nicht die rohen Werte der Antwort: die sind leer, sobald das
             // Backend kein usage-Feld schickt, waehrend der Engpass eine
             // Schaetzung auf das Guthaben gebucht hat. Das Protokoll haelt

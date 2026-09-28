@@ -81,13 +81,32 @@ final class dispatcher_test extends \advanced_testcase {
     }
 
     /**
-     * tools/list returns the configured tool names.
+     * tools/list returns the configured tool names for a valid moodle_token.
      */
     public function test_tools_list(): void {
         $this->resetAfterTest();
-        $response = (new dispatcher())->dispatch(['jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list']);
+        $user = $this->getDataGenerator()->create_user();
+        $token = $this->mint_token((int) $user->id);
+        $response = (new dispatcher())->dispatch([
+            'jsonrpc' => '2.0', 'id' => 1, 'method' => 'tools/list',
+            'params' => ['moodle_token' => $token],
+        ]);
         $names = array_map(static fn($t) => $t['name'], $response['result']['tools']);
         $this->assertContains('tutor_chat', $names);
+    }
+
+    /**
+     * Anonymous or forged callers do not get the tool list (N-07).
+     */
+    public function test_tools_list_requires_token(): void {
+        $this->resetAfterTest();
+        foreach ([[], ['moodle_token' => 'forged' . random_string(20)]] as $params) {
+            $response = (new dispatcher())->dispatch([
+                'jsonrpc' => '2.0', 'id' => 3, 'method' => 'tools/list', 'params' => $params,
+            ]);
+            $this->assertSame(-32001, $response['error']['code']);
+            $this->assertArrayNotHasKey('result', $response);
+        }
     }
 
     /**

@@ -326,7 +326,7 @@ class ingestion_manager {
     private function ingest_module_from_cm(\cm_info $cm, bool $force = false): array {
         $result = $this->attempt_module($cm, $force);
 
-        // "Worked through, nothing to send" is written down, so the reconcile
+        // The state "worked through, nothing to send" is written down, so the reconcile
         // can tell it from "never tried" -- the second is what it has to catch
         // up on (#32), the first it must leave alone or it would queue the
         // course on every run.
@@ -798,6 +798,22 @@ class ingestion_manager {
             'size' => round($sizebytes / 1024, 1) . ' KB',
             'http_code' => $apiresult['http_code'],
         ];
+
+        $response = json_decode((string) ($apiresult['response'] ?? ''), true);
+        if ($apiresult['success'] && is_array($response) && ($response['parsestate'] ?? '') === 'skipped') {
+            // Accepted but not readable (an encrypted or image-only PDF): the
+            // destination holds no text for it, so it is not "indexed".
+            $reason = get_string('destinationunreadable', 'local_elediaai_sources');
+            cm_state::record_empty((int) $cm->course, (int) $cm->id, $sourceid, $reason, $this->sink::id());
+            mtrace($reason . ' (' . $sourceid . ')');
+            return [
+                'cmid' => $cm->id,
+                'module_name' => $modulename,
+                'success' => false,
+                'status' => 'skipped',
+                'message' => $reason,
+            ];
+        }
 
         if ($apiresult['success']) {
             mtrace(get_string('ingestionsuccess', 'local_elediaai_sources', $loginfo));

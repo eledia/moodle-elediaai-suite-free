@@ -47,7 +47,8 @@ selection deliberately stays in the normal course UI instead.
 | Supported Moodle versions | `4.5` to `5.2` in `version.php` |
 | Local compatibility check | Moodle `5.2.1` passes the PHPUnit suite |
 | PHP | Moodle-supported PHP for the target Moodle version |
-| Maturity | Beta |
+| Release | `1.0.1` (stable) |
+| Required plugins | `local_elediaai_core` (eLeDia.ai Suite core) |
 
 Moodle 5.2.1 is used locally for development and tests, and the official
 `supported` metadata is `[405, 502]`.
@@ -151,9 +152,9 @@ The destination is chosen explicitly; it is no longer inferred from the shape
 of a URL. Each destination knows its own endpoints:
 
 - **Ingestion API** — the base URL plus the paths fixed by
-  `docs/api-specification.md`: `/documents/upsert`, `/documents/delete`,
-  `/health`. Configure `http://rag-service:8001`, **not**
-  `http://rag-service:8001/documents/upsert`.
+  the Ingestion API contract: `/documents/upsert`, `/documents/delete`,
+  `/health`. Configure `https://rag.example.com`, **not**
+  `https://rag.example.com/documents/upsert`.
 - **LiteRAG** — nothing to configure. The route is derived from `wwwroot` and
   the ingestion key is read from `local_literag` itself.
 
@@ -342,8 +343,7 @@ Before a multi-document upsert, the manager clears the previous document set
 with a prefix-scoped delete.
 
 Allowed content types are decided by the versioned support matrix
-(`classes/format_matrix.php`, documented in
-[`docs/format-support-matrix.md`](docs/format-support-matrix.md)), not by the
+(`classes/format_matrix.php`), not by the
 extractors:
 
 - **Core, always sent:** `text/plain`, `text/html`, `application/pdf`
@@ -379,7 +379,7 @@ Destinations:
 
 | Sink | Endpoints | Configuration |
 |---|---|---|
-| `ingestion_api_sink` | Base URL plus the paths fixed by `docs/api-specification.md` | Base URL and per-tenant API key |
+| `ingestion_api_sink` | Base URL plus the paths fixed by the Ingestion API contract | Base URL and per-tenant API key |
 | `literag_sink` | `local/literag/ingest.php`, derived from `wwwroot` | None — the key is read from `local_literag` |
 | *OERWEAVE* | — | Reserved slot; not implemented |
 
@@ -495,71 +495,12 @@ Guidelines:
   something
 - use `api_client` for HTTP so retries, timeout and `X-API-Key` behave alike
 
-## Local Development
-
-### Deploy to the local eledia.ai Moodle
-
-The companion Docker setup in the eledia.ai project provides a local Moodle at:
-
-```text
-http://localhost:8080
-```
-
-Typical flow:
-
-```bash
-cd /Users/moskaliuk/Documents/Code/eledia.ai
-./scripts/local-deploy.sh deploy
-```
-
-If the plugin checkout is not baked into that image, copy or sync this plugin to:
-
-```text
-/var/www/html/public/local/elediaai_sources
-```
-
-and run Moodle upgrade/purge caches.
-
-### Debug Server
-
-A small Python mock server is included for local API testing:
-
-```bash
-python3 local/elediaai_sources/debug_server.py
-python3 local/elediaai_sources/debug_server.py --port 9000
-python3 local/elediaai_sources/debug_server.py --fail
-python3 local/elediaai_sources/debug_server.py --delay 5
-```
-
-`debug_server.py` is excluded from release archives through `.gitattributes`.
-
 ## Testing and Code Style
 
 ### PHPUnit
 
-The local Docker setup can initialise Moodle PHPUnit and run this plugin's
-testsuite:
-
-```bash
-cd /Users/moskaliuk/Documents/Code/eledia.ai
-./scripts/local-deploy.sh phpunit-init
-./scripts/local-deploy.sh phpunit
-PHPUNIT_TESTSUITE=local_elediaai_sources_testsuite ./scripts/local-deploy.sh phpunit
-```
-
-The current local result is:
-
-```text
-Tests: 164
-Assertions: 373
-Failures: 0
-Errors: 0
-Skipped: 5
-PHPUnit Deprecations: 27
-Notices: 1
-```
-
-For a direct Moodle checkout with an already initialised PHPUnit environment:
+From the root of a Moodle checkout with an initialised PHPUnit environment
+(`php admin/tool/phpunit/cli/init.php`):
 
 ```bash
 vendor/bin/phpunit --testsuite local_elediaai_sources_testsuite
@@ -583,7 +524,7 @@ composer init --no-interaction --name=local-elediaai-sources/moodle-cs-tools
 composer config allow-plugins.dealerdirect/phpcodesniffer-composer-installer true
 composer require --dev moodlehq/moodle-cs
 
-cd /Users/moskaliuk/Documents/Code/local_elediaai_sources
+cd /path/to/moodle
 /tmp/local-elediaai-sources-moodle-cs/vendor/bin/phpcs \
     --standard=moodle \
     --extensions=php \
@@ -616,17 +557,14 @@ npx grunt rawcss --no-color
 `amd` runs `ignorefiles`, `eslint:amd`, and `rollup`; it also regenerates
 `amd/build/*.min.js`. `rawcss` runs Stylelint for plain CSS files.
 
-This plugin currently has no Mustache templates and no bundled third-party
-libraries, so the Mustache and third-party-library checks are not applicable.
-If templates or bundled libraries are added later, include the corresponding
-Moodle precheck before submission.
+The plugin ships Mustache templates under `templates/`, so the Mustache lint
+check applies as well. It bundles no third-party code libraries; the Lucide
+icon paths it uses are declared in `thirdpartylibs.xml`.
 
 ## Documentation
 
 ```text
 docs/user_manual.md        — administrator and user guide (also shown on the plugin's help page)
-docs/api-specification.md  — the ingestion API contract (v1.2) a destination must implement
-docs/submission-draft.md   — notes for the Moodle plugin directory submission
 ```
 
 ## Privacy

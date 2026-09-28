@@ -250,7 +250,7 @@ final class markdown_renderer_test extends \advanced_testcase {
         $liste = markdown_renderer::render("Schritte:\n1. eins\n2. zwei\n", $ctx);
         $this->assertSame(2, substr_count($liste, '<li>'));
 
-        // „Das war am 3. Oktober" darf nicht zur Liste werden -- dieselbe
+        // Der Satz „Das war am 3. Oktober" darf nicht zur Liste werden -- dieselbe
         // Regel, die CommonMark dafuer hat.
         $datum = markdown_renderer::render("Das war am\n3. Oktober\n", $ctx);
         $this->assertStringNotContainsString('<li>', $datum);

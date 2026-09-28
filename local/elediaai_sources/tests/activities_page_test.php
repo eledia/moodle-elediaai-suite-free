@@ -84,6 +84,38 @@ final class activities_page_test extends \advanced_testcase {
     }
 
     /**
+     * An activity hidden from learners says it is not in the index, even with a stale success row (G-08).
+     */
+    public function test_status_of_hidden_activity_says_not_in_index(): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $hidden = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'content' => '<p>Hidden</p>',
+            'visible' => 0,
+        ]);
+        $stale = $this->getDataGenerator()->create_module('page', [
+            'course' => $course->id,
+            'content' => '<p>Indexed, then hidden</p>',
+        ]);
+        cm_state::record_success((int) $course->id, (int) $stale->cmid, 'sid-s', 'h', 'recording');
+        set_coursemodule_visible((int) $stale->cmid, 0);
+
+        $data = $this->export(get_course($course->id));
+
+        foreach ([(int) $hidden->cmid, (int) $stale->cmid] as $cmid) {
+            $row = $this->row($data, $cmid);
+            $this->assertSame('hidden', $row['status']);
+            $this->assertSame(get_string('activities_status_hidden', 'local_elediaai_sources'), $row['statuslabel']);
+            $this->assertSame(get_string('activityhidden', 'local_elediaai_sources'), $row['statustitle']);
+        }
+    }
+
+    /**
      * A successful ingest shows as indexed, a failure as error.
      */
     public function test_status_reflects_state(): void {

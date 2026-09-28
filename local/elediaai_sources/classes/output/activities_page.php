@@ -101,7 +101,10 @@ class activities_page implements renderable, templatable {
                         ['cmid' => (int) $cm->id]
                     ))->out(false),
                     'previewaria' => get_string('preview_aria', 'local_elediaai_sources', $plainname),
-                ] + $this->status_fields($states[(int) $cm->id] ?? null);
+                ] + $this->status_fields(
+                    $states[(int) $cm->id] ?? null,
+                    ingestion_manager::visible_to_learners($cm)
+                );
             }
 
             if (empty($rows)) {
@@ -161,10 +164,24 @@ class activities_page implements renderable, templatable {
      * the plugin has no record of this activity in the index, and does not
      * pretend otherwise.
      *
+     * An activity hidden from learners is never sent, whatever its switch
+     * says, and an index entry from before it was hidden is removed. Its
+     * status says so instead of "unknown" (G-08), in the words of the dry run.
+     *
      * @param \stdClass|null $state The cm_state row, or null.
+     * @param bool $learnervisible Whether learners can see the activity.
      * @return array status, statuslabel, statusclass, statustitle.
      */
-    private function status_fields(?\stdClass $state): array {
+    private function status_fields(?\stdClass $state, bool $learnervisible = true): array {
+        if (!$learnervisible) {
+            return [
+                'status' => 'hidden',
+                'statuslabel' => get_string('activities_status_hidden', 'local_elediaai_sources'),
+                'statusclass' => 'badge-secondary bg-secondary',
+                'statustitle' => get_string('activityhidden', 'local_elediaai_sources'),
+            ];
+        }
+
         if ($state === null) {
             return [
                 'status' => 'unknown',

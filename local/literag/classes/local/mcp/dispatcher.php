@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace local_literag\local\mcp;
 
 use local_literag\local\config;
+use local_literag\local\token_validator;
 use local_literag\local\mcp\tools\tutor_chat;
 use local_literag\local\mcp\tools\tutor_delete_conversation;
 use local_literag\local\mcp\tools\tutor_delete_user_data;
@@ -32,7 +33,8 @@ use local_literag\local\mcp\tools\tutor_set_memory_optin;
  * Tool names are admin-configurable and must mirror the tutor block's settings;
  * the dispatcher resolves the incoming name against this plugin's configured
  * names. A handful of MCP discovery methods (initialize, tools/list) are
- * answered minimally for debugging even though the block does not use them.
+ * answered minimally for debugging even though the block does not use them;
+ * tools/list only for a valid moodle_token.
  *
  * @package    local_literag
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -65,6 +67,13 @@ class dispatcher {
             ]);
         }
         if ($method === 'tools/list') {
+            // The catalogue is no business of anonymous callers (N-07): like
+            // every tool call, listing needs a valid moodle_token, sent as
+            // params.moodle_token because tools/list has no arguments.
+            $params = (array) ($request['params'] ?? []);
+            if (token_validator::resolve_user((string) ($params['moodle_token'] ?? '')) === null) {
+                return result::error($id, -32001, 'invalid moodle_token');
+            }
             return result::success($id, ['tools' => $this->tool_descriptors()]);
         }
         if ($method !== 'tools/call') {

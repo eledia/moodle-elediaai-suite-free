@@ -19,8 +19,6 @@ namespace webservice_elediamcp;
 use advanced_testcase;
 use webservice_elediamcp\local\premium;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Tests the MCP premium gate and its site grant.
  *

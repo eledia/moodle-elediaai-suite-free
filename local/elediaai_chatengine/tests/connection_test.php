@@ -119,6 +119,36 @@ final class connection_test extends \advanced_testcase {
     }
 
     /**
+     * The limit counts the last 60 seconds, not the calendar minute.
+     *
+     * With a counter per calendar minute, requests just before and just after
+     * a full minute were counted in two windows and twice the limit got
+     * through within 60 seconds.
+     */
+    public function test_rate_limit_is_a_sliding_minute(): void {
+        $this->resetAfterTest();
+        set_config('ratelimitperminute', 3, 'local_elediaai_chatengine');
+        $cache = \cache::make('local_elediaai_chatengine', 'ratelimit');
+        $now = time();
+
+        // Three requests within the last 50 seconds: the fourth waits until the
+        // oldest leaves the window.
+        $cache->set('u789_sliding', [$now - 50, $now - 40, $now - 10]);
+        try {
+            guard::enforce_rate_limit(789);
+            $this->fail('The fourth request within 60 seconds should have been refused.');
+        } catch (\moodle_exception $e) {
+            $this->assertSame('error_rate_limited', $e->errorcode);
+            $this->assertStringContainsString('10', $e->getMessage());
+        }
+
+        // Once the oldest is older than 60 seconds, a request goes through.
+        $cache->set('u789_sliding', [$now - 61, $now - 40, $now - 10]);
+        guard::enforce_rate_limit(789);
+        $this->assertCount(3, $cache->get('u789_sliding'));
+    }
+
+    /**
      * A zero limit disables rate limiting.
      */
     public function test_rate_limit_disabled(): void {

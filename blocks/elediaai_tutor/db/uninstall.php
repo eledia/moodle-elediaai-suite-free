@@ -36,14 +36,16 @@ function xmldb_block_elediaai_tutor_uninstall(): bool {
     global $CFG, $DB;
 
     require_once(__DIR__ . '/../classes/local/ltm.php');
-    require_once(__DIR__ . '/../classes/local/service_user.php');
 
     $DB->delete_records('user_preferences', [
         'name' => \block_elediaai_tutor\local\ltm::PREF,
     ]);
 
+    // The account class moved to the chat engine (DEL-517), but the tutor's
+    // reclustering is still its only user, so the tutor removes it. The engine
+    // is a declared dependency and therefore still installed at this point.
     $serviceuser = $DB->get_record('user', [
-        'username' => \block_elediaai_tutor\local\service_user::USERNAME,
+        'username' => \local_elediaai_chatengine\local\service_user::USERNAME,
         'mnethostid' => $CFG->mnet_localhost_id,
         'deleted' => 0,
     ]);

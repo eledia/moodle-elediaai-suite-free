@@ -150,6 +150,27 @@ if ($hassiteconfig) {
         ));
     }
 
+    // Ein Schalter je installierter Funktion. Aus heisst: die Funktion ist
+    // weg, nicht nur ihre Kachel -- die Plugins fragen require_enabled() an
+    // ihren Einstiegen. Vorgabe 1, damit ein Update nichts abschaltet.
+    $settings->add(new admin_setting_heading(
+        'local_elediaai_core/features_heading',
+        get_string('features_heading', 'local_elediaai_core'),
+        get_string('features_heading_desc', 'local_elediaai_core')
+    ));
+    foreach (\local_elediaai_core\feature\registry::all() as $feature) {
+        $placeholder = \local_elediaai_core\feature\registry::is_placeholder($feature);
+        if ($placeholder || !\local_elediaai_core\feature\registry::is_switchable($feature->id)) {
+            continue;
+        }
+        $settings->add(new admin_setting_configcheckbox(
+            'local_elediaai_core/feature_' . $feature->id . '_enabled',
+            $feature->name,
+            get_string('feature_enabled_desc', 'local_elediaai_core', $feature->name),
+            1
+        ));
+    }
+
     // Vorgabe 0: ein Kundensystem soll keine Werkzeuge ankuendigen, die es
     // nicht hat und nicht bestellt hat (#31). Demo- und Vertriebsinstanzen
     // schalten die Vorschau ein.

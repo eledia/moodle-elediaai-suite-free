@@ -28,8 +28,6 @@ namespace local_elediaai_core;
 use advanced_testcase;
 use local_elediaai_core\output\lucide_icon;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft die Symbolnamen dieses Plugins gegen das Sprite.
  *
@@ -68,7 +66,7 @@ final class lucide_icon_test extends advanced_testcase {
                 continue;
             }
             $quelltext = (string) file_get_contents($pfad);
-            // lucide_icon::render('name') und 'icon' => 'name' in den
+            // Gesucht: lucide_icon::render('name') und 'icon' => 'name' in den
             // Navigations- und Deskriptor-Feldern.
             preg_match_all("/lucide_icon::render\(\s*'([a-z0-9-]+)'/", $quelltext, $treffer);
             foreach ($treffer[1] as $name) {

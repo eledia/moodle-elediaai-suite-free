@@ -63,6 +63,23 @@ final class shell {
     }
 
     /**
+     * Whether the user may read the plugin's help page.
+     *
+     * The help explains tokens, clients and OAuth consent, so it is written
+     * for everyone who issues tokens, not only for administrators (G-05).
+     *
+     * @param int|null $userid User id, null for the current user.
+     * @return bool
+     */
+    public static function can_view_help(?int $userid = null): bool {
+        return has_any_capability(
+            ['moodle/site:config', 'webservice/elediamcp:managetokens'],
+            \core\context\system::instance(),
+            $userid
+        );
+    }
+
+    /**
      * Queue the stylesheets this plugin's pages need.
      */
     public static function require_css(): void {

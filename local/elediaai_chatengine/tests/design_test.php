@@ -176,7 +176,7 @@ final class design_test extends \advanced_testcase {
 
         $this->resetAfterTest();
         $PAGE->set_url('/');
-        // $OUTPUT is the bootstrap renderer until the page is set up; ask for
+        // The global $OUTPUT is the bootstrap renderer until the page is set up; ask for
         // the real one so the renderable gets the type it declares.
         $output = $PAGE->get_renderer('core');
 

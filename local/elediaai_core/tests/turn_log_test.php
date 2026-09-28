@@ -30,8 +30,6 @@ use local_elediaai_core\local\insights;
 use local_elediaai_core\local\pseudonym;
 use local_elediaai_core\local\turn_recorder;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Prueft Schreiber, Pseudonym und Lese-API.
  *

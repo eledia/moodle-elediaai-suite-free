@@ -20,13 +20,18 @@
     Shown when the tutor cannot run. Admins/managers see the actionable cause;
     everyone else sees a neutral message.
 
+    With a floating launcher the notice takes the launcher's place: the block
+    itself sits in the block drawer, which is usually closed.
+
     Example context (json):
     {
+        "id": "elediaai-tutor-unavailable-1",
+        "floating": true,
         "isadmin": true,
         "message": "The MCP connector plugin is not installed."
     }
 }}
-<div class="elediaai-chat-unavailable {{#isadmin}}alert alert-warning{{/isadmin}}{{^isadmin}}text-muted{{/isadmin}}"
+<div id="{{id}}" class="elediaai-chat-unavailable {{#floating}}elediaai-chat-unavailable--floating{{/floating}} {{#isadmin}}alert alert-warning{{/isadmin}}{{^isadmin}}text-muted{{/isadmin}}"
      role="status">
     {{#isadmin}}<strong>{{#str}}configerror, block_elediaai_tutor{{/str}}</strong><br>{{/isadmin}}
     {{message}}

@@ -34,6 +34,7 @@ use local_elediaai_core\reportbuilder\local\systemreports\audit as audit_report;
 use local_elediaai_core\reportbuilder\local\systemreports\turns as turns_report;
 
 require_login();
+\local_elediaai_core\feature\registry::require_enabled('audit');
 
 $context = \core\context\system::instance();
 if (!audit_config::feature_available()) {

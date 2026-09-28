@@ -16,21 +16,23 @@ Feature: AI Suite launcher smoke path
     # Launcher öffnen.
     When I open the AI Suite
     Then I should see "AI Suite"
-    And I should see "Translate"
+    And I should see "LiteRAG"
     # Uebersichtskarte anklicken. Der Link sitzt seit dem Wegfall des
     # Pfeilknopfs auf dem Titel und deckt per ::after die ganze Kachel ab --
     # ein Ziel je Karte statt zweier fuer dasselbe Ziel.
-    When I click on "AI Translation" "link" in the "article[data-feature-id=translate]" "css_element"
-    Then I should see "Translate"
+    # Frueher die Uebersetzung -- ein Premium-Werkzeug, das im freien Paket
+    # fehlt. LiteRAG gehoert zu beiden Paketen und hat Seite und Zahnrad.
+    When I click on "LiteRAG" "link" in the "article[data-feature-id=literag]" "css_element"
+    Then ".lr-help-shell" "css_element" should exist
     # Zurueck zur Uebersicht und von dort ueber das Zahnrad der Kachel in die
     # Einstellungen. Das Zahnrad sass frueher im Kopf der Erklaerseite; seit
     # die weg ist, ist das der Weg, den die Suite tatsaechlich anbietet.
     When I open the AI Suite
-    And I click on ".lh-ai-suite-card__settings" "css_element" in the "article[data-feature-id=translate]" "css_element"
-    Then I should not see "Page not found"
+    And I click on ".lh-ai-suite-card__settings" "css_element" in the "article[data-feature-id=literag]" "css_element"
+    Then I should see "Save changes"
     When I open the AI Suite
     Then I should see "AI Suite"
-    And I should see "Translate"
+    And I should see "LiteRAG"
 
   Scenario: Audit tab is visible to admins
     Given I log in as "admin"

@@ -163,8 +163,10 @@ class agent {
                 $this->add_usage($result);
             } catch (llm_exception $e) {
                 // The endpoint may reject the tools payload (unsupported model):
-                // retry once without tools before giving up.
-                if (!empty($activetools)) {
+                // retry once without tools before giving up. Only then: after a
+                // timeout or a refused connection the retry waited the whole
+                // timeout a second time and doubled what the learner waits.
+                if (!empty($activetools) && $e->requestrejected) {
                     debugging('local_literag agent: tool completion failed, retrying without tools: '
                         . $e->getMessage(), DEBUG_DEVELOPER);
                     $result = $this->llm->complete($messages, []);

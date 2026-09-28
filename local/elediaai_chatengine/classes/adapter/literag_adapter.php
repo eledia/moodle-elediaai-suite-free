@@ -169,12 +169,18 @@ class literag_adapter implements adapter {
         $arguments = [
             'moodle_token' => token_provider::get_token($request->userid),
             'user_message' => $request->usermessage,
+            // Searched and logged instead of the framed message (see chat_request::question()).
+            'user_question' => $request->question(),
             'rag_enabled' => $request->is_grounded(),
             'moodle_tools_enabled' => $request->allowtools,
         ];
         $coursearg = $request->course_argument();
         if ($coursearg !== null) {
             $arguments['course_id'] = $coursearg;
+        }
+        $searcharg = $request->search_argument();
+        if ($searcharg !== null) {
+            $arguments['search_course_ids'] = $searcharg;
         }
         if ($request->convkey !== null && $request->convkey !== '') {
             $arguments['conversation_id'] = $request->convkey;
@@ -192,7 +198,7 @@ class literag_adapter implements adapter {
                 $arguments[$argument] = $value;
             }
         }
-        // `moodle_tools_enabled` above is the switch; this degradation is the
+        // The `moodle_tools_enabled` flag above is the switch; this degradation is the
         // fallback for a LiteRAG that predates the argument and reads "no
         // callbacks" only out of the intent. Both are sent, and they agree: a
         // placement barred from acting in Moodle also asks for retrieval only.
@@ -203,7 +209,12 @@ class literag_adapter implements adapter {
             $arguments['intent'] = $intent;
         }
 
-        $result = $this->dispatch($arguments);
+        // The engine records the answer's provenance under the placement that
+        // shows it; LiteRAG would otherwise record the same answer again.
+        $tool = '\\local_literag\\local\\mcp\\tools\\tutor_chat';
+        $result = method_exists($tool, 'with_provenance_by_caller')
+            ? $tool::with_provenance_by_caller(fn() => $this->dispatch($arguments))
+            : $this->dispatch($arguments);
         $normalised = mcp_client::normalise_tool_result($result);
 
         return new chat_response(
