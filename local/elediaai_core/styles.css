@@ -13,72 +13,98 @@
  * es ueberschreibt, sind die drei Toene, die eine Installation einstellen
  * kann (Akzent, Grund, Marke) und die Schrift, die es selbst ausliefert.
  *
- * Die Vorgaben sind das eLeDia-Hell. Ohne unser Theme sieht die Suite aus
- * wie mit -- nur der Moodle-Rahmen drumherum ist ein anderer. Das ist die
- * Grenze, die wir ziehen: wir gestalten unsere Flaechen, nicht die Leiste
- * des Kunden.
+ * Die Farben folgen dem aktiven Theme (seit 16.10.2026, vorher war es
+ * umgekehrt): Akzent, Marke, Schrift, Linien und Zustaende lesen dessen
+ * Bootstrap-Variablen, das eLeDia-Hell ist nur noch der Rueckfall. Ein
+ * Kunde mit eigenem Theme sieht die Suite in seinen Farben. Was nicht
+ * folgt, und warum, steht am jeweiligen Token: die weisse Kartenflaeche und
+ * das Lavendel der KI-Herkunft. Schrift, Skala, Abstaende, Radien und
+ * Schatten sind weiter unsere.
  *
  * Einen Namen zu aendern bricht, was ihn liest. Diese Liste ist eine API.
  */
 
 :root {
+    /* --- Woher die Farben kommen. -------------------------------------- */
+    /* Aus dem aktiven Theme (Betreiberentscheidung 16.10.2026). Jedes Moodle-
+       Theme veroeffentlicht seine Farben als Bootstrap-Variablen (--bs-*, ab
+       Moodle 5.0 Bootstrap 5.3; unter 4.5 nur die Grundfarben als --primary
+       usw.). Die Suite liest sie, damit ein Kunde mit eigenem Theme -- oder
+       Boost mit eigener Markenfarbe -- die Suite in seinen Farben sieht und
+       nicht im eLeDia-Orange. Der Wert hinter dem letzten Komma ist die
+       bisherige Suite-Farbe und greift nur, wenn ein Theme die Variable nicht
+       kennt.
+
+       Abgestufte Toene (Hover, die tiefere Fuellung fuer Beschriftungen, der
+       Wash) werden aus dem Grundton gerechnet statt festgeschrieben, damit sie
+       mit ihm gehen. Bei den eLeDia-Werten ergibt das die bisherigen Toene bis
+       auf eine Stelle im Hex-Wert.
+
+       Grenze: Ob Weiss auf dem Akzent eines fremden Themes noch 4,5:1 traegt,
+       entscheidet dieses Theme. CSS kann den Kontrast nicht pruefen; ein
+       sehr heller Primaerton braucht im Theme eine dunklere Variante. */
+
     /* --- Flaechen. ---------------------------------------------------- */
-    --eai-bg: #f7f8fb;
+    --eai-bg: var(--bs-body-bg, #f7f8fb);
+    /* Karten bleiben weiss. Unter theme_elediaai ist --bs-body-bg der
+       getoente Seitengrund, nicht die Kartenflaeche -- an ihn gekoppelt,
+       verloeren die Karten ihre Abhebung. */
     --eai-surface: #ffffff;
     --eai-raised: #ffffff;
-    --eai-line: #e6e9f0;
-    --eai-line-soft: #eef0f5;
+    --eai-line: var(--bs-border-color, #e6e9f0);
+    --eai-line-soft: color-mix(in srgb, var(--eai-line) 60%, var(--eai-surface));
 
     /* --- Schrift auf den Flaechen. ------------------------------------ */
-    --eai-fg: #1f2430;
-    --eai-fg-dim: #3d4453;
-    --eai-muted: #6b7280;
-    --eai-faint: #8b93a1;
+    --eai-fg: var(--bs-body-color, #1f2430);
+    --eai-fg-dim: color-mix(in srgb, var(--eai-fg) 88%, #ffffff);
+    --eai-muted: var(--bs-secondary-color, #6b7280);
+    --eai-faint: var(--bs-tertiary-color, #8b93a1);
 
     /* --- Akzent und Marke. -------------------------------------------- */
     /* Zwei Toene, kein Widerspruch: --eai-accent traegt (Symbole, Raender,
-       Marker) und haelt 3:1 nach WCAG 1.4.11; --eai-accent-text ist die
-       Firmenfarbe #f98012 und steht auf Weiss bei 2,58:1. Das ist eine
-       bewusste Entscheidung des Auftraggebers, kein Versehen. */
-    --eai-accent: #eb7306;
-    --eai-accent-hover: #cf6404;
+       Marker) und haelt mit dem eLeDia-Wert 3:1 nach WCAG 1.4.11;
+       --eai-accent-text ist der Linkton des Themes, im eLeDia-Theme die
+       Firmenfarbe #f98012 bei 2,58:1 auf Weiss. Das ist eine bewusste
+       Entscheidung des Auftraggebers, kein Versehen. */
+    --eai-accent: var(--bs-primary, var(--primary, #eb7306));
+    --eai-accent-hover: color-mix(in srgb, var(--eai-accent) 88%, #000000);
     --eai-accent-ink: #ffffff;
     /* Die Fuellung fuer ein Bedienelement, dessen Beschriftung Fliesstext ist.
-       Weiss auf --eai-accent haelt 3,01:1 -- das genuegt einem Symbol oder
-       einem Rand (WCAG 1.4.11), aber nicht einem Wort (1.4.3 verlangt 4,5:1).
-       Diese beiden Toene sind derselbe Farbton, eine Stufe tiefer, und tragen
-       Weiss mit 4,52:1 beziehungsweise 5,42:1. Gemessen am 06.09.2026 an der
-       gewaehlten Filterpille des Dashboards, die genau in diese Luecke fiel. */
-    --eai-accent-strong: #bb5c05;
-    --eai-accent-strong-hover: #a85205;
-    --eai-accent-text: #f98012;
-    --eai-accent-wash: rgba(235, 115, 6, 0.1);
-    --eai-brand: #f98012;
+       Weiss auf dem eLeDia-Akzent haelt 3,01:1 -- das genuegt einem Symbol
+       oder einem Rand (WCAG 1.4.11), aber nicht einem Wort (1.4.3 verlangt
+       4,5:1). Eine Stufe tiefer traegt Weiss mit 4,52:1 bzw. 5,42:1; gemessen
+       am 06.09.2026 an der Filterpille des Dashboards. 80 bzw. 72 Prozent des
+       Grundtons ergeben genau diese Stufen. */
+    --eai-accent-strong: color-mix(in srgb, var(--eai-accent) 80%, #000000);
+    --eai-accent-strong-hover: color-mix(in srgb, var(--eai-accent) 72%, #000000);
+    --eai-accent-text: var(--bs-link-color, var(--eai-accent));
+    --eai-accent-wash: color-mix(in srgb, var(--eai-accent) 10%, transparent);
+    --eai-brand: var(--bs-primary, var(--primary, #f98012));
 
     /* --- Zustaende. ---------------------------------------------------- */
     /* Erfolg, Warnung, Gefahr -- die drei Aussagen, die eine Oberflaeche
        ueber einen Zustand macht. Sie gehoeren nicht zum Akzent: der Akzent
        sagt "hier entlang", ein Zustand sagt "so steht es".
 
-       Die Werte sind nicht frei gewaehlt. Bis zum 05.09.2026 fuehrten die
-       Plugin-Huellen eigene: Erfolg war ein Tuerkis (#3aadaa, 2,71:1 auf
-       Weiss) und Warnung war die Markenfarbe selbst (#f98012, 2,58:1) --
-       beides zu schwach fuer Text nach WCAG 1.4.3, und eine Warnung, die
-       aussieht wie der Akzent, ist keine. Die Nachfolger stammen aus dem
-       Bestand der Suite (feature_info.mustache) und tragen:
+       Aus dem Theme, mit einer Ausnahme: Bootstraps Warnungsgelb taugt nicht
+       als Schrift (1,6:1 auf Weiss), deshalb liest die Warnung den dunklen
+       Textton (--bs-warning-text-emphasis). Die Waschflaechen sind Bootstraps
+       eigene, fuer genau dieses Paar gedachte Toene (*-bg-subtle).
+
+       Die eLeDia-Werte dahinter tragen Text nach WCAG 1.4.3:
 
          Erfolg  5,07:1 auf Weiss, 4,84:1 auf seinem Wash
          Warnung 7,09:1 auf Weiss, 6,37:1 auf seinem Wash
          Gefahr  6,60:1 auf Weiss, 5,41:1 auf seinem Wash
 
-       Der Wash ist die Flaeche, die starke Farbe der Text darauf. */
-    --eai-success: #157f3f;
-    --eai-success-wash: #e8fff3;
-    --eai-warning: #92400e;
-    --eai-warning-wash: #fef3c7;
-    --eai-danger: #ab1d79;
-    --eai-danger-hover: #a31449;
-    --eai-danger-wash: #f5e4ef;
+       theme_elediaai haelt sie fest (scss/elediaai/_tokens.scss). */
+    --eai-success: var(--bs-success, var(--success, #157f3f));
+    --eai-success-wash: var(--bs-success-bg-subtle, #e8fff3);
+    --eai-warning: var(--bs-warning-text-emphasis, #92400e);
+    --eai-warning-wash: var(--bs-warning-bg-subtle, #fef3c7);
+    --eai-danger: var(--bs-danger, var(--danger, #ab1d79));
+    --eai-danger-hover: color-mix(in srgb, var(--eai-danger) 88%, #000000);
+    --eai-danger-wash: var(--bs-danger-bg-subtle, #f5e4ef);
 
     /* --- Was von der KI kommt. ------------------------------------------ */
     /* Ein Lavendel, das quer durch die Suite markiert "hier ist KI im
@@ -144,52 +170,74 @@
        setzt Manrope davor. */
     --eai-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
 
-    /* --- Die Token der stillgelegten LernHive-Shell. -------------------- */
-    /* Mehrere Suite-Stylesheets lesen noch --lh-*. Eine Verwaltungsoberflaeche
-       dafuer gibt es nicht mehr, und bisher fuellte sie das Theme -- also eine
-       Haut, die eine Aufgabe von Core uebernahm. Unter Boost waren sie damit
-       undefiniert und die Seiten fielen auf fremde Farben zurueck. Sie zeigen
-       jetzt auf die Suite-Token; die alten Namen bleiben, damit nichts bricht,
-       was sie liest. */
-    --lh-primary: var(--eai-accent);
-    --lh-primary-dark: var(--eai-accent-hover);
-    --lh-primary-light: var(--eai-accent-wash);
-    --lh-text: var(--eai-fg);
-    --lh-text-secondary: var(--eai-fg-dim);
-    --lh-text-light: var(--eai-muted);
-    --lh-muted: var(--eai-muted);
-    --lh-border: var(--eai-line);
-    --lh-border-light: var(--eai-line-soft);
-    --lh-radius-btn: var(--eai-radius);
-    --lh-radius-sm: var(--eai-radius);
-    --lh-radius-pill: var(--eai-radius-pill);
-    --lh-shadow-card: none;
-    /* Diese neun wurden bisher nur von ihrem Rueckfallwert am Leben gehalten
-       -- definiert waren sie nirgends. Sie stehen jetzt hier, damit die
-       Plugins sie ohne Rueckfall lesen koennen wie jeden anderen Token. */
-    --lh-surface: var(--eai-surface);
-    --lh-bg-white: var(--eai-surface);
-    --lh-bg-soft: var(--eai-bg);
-    --lh-accent: var(--eai-brand);
-    --lh-radius: var(--eai-radius);
-    --lh-shadow-hover: var(--eai-shadow-raised);
-    --lh-page-max-default: 72rem;
-    /* Rot als Signal ist eine eigene Achse, keine Markenfarbe -- deshalb
-       stehen die Werte hier ausgeschrieben und nicht als --eai-*. Ein
-       Marken-Token dafuer waere falsch: eine Warnung soll nicht mit dem
-       Akzent verwechselt werden koennen. */
-    --lh-pastel-ai: var(--eai-ai-wash);
-    --lh-success: var(--eai-success);
-    --lh-success-light: var(--eai-success-wash);
-    --lh-warning: var(--eai-warning);
-    --lh-warning-light: var(--eai-warning-wash);
-    --lh-danger: var(--eai-danger);
-    --lh-danger-light: var(--eai-danger-wash);
-    --lh-danger-dark: var(--eai-danger-hover);
 
     /* Die Hoehe des Umgebungsbandes, damit alles, was am Fenster klebt, es
        freihalten kann. Null, solange kein Band auf der Seite ist. */
     --eai-banner-height: 0px;
+}
+
+/* --- Rueckfallwerte fuer die LernHive-Token (--lh-*), #132. ------------
+   Mehrere Suite-Stylesheets lesen noch --lh-*. Definieren darf sie aber nur
+   der, dem sie gehoeren: LernHive setzt sie auf :where(:root) und leitet sie
+   aus Boost Union ab. Bisher standen sie hier auf :root und in drei
+   Plugins auf .lh-plugin-shell. Damit ueberschrieb die Suite LernHive auf
+   jeder LernHive-Seite; der Akzent wurde zur Markenfarbe, und Boost Union
+   griff nicht mehr.
+
+   Jetzt stehen sie einmal hier, in einer Kaskadenebene. Deklarationen
+   ausserhalb jeder Ebene schlagen die in einer Ebene, unabhaengig von
+   Reihenfolge und Spezifitaet. Ein :where() allein half nicht: im
+   kompilierten Theme-CSS steht dieser Block hinter dem von LernHive.
+   - Ohne LernHive gelten diese Werte; die Suite sieht aus wie bisher.
+   - Mit LernHive gelten dessen Token, auf seinen Seiten wie in unseren.
+
+   Nur auf :root, nie auf einer Klasse: ein Wert auf .lh-plugin-shell saesse
+   auf dem Element selbst und gewaenne dort gegen das vom :root Geerbte,
+   Ebene hin oder her. Radien und Kartenschatten waren in den Shells zuvor
+   8px und ein feiner Schatten, auf :root der Suite-Radius und keiner; es
+   gilt jetzt einheitlich der Suite-Wert. */
+@layer eledia-lh-fallback {
+    :root {
+        --lh-primary: var(--eai-accent);
+        --lh-primary-dark: var(--eai-accent-hover);
+        --lh-primary-light: var(--eai-accent-wash);
+        --lh-text: var(--eai-fg);
+        --lh-text-secondary: var(--eai-fg-dim);
+        --lh-text-light: var(--eai-muted);
+        --lh-muted: var(--eai-muted);
+        --lh-border: var(--eai-line);
+        --lh-border-light: var(--eai-line-soft);
+        --lh-radius-btn: var(--eai-radius);
+        --lh-radius-sm: var(--eai-radius);
+        --lh-radius-pill: var(--eai-radius-pill);
+        --lh-shadow-card: none;
+        --lh-surface: var(--eai-surface);
+        --lh-bg-white: var(--eai-surface);
+        --lh-bg-soft: var(--eai-bg);
+        --lh-accent: var(--eai-brand);
+        --lh-radius: var(--eai-radius);
+        --lh-shadow-hover: var(--eai-shadow-raised);
+        --lh-page-max-default: 72rem;
+        --lh-pastel-ai: var(--eai-ai-wash);
+        --lh-success: var(--eai-success);
+        --lh-success-light: var(--eai-success-wash);
+        --lh-warning: var(--eai-warning);
+        --lh-warning-light: var(--eai-warning-wash);
+        --lh-danger: var(--eai-danger);
+        --lh-danger-light: var(--eai-danger-wash);
+        --lh-danger-dark: var(--eai-danger-hover);
+        --lh-accent-dark: var(--eai-accent-hover);
+        --lh-accent-light: var(--eai-accent-wash);
+        --lh-bg: var(--eai-bg);
+        --lh-spacing-xs: 4px;
+        --lh-spacing-sm: 8px;
+        --lh-spacing-md: 16px;
+        --lh-spacing-lg: 24px;
+        --lh-spacing-xl: 32px;
+        --lh-page-max-reading: 58rem;
+        --lh-page-max-wide: 88rem;
+        --lh-page-max-full: none;
+    }
 }
 
 /*

@@ -18,6 +18,7 @@ namespace webservice_elediamcp;
 
 use advanced_testcase;
 use webservice_elediamcp\local\ai\tool_exception;
+use webservice_elediamcp\local\ai\tools\moodle_get_resource;
 use webservice_elediamcp\local\ai\tools\moodle_my_submission_files;
 use webservice_elediamcp\local\ai\tools\moodle_search_content;
 
@@ -31,6 +32,7 @@ use webservice_elediamcp\local\ai\tools\moodle_search_content;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers      \webservice_elediamcp\local\ai\tools\moodle_search_content
  * @covers      \webservice_elediamcp\local\ai\tools\moodle_my_submission_files
+ * @covers      \webservice_elediamcp\local\ai\tools\moodle_get_resource
  */
 final class content_tools_test extends advanced_testcase {
     /**
@@ -175,5 +177,178 @@ final class content_tools_test extends advanced_testcase {
 
         $this->expectException(tool_exception::class);
         moodle_my_submission_files::execute(['cmid' => 999999], $student);
+    }
+
+    /**
+     * Create an assignment with a description, instructions and an attached file.
+     *
+     * @param stdClass $course Course.
+     * @param array $overrides Module settings that differ from the defaults.
+     * @return stdClass The assignment module record (with cmid).
+     */
+    private function create_assignment(\stdClass $course, array $overrides = []): \stdClass {
+        global $DB;
+
+        $assign = $this->getDataGenerator()->create_module('assign', $overrides + [
+            'course' => $course->id,
+            'name' => 'Essay',
+            'intro' => 'Write about the water cycle.',
+            'introformat' => FORMAT_HTML,
+            'alwaysshowdescription' => 0,
+            'allowsubmissionsfromdate' => time() + DAYSECS,
+            'duedate' => time() + 3 * DAYSECS,
+        ]);
+        // The generator only knows the editor field for the instructions, so set the column itself.
+        $DB->update_record('assign', (object) [
+            'id' => $assign->id,
+            'activity' => 'Use at least three sources.',
+            'activityformat' => FORMAT_HTML,
+        ]);
+        get_file_storage()->create_file_from_string([
+            'contextid' => \context_module::instance($assign->cmid)->id,
+            'component' => 'mod_assign',
+            'filearea' => 'introattachment',
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'template.txt',
+        ], 'template');
+        return $assign;
+    }
+
+    /**
+     * A learner gets neither description nor instructions nor files before submissions open (#115).
+     */
+    public function test_get_resource_hides_assignment_description_from_learner_before_start(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->create_assignment($course);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        $output = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $student);
+
+        $this->assertSame('', $output['intro']);
+        $this->assertSame('', $output['content']);
+        $this->assertSame([], $output['files']);
+        $this->assertSame((int) $assign->allowsubmissionsfromdate, $output['available_from']);
+        $this->assertStringContainsString('not visible to you yet', $output['summary']);
+        $everything = json_encode($output);
+        $this->assertStringNotContainsString('water cycle', $everything);
+        $this->assertStringNotContainsString('three sources', $everything);
+        $this->assertStringNotContainsString('template.txt', $everything);
+    }
+
+    /**
+     * Once submissions open, a learner gets description, instructions and the file list.
+     */
+    public function test_get_resource_returns_assignment_content_after_start(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->create_assignment($course, ['allowsubmissionsfromdate' => time() - HOURSECS]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        $output = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $student);
+
+        $this->assertArrayNotHasKey('available_from', $output);
+        $this->assertSame('Write about the water cycle.', $output['intro']);
+        $this->assertStringContainsString('Write about the water cycle.', $output['content']);
+        $this->assertStringContainsString('Use at least three sources.', $output['content']);
+        $this->assertCount(1, $output['files']);
+        $this->assertSame('template.txt', $output['files'][0]['filename']);
+    }
+
+    /**
+     * "Always show description" shows the content to learners before submissions open.
+     */
+    public function test_get_resource_honours_always_show_description(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->create_assignment($course, ['alwaysshowdescription' => 1]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        $output = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $student);
+
+        $this->assertStringContainsString('Write about the water cycle.', $output['content']);
+        $this->assertArrayNotHasKey('available_from', $output);
+    }
+
+    /**
+     * People who may grade the assignment see everything, also before submissions open.
+     */
+    public function test_get_resource_shows_assignment_content_to_teacher_before_start(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->create_assignment($course);
+        $teacher = $this->getDataGenerator()->create_and_enrol($course, 'editingteacher');
+        $this->setUser($teacher);
+
+        $output = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $teacher);
+
+        $this->assertStringContainsString('Write about the water cycle.', $output['content']);
+        $this->assertStringContainsString('Use at least three sources.', $output['content']);
+        $this->assertCount(1, $output['files']);
+        $this->assertArrayNotHasKey('available_from', $output);
+    }
+
+    /**
+     * A group override with a later start hides the description from that group, as Moodle's own page does.
+     */
+    public function test_get_resource_applies_group_override_of_the_start_date(): void {
+        global $DB;
+
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->create_assignment($course, ['allowsubmissionsfromdate' => time() - HOURSECS]);
+        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $inside = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $outside = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->getDataGenerator()->create_group_member(['groupid' => $group->id, 'userid' => $inside->id]);
+        $later = time() + DAYSECS;
+        $DB->insert_record('assign_overrides', (object) [
+            'assignid' => $assign->id,
+            'groupid' => $group->id,
+            'allowsubmissionsfromdate' => $later,
+        ]);
+
+        $this->setUser($inside);
+        $hidden = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $inside);
+        $this->assertSame('', $hidden['content']);
+        $this->assertSame([], $hidden['files']);
+        $this->assertSame($later, $hidden['available_from']);
+
+        $this->setUser($outside);
+        $shown = moodle_get_resource::execute(['cmid' => (int) $assign->cmid], $outside);
+        $this->assertStringContainsString('Write about the water cycle.', $shown['content']);
+    }
+
+    /**
+     * With "attachments only while submissions are open", the file list follows Moodle once submissions are closed.
+     */
+    public function test_get_resource_lists_description_files_only_while_submissions_are_open_if_so_set(): void {
+        global $DB;
+
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $open = $this->create_assignment($course, [
+            'allowsubmissionsfromdate' => time() - DAYSECS,
+            'submissionattachments' => 1,
+        ]);
+        $closed = $this->create_assignment($course, [
+            'allowsubmissionsfromdate' => time() - 3 * DAYSECS,
+            'duedate' => time() - 2 * DAYSECS,
+            'submissionattachments' => 1,
+        ]);
+        $DB->set_field('assign', 'cutoffdate', time() - DAYSECS, ['id' => $closed->id]);
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $this->setUser($student);
+
+        $whileopen = moodle_get_resource::execute(['cmid' => (int) $open->cmid], $student);
+        $afterclose = moodle_get_resource::execute(['cmid' => (int) $closed->cmid], $student);
+
+        $this->assertCount(1, $whileopen['files']);
+        $this->assertStringContainsString('Write about the water cycle.', $afterclose['content']);
+        $this->assertSame([], $afterclose['files']);
     }
 }

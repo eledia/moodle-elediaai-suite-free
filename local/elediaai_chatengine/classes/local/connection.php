@@ -44,6 +44,9 @@ class connection {
     /** @var string Configuration component name. */
     public const COMPONENT = 'local_elediaai_chatengine';
 
+    /** @var int Default request timeout in seconds. */
+    public const DEFAULT_REQUEST_TIMEOUT = 120;
+
     /**
      * Read a plugin configuration value with a default fallback.
      *
@@ -162,35 +165,89 @@ class connection {
     /**
      * Request timeout in seconds.
      *
+     * Two minutes by default. An agent turn is not one model call: retrieval,
+     * a bounded tool loop and a reasoning model can each take a while, and
+     * thirty seconds cut off answers that were still on their way (#38).
+     * A streamed answer is unaffected either way -- there the limit applies
+     * to the final frame, and stream_runner lifts PHP's own time limit.
+     *
      * @return int At least one second.
      */
     public static function request_timeout(): int {
-        return max(1, (int) self::get('requesttimeout', 30));
+        return max(1, (int) self::get('requesttimeout', self::DEFAULT_REQUEST_TIMEOUT));
     }
+
+    /**
+     * The tool names of the backend contract (rag_server_spec Part A).
+     *
+     * Fixed in code, not configurable (#54): the names belong to the contract
+     * between this site and the agent, and a customer who renames one does not
+     * get a different tool -- only an "Unknown tool" on the next turn.
+     *
+     * @var array<string, string>
+     */
+    public const TOOLS = [
+        'chat' => 'tutor_chat',
+        'history' => 'tutor_get_history',
+        'delete' => 'tutor_delete_conversation',
+        'deleteuser' => 'tutor_delete_user_data',
+        'memoryoptin' => 'tutor_set_memory_optin',
+        'recluster' => 'tutor_recluster_questions',
+    ];
+
+    /**
+     * Whether new installations use each optional tool.
+     *
+     * The three that serve deletion and the transcript are on: a deleted
+     * learner's data should leave the agent as well, and the agent serves all
+     * three. Memory and the nightly reclustering change what the product does
+     * -- a consent dialog for the learner, a batch job on the server -- and
+     * stay off until somebody switches them on.
+     *
+     * @var array<string, int>
+     */
+    public const OPTIONAL_TOOL_DEFAULTS = [
+        'history' => 1,
+        'delete' => 1,
+        'deleteuser' => 1,
+        'memoryoptin' => 0,
+        'recluster' => 0,
+    ];
 
     /**
      * The name of one tool in the backend's catalogue.
      *
-     * The six tool names are part of the documented backend contract
-     * (rag_server_spec Part A), not of any one placement, which is why they are
-     * configured here rather than in a block.
+     * The chat tool is always there. An optional one is named only when it is
+     * switched on, so callers keep asking "is it there?" by comparing with ''.
      *
-     * @param string $key One of chat, history, delete, deleteuser, memoryoptin, recluster.
-     * @return string The configured name, or '' when the backend does not offer it.
+     * @param string $key One of the keys of {@see self::TOOLS}.
+     * @return string The contract name, or '' when the tool is switched off.
      */
     public static function tool_name(string $key): string {
-        $defaults = [
-            'chat' => 'tutor_chat',
-            'history' => '',
-            'delete' => '',
-            'deleteuser' => '',
-            'memoryoptin' => '',
-            'recluster' => '',
-        ];
-        if (!array_key_exists($key, $defaults)) {
+        if (!array_key_exists($key, self::TOOLS)) {
             throw new \coding_exception('Unknown chat engine tool key: ' . $key);
         }
-        return trim((string) self::get('tool_' . $key, $defaults[$key]));
+        if ($key === 'chat') {
+            return self::TOOLS['chat'];
+        }
+        return self::tool_enabled($key) ? self::TOOLS[$key] : '';
+    }
+
+    /**
+     * Whether an optional tool is switched on.
+     *
+     * @param string $key One of the keys of {@see self::OPTIONAL_TOOL_DEFAULTS}.
+     * @return bool
+     */
+    public static function tool_enabled(string $key): bool {
+        if (!array_key_exists($key, self::OPTIONAL_TOOL_DEFAULTS)) {
+            throw new \coding_exception('Unknown optional chat engine tool: ' . $key);
+        }
+        $flag = get_config(self::COMPONENT, 'enabletool_' . $key);
+        if ($flag === false) {
+            return (bool) self::OPTIONAL_TOOL_DEFAULTS[$key];
+        }
+        return (int) $flag === 1;
     }
 
     /**

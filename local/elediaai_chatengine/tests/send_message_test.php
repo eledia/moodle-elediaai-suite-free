@@ -163,4 +163,19 @@ final class send_message_test extends \advanced_testcase {
 
         $this->assertSame([], $this->adapter->lastrequest->options);
     }
+
+    /**
+     * A model's answer is flagged for the panel, which marks it in the DOM (#52).
+     *
+     * @return void
+     */
+    public function test_a_model_answer_is_flagged_as_ai_generated(): void {
+        $this->install();
+
+        $result = send_message::execute(self::COMPONENT, 0, 'Was ist Photosynthese?');
+        $this->assertTrue($result['aigenerated']);
+        // Declared, so the web service layer does not strip it on the way out.
+        $cleaned = \core_external\external_api::clean_returnvalue(send_message::execute_returns(), $result);
+        $this->assertTrue($cleaned['aigenerated']);
+    }
 }

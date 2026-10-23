@@ -61,7 +61,12 @@ class widget {
         // Only grounded mode calls back into Moodle, so only it requires the
         // connector + a selected external service. (Whether the chosen service
         // actually exists is verified at call time by token_provider.)
-        $blockconfig = (object) ['ragmode' => (string) ($instance['ragmode'] ?? chat_mode::MODE_GROUNDED)];
+        // The whole instance, not only its mode: whether there is anything to
+        // ground on depends on the knowledge base too (#171). With the mode
+        // alone, an empty course showed the model-only banner although its
+        // knowledge base pointed at an indexed one -- and the turn, which gets
+        // the whole instance, answered from it.
+        $blockconfig = (object) (['ragmode' => (string) ($instance['ragmode'] ?? chat_mode::MODE_GROUNDED)] + $instance);
         if (chat_mode::resolve($courseid, $blockconfig) === chat_mode::MODE_GROUNDED) {
             if (!token_provider::is_connector_available()) {
                 return get_string('error_connector_missing', 'block_elediaai_tutor');
@@ -207,7 +212,12 @@ class widget {
         // Resolve the answer mode (grounded / LLM-only / unavailable). When the
         // tutor cannot answer here (no knowledge base and LLM-only disallowed),
         // show a friendly notice and skip the chat UI entirely.
-        $blockconfig = (object) ['ragmode' => (string) ($instance['ragmode'] ?? chat_mode::MODE_GROUNDED)];
+        // The whole instance, not only its mode: whether there is anything to
+        // ground on depends on the knowledge base too (#171). With the mode
+        // alone, an empty course showed the model-only banner although its
+        // knowledge base pointed at an indexed one -- and the turn, which gets
+        // the whole instance, answered from it.
+        $blockconfig = (object) (['ragmode' => (string) ($instance['ragmode'] ?? chat_mode::MODE_GROUNDED)] + $instance);
         $mode = chat_mode::resolve($courseid, $blockconfig);
         if ($mode === chat_mode::MODE_UNAVAILABLE) {
             $isadmin = has_capability('moodle/site:config', \core\context\system::instance());
@@ -316,32 +326,36 @@ class widget {
             }
         }
 
-        // Prompt starters: instance value, falling back to the site default
-        // (resolved by the registry). One per line, capped so the welcome stays tidy.
-        // On the dashboard the audience-specific list wins when it is non-empty:
-        // managers fall back through the teacher list to the base list, teachers
-        // straight to the base list; a fully unconfigured dashboard ships with
-        // built-in pills per audience. Selection is cosmetic only — every prompt
-        // still runs under the user's real capabilities server-side.
-        $starterskey = 'promptstarters';
+        // Prompt starters. Off the dashboard: the instance's list, falling back
+        // to the site's (resolved by the registry).
+        // On the dashboard every audience has its own list and the base list
+        // does not count (#172): students read promptstarters_student,
+        // teachers promptstarters_teacher, managers promptstarters_manager and
+        // then the teacher list. Where that is empty the built-in pills for
+        // the audience apply. Before, students got the base list -- which on
+        // The test instance held admin tiles, so learners saw "Create a course". Which
+        // list shows is cosmetic only: every prompt still runs under the
+        // user's real capabilities server-side.
         $audience = user_audience::STUDENT;
         if ($dashboard) {
             $audience = user_audience::resolve((int) $USER->id);
-            if (
-                $audience === user_audience::MANAGER
-                    && trim((string) registry::effective('promptstarters_manager', $instance)) !== ''
-            ) {
-                $starterskey = 'promptstarters_manager';
-            } else if (
-                $audience !== user_audience::STUDENT
-                    && trim((string) registry::effective('promptstarters_teacher', $instance)) !== ''
-            ) {
-                $starterskey = 'promptstarters_teacher';
+            $chain = match ($audience) {
+                user_audience::MANAGER => ['promptstarters_manager', 'promptstarters_teacher'],
+                user_audience::STUDENT => ['promptstarters_student'],
+                default => ['promptstarters_teacher'],
+            };
+            $startersraw = '';
+            foreach ($chain as $starterskey) {
+                $startersraw = (string) registry::effective($starterskey, $instance);
+                if (trim($startersraw) !== '') {
+                    break;
+                }
             }
-        }
-        $startersraw = (string) registry::effective($starterskey, $instance);
-        if ($dashboard && trim($startersraw) === '') {
-            $startersraw = get_string(self::default_starters_key($audience), 'block_elediaai_tutor');
+            if (trim($startersraw) === '') {
+                $startersraw = get_string(self::default_starters_key($audience), 'block_elediaai_tutor');
+            }
+        } else {
+            $startersraw = (string) registry::effective('promptstarters', $instance);
         }
         $starters = self::parse_starters($startersraw);
 
@@ -384,6 +398,10 @@ class widget {
             // layout has no scrollbar of its own.
             'pagescroll' => $dashboard,
             'autoloadhistory' => $historyenabled,
+            // The AI notice once at the chat, when the site chose that style (#42).
+            'ainoticeonce' => method_exists('\\local_aitransparency\\marker', 'chat_notice')
+                ? (string) \local_aitransparency\marker::chat_notice()
+                : '',
             'dashboardgreeting' => format_string($dashboardgreeting),
             'dashboardgreetinghtml' => $dashboardgreetinghtml,
             'briefing' => $briefing,
@@ -422,6 +440,9 @@ class widget {
             'streaming' => connection::streaming_enabled(),
             'maxlength' => connection::max_message_length(),
             'persona' => format_string($persona),
+            // The system behind the answers, for data-ai-system (#52); the
+            // persona is a display name the instance may change.
+            'aisystem' => get_string('pluginname', 'block_elediaai_tutor'),
             'avatarurl' => $avatarurl,
             'ltmenabled' => ltm::is_enabled((int) $USER->id),
             'candelete' => has_capability('block/elediaai_tutor:deleteownhistory', $context),

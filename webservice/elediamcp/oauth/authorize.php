@@ -46,7 +46,8 @@ $params = [
 $pageurl = new moodle_url('/webservice/elediamcp/oauth/authorize.php', $params);
 $PAGE->set_url($pageurl);
 $PAGE->set_context(context_system::instance());
-$PAGE->set_pagelayout('standard');
+// Compact layout: the consent is often shown in an app's sign-in sheet on a phone.
+$PAGE->set_pagelayout('login');
 $PAGE->set_title(get_string('oauth_consent_title', 'webservice_elediamcp'));
 $PAGE->set_heading(get_string('oauth_consent_title', 'webservice_elediamcp'));
 
@@ -68,6 +69,31 @@ function webservice_elediamcp_oauth_authorize_error(string $message) {
     die;
 }
 
+/**
+ * Send the browser back to the client's (already validated) redirect URI.
+ *
+ * Web URIs go through Moodle's redirect(). A native app's private-use scheme
+ * (RFC 8252 section 7.1) cannot be expressed as a moodle_url - it would become a
+ * relative path below this script and the app would never get its callback - so it
+ * is sent as the Location header unchanged.
+ *
+ * @param string $url Redirect URI with the response query.
+ * @return void
+ */
+function webservice_elediamcp_oauth_client_redirect(string $url): void {
+    if (service::is_web_redirect_uri($url)) {
+        redirect(new moodle_url($url));
+    }
+    if (preg_match('/[\x00-\x1f]/', $url)) {
+        webservice_elediamcp_oauth_authorize_error(
+            get_string('oauth_err_redirect_uri_invalid', 'webservice_elediamcp')
+        );
+    }
+    header('Location: ' . $url, true, 302);
+    header('Cache-Control: no-store');
+    die;
+}
+
 if (!service::is_enabled()) {
     webservice_elediamcp_oauth_authorize_error(
         get_string('oauth_err_disabled', 'webservice_elediamcp')
@@ -80,20 +106,14 @@ if (isguestuser()) {
     );
 }
 
-// Validate the request. Non-redirectable failures render an error page; once the
-// client and redirect URI are trusted, protocol failures redirect back with error.
+// Validate the request. Every failure before the person has decided is shown as a page, never sent
+// back to the client: a redirect URI can be registered by anyone (dynamic registration), so a link
+// with a faulty request would otherwise bounce a signed-in person from this site to any address.
+// Only the person's own decision (allow or deny below) goes back to the client.
 try {
     $ctx = service::validate_authorization_request($params);
 } catch (oauth_exception $ex) {
-    if (!$ex->is_redirectable()) {
-        webservice_elediamcp_oauth_authorize_error($ex->get_description());
-    }
-    redirect(new moodle_url(service::build_error_redirect(
-        (string) $params['redirect_uri'],
-        $ex->get_error_code(),
-        $ex->get_description(),
-        $params['state'] !== '' ? (string) $params['state'] : null
-    )));
+    webservice_elediamcp_oauth_authorize_error($ex->get_description());
 }
 
 $state = $ctx->state;
@@ -104,19 +124,19 @@ if (optional_param('decision', '', PARAM_ALPHA) !== '') {
     $decision = optional_param('decision', '', PARAM_ALPHA);
     if ($decision === 'allow') {
         $code = service::issue_code($ctx, (int) $USER->id);
-        redirect(new moodle_url(service::build_success_redirect(
+        webservice_elediamcp_oauth_client_redirect(service::build_success_redirect(
             (string) $ctx->redirecturi,
             $code,
             $state
-        )));
+        ));
     }
     // Denied.
-    redirect(new moodle_url(service::build_error_redirect(
+    webservice_elediamcp_oauth_client_redirect(service::build_error_redirect(
         (string) $ctx->redirecturi,
         'access_denied',
         get_string('oauth_err_access_denied', 'webservice_elediamcp'),
         $state
-    )));
+    ));
 }
 
 // Render the consent screen.
@@ -129,16 +149,19 @@ $out .= html_writer::tag(
     'p',
     get_string('oauth_consent_intro', 'webservice_elediamcp', (object) [
         'client' => $clientname,
+        'site' => format_string($SITE->fullname),
         'user' => fullname($USER),
     ])
 );
 
+// Scopes are enforced on the token: list what the person grants. Without a request all are granted.
 $scopelist = $ctx->scope !== null && $ctx->scope !== ''
     ? explode(' ', $ctx->scope)
     : service::supported_scopes();
 $items = '';
 foreach ($scopelist as $scope) {
-    $items .= html_writer::tag('li', s($scope));
+    $identifier = 'oauth_scope_' . preg_replace('/[^a-z0-9_]/', '_', strtolower($scope));
+    $items .= html_writer::tag('li', get_string($identifier, 'webservice_elediamcp'));
 }
 $out .= html_writer::tag('p', get_string('oauth_consent_scopes', 'webservice_elediamcp'));
 $out .= html_writer::tag('ul', $items);

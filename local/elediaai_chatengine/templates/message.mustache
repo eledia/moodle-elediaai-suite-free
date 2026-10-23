@@ -34,16 +34,32 @@
         "failuretext": "",
         "text": "",
         "failed": false,
+        "noretry": false,
+        "aigenerated": true,
+        "aisystem": "eLeDia.ai Tutor",
         "sources": [
             {"title": "Week 1 notes", "url": "https://example.com/n", "hasurl": true, "snippet": "..."}
         ],
         "hassources": true,
         "copylabel": "Copy answer",
-        "retrylabel": "Retry"
+        "retrylabel": "Retry",
+        "hasconfirmation": true,
+        "confirmation": {
+            "yeslabel": "Yes", "nolabel": "No", "yesmessage": "Yes", "nomessage": "No",
+            "summary": "The outline is ready. Confirming creates the course.", "hassummary": true,
+            "destructive": false, "tooltitle": "Generate a course", "hastooltitle": true,
+            "outline": {
+                "title": "Introduction to Statistics", "hastitle": true, "count": 2, "open": true,
+                "sections": [
+                    {"num": 1, "title": "Describing data", "summary": "Mean, median, spread.", "hassummary": true},
+                    {"num": 2, "title": "Probability", "summary": "", "hassummary": false}
+                ]
+            }
+        }
     }
 }}
 <div class="{{prefix}}-message {{#isuser}}{{prefix}}-user{{/isuser}}{{#isassistant}}{{prefix}}-assistant{{/isassistant}}{{#failed}} {{prefix}}-failed{{/failed}}"
-     data-region="message" role="article">
+     data-region="message" role="article"{{#aigenerated}} data-ai-generated="true" data-ai-system="{{aisystem}}"{{/aigenerated}}>
     <div class="{{prefix}}-meta">
         {{#isassistant}}<span class="{{prefix}}-msg-avatar" aria-hidden="true">
             <img class="{{prefix}}-msg-avatar-img" src="{{avatarurl}}" alt="" width="20" height="20">
@@ -53,7 +69,7 @@
             <span class="{{prefix}}-grounding {{prefix}}-mcp"
                   title="{{#str}}mcpbadge_title, local_elediaai_chatengine{{/str}}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>
-                MCP
+                {{#str}}mcpbadge, local_elediaai_chatengine{{/str}}
             </span>
         {{/showmcpbadge}}
         {{#showgrounding}}
@@ -73,14 +89,33 @@
             {{/grounded}}
         {{/showgrounding}}
     </div>
-    <div class="{{prefix}}-bubble">
+    <div class="{{prefix}}-bubble{{#hasconfirmation}} {{prefix}}-bubble--confirmation{{#confirmation.destructive}} {{prefix}}-bubble--destructive{{/confirmation.destructive}}{{/hasconfirmation}}">
         {{! A restored turn arrives as HTML the server already escaped
             (format_text with FORMAT_PLAIN); a turn just typed arrives as plain
             text. Rendering only the latter dropped every one of a person's own
             messages when a conversation was reopened. }}
         {{#isuser}}{{#html}}{{{html}}}{{/html}}{{^html}}{{text}}{{/html}}{{/isuser}}
         {{#isassistant}}
+            {{#hasconfirmation}}
+                {{! An answer that asks for a decision is one card: what is
+                    about to happen, the facts, the decision. Before, the facts
+                    sat above, the AI notice between them and a separate box
+                    with the buttons -- it was not clear what belonged to what.
+                    The notice moves to the end by CSS order, without script. }}
+                <div class="{{prefix}}-confirmation__head">
+                    <p class="{{prefix}}-confirmation__eyebrow">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class="lucide"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+                        {{#str}}confirmation_eyebrow, local_elediaai_chatengine{{/str}}
+                    </p>
+                    {{#confirmation.hastooltitle}}
+                        <p class="{{prefix}}-confirmation__title">{{confirmation.tooltitle}}</p>
+                    {{/confirmation.hastooltitle}}
+                </div>
+            {{/hasconfirmation}}
             <div class="{{prefix}}-markdown">
+                {{! Art. 50 for the screen reader too (#52): the visible notice
+                    may be folded away, this sentence is always read. }}
+                {{#aigenerated}}<span class="visually-hidden">{{#str}}aigenerated_sr, local_elediaai_chatengine{{/str}}</span>{{/aigenerated}}
                 {{#failuretext}}<p>{{failuretext}}</p>{{/failuretext}}
                 {{^failuretext}}{{{html}}}{{/failuretext}}
             </div>
@@ -90,15 +125,27 @@
                     Buttons resolve the pending action with an explicit
                     decision flag — never via yes/no text matching. }}
                 <div class="{{prefix}}-confirmation{{#confirmation.destructive}} {{prefix}}-confirmation--destructive{{/confirmation.destructive}}"
-                     data-region="confirmation-actions" role="group">
-                    {{#confirmation.hastooltitle}}
-                        <div class="{{prefix}}-confirmation__title">
-                            {{#confirmation.destructive}}<i class="fa fa-exclamation-triangle" aria-hidden="true"></i> {{/confirmation.destructive}}{{confirmation.tooltitle}}
-                        </div>
-                    {{/confirmation.hastooltitle}}
+                     data-region="confirmation-actions" role="group"{{#confirmation.hastooltitle}} aria-label="{{confirmation.tooltitle}}"{{/confirmation.hastooltitle}}>
                     {{#confirmation.hassummary}}
                         <div class="{{prefix}}-confirmation__summary">{{confirmation.summary}}</div>
                     {{/confirmation.hassummary}}
+                    {{#confirmation.outline}}
+                        {{! The course outline the person is agreeing to (#79).
+                            Native details/summary: keyboard- and screen-reader-
+                            operable without script; long outlines start folded. }}
+                        <details class="{{prefix}}-confirmation__outline" data-region="confirmation-outline"{{#open}} open{{/open}}>
+                            <summary>{{#str}}confirmation_outline, local_elediaai_chatengine, {{count}}{{/str}}</summary>
+                            {{#hastitle}}<p class="{{prefix}}-confirmation__outline-title">{{title}}</p>{{/hastitle}}
+                            <ol class="{{prefix}}-confirmation__outline-list">
+                                {{#sections}}
+                                    <li>
+                                        <span class="{{prefix}}-confirmation__outline-section">{{title}}</span>
+                                        {{#hassummary}}<span class="{{prefix}}-confirmation__outline-summary">{{summary}}</span>{{/hassummary}}
+                                    </li>
+                                {{/sections}}
+                            </ol>
+                        </details>
+                    {{/confirmation.outline}}
                     <div class="{{prefix}}-confirmation__actions">
                         <button type="button"
                                 class="btn btn-sm {{#confirmation.destructive}}btn-danger{{/confirmation.destructive}}{{^confirmation.destructive}}btn-primary{{/confirmation.destructive}}"
@@ -108,6 +155,7 @@
                                 data-action="confirm-decline"
                                 data-message="{{confirmation.nomessage}}">{{confirmation.nolabel}}</button>
                     </div>
+                    <p class="{{prefix}}-confirmation__hint">{{#str}}confirmation_hint, local_elediaai_chatengine{{/str}}</p>
                 </div>
             {{/hasconfirmation}}
             {{#hassources}}
@@ -138,10 +186,10 @@
             </button>
         </div>
     {{/isassistant}}
-    {{#failed}}
+    {{#failed}}{{^noretry}}
         <div class="{{prefix}}-message-actions">
             <button type="button" class="btn btn-sm btn-outline-secondary"
                     data-action="retry">{{retrylabel}}</button>
         </div>
-    {{/failed}}
+    {{/noretry}}{{/failed}}
 </div>

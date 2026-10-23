@@ -888,6 +888,7 @@ class TutorChat extends ChatPanel {
                     sendername: isuser ? strings.you : this.config.persona,
                     text: '',
                     html: m.html,
+                    aigenerated: !isuser && !!m.aigenerated,
                     showgrounding: !isuser,
                     copylabel: strings.copy,
                     retrylabel: strings.retry

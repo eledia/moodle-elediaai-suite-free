@@ -38,7 +38,9 @@ interface transport {
      * @param string[] $headers Request headers as "Name: value" strings.
      * @param string $body Raw request body.
      * @param int $timeout Timeout in seconds.
-     * @return array{status: int, headers: array<string,string>, body: string, error: string}
+     * @return array{status: int, headers: array<string,string>, body: string, error: string, errno?: int}
+     *         `errno` is the cURL error number when there is one; optional, so a
+     *         transport that cannot tell leaves it out.
      */
     public function post(string $url, array $headers, string $body, int $timeout): array;
 
@@ -54,7 +56,7 @@ interface transport {
      * @param string $body Raw request body.
      * @param int $timeout Timeout in seconds.
      * @param callable(string): void $onchunk Called with each raw chunk as it arrives.
-     * @return array{status: int, headers: array<string,string>, body: string, error: string}
+     * @return array{status: int, headers: array<string,string>, body: string, error: string, errno?: int}
      */
     public function post_streaming(
         string $url,

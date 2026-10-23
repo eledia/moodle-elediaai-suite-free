@@ -46,6 +46,16 @@ use webservice_elediamcp\local\ai\ai_tool;
  */
 class moodle_verify_user_context implements ai_tool {
     /**
+     * Most course ids one call will check.
+     *
+     * Each one costs a rights check. The chat engine sends at most its own
+     * limit (twenty out of the box), so this only bounds a caller that is not
+     * the chat engine -- the rest of a longer list is not verified, and what is
+     * not verified does not come back.
+     */
+    public const MAX_SCOPE = 200;
+
+    /**
      * Tool name.
      *
      * @return string
@@ -73,8 +83,10 @@ class moodle_verify_user_context implements ai_tool {
             . 'enrolled in, their role in each course, optional group memberships, and a short '
             . 'natural-language summary suitable for an LLM system prompt. Use this as the first '
             . 'call in any tutor or agent conversation. Restrict to a single course by passing '
-            . 'course_id. Capability information is only returned when include_capabilities is '
-            . 'true and the caller has webservice/elediamcp:viewcaps.';
+            . 'course_id. Pass course_ids to have a whole search scope checked: the response then '
+            . 'carries verified_course_ids, the subset this user may read. Capability information '
+            . 'is only returned when include_capabilities is true and the caller has '
+            . 'webservice/elediamcp:viewcaps.';
     }
 
     /**
@@ -90,6 +102,14 @@ class moodle_verify_user_context implements ai_tool {
                 'course_id' => [
                     'type' => 'integer',
                     'description' => 'Optional Moodle course id to restrict the response to.',
+                ],
+                'course_ids' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'integer'],
+                    'maxItems' => self::MAX_SCOPE,
+                    'description' => 'Optional search scope to check, usually the search_course_ids of '
+                        . 'a chat request including its course_id. The response then carries '
+                        . 'verified_course_ids and verified_courses.',
                 ],
                 'include_roles' => [
                     'type' => 'boolean',
@@ -161,6 +181,30 @@ class moodle_verify_user_context implements ai_tool {
                         ],
                     ],
                 ],
+                'verified_course_ids' => [
+                    'type' => 'array',
+                    'items' => ['type' => 'integer'],
+                    'description' => 'Only present when course_ids was given: those of them this user may '
+                        . 'read, in the order given. Present and empty means none; absent means the '
+                        . 'scope was not checked.',
+                ],
+                'verified_courses' => [
+                    'type' => 'array',
+                    'description' => 'Only present when course_ids was given: one light entry per '
+                        . 'verified course, for naming it in a prompt. No roles or groups.',
+                    'items' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'id' => ['type' => 'integer'],
+                            'shortname' => ['type' => 'string'],
+                            'fullname' => ['type' => 'string'],
+                            'visible' => ['type' => 'boolean'],
+                            'start_date' => ['type' => ['string', 'null']],
+                            'end_date' => ['type' => ['string', 'null']],
+                            'url' => ['type' => 'string'],
+                        ],
+                    ],
+                ],
                 'capabilities' => [
                     'type' => 'array',
                     'items' => ['type' => 'string'],
@@ -203,14 +247,21 @@ class moodle_verify_user_context implements ai_tool {
         $includeroles = !array_key_exists('include_roles', $arguments) || (bool) $arguments['include_roles'];
         $includegroups = !array_key_exists('include_groups', $arguments) || (bool) $arguments['include_groups'];
         $includecaps = !empty($arguments['include_capabilities']);
+        $scope = array_key_exists('course_ids', $arguments)
+            ? self::parse_scope($arguments['course_ids'])
+            : null;
 
+        // The scope belongs in the key. Without it a call that asked for a
+        // check would be served the cached answer of one that did not, and
+        // the caller would read the missing field as "not supported".
         $cachekey = sprintf(
-            'verify_%d_%s_%d_%d_%d',
+            'verify_%d_%s_%d_%d_%d_%s',
             (int) $user->id,
             $courseidfilter !== null ? (string) $courseidfilter : 'all',
             $includeroles ? 1 : 0,
             $includegroups ? 1 : 0,
-            $includecaps ? 1 : 0
+            $includecaps ? 1 : 0,
+            $scope === null ? 'noscope' : sha1(implode(',', $scope))
         );
         $cache = cache::make('webservice_elediamcp', 'verify_context');
         $cached = $cache->get($cachekey);
@@ -308,6 +359,12 @@ class moodle_verify_user_context implements ai_tool {
             'summary' => self::build_summary($user, $courses, $isadmin),
         ];
 
+        if ($scope !== null) {
+            [$verifiedids, $verifiedcourses] = self::verify_scope($scope, $userid, $stringopts);
+            $payload['verified_course_ids'] = $verifiedids;
+            $payload['verified_courses'] = $verifiedcourses;
+        }
+
         if ($includecaps) {
             $payload['capabilities'] = self::collect_capabilities($user, $isadmin);
         }
@@ -329,6 +386,100 @@ class moodle_verify_user_context implements ai_tool {
 
         $cache->set($cachekey, $payload);
         return $payload;
+    }
+
+    /**
+     * Read the scope argument into clean course ids.
+     *
+     * Forgiving about the shape -- an int array as the schema says, but also a
+     * comma-separated string, because that is how the chat request carries the
+     * same list and a caller may simply pass it on. Unusable entries are
+     * dropped, not raised: what is dropped is never verified and therefore
+     * never comes back, which is the safe direction.
+     *
+     * @param mixed $raw The course_ids argument as received.
+     * @return int[] Positive, unique ids in the order given, at most MAX_SCOPE.
+     */
+    private static function parse_scope($raw): array {
+        if (is_string($raw)) {
+            $raw = explode(',', $raw);
+        }
+        if (!is_array($raw)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($raw as $entry) {
+            if (is_int($entry) || (is_string($entry) && ctype_digit(trim($entry)))) {
+                $id = (int) $entry;
+                if ($id > 0) {
+                    $ids[$id] = $id;
+                }
+            }
+        }
+        return array_slice(array_values($ids), 0, self::MAX_SCOPE);
+    }
+
+    /**
+     * Which of these courses this user may read.
+     *
+     * The question this answers is deliberately "may read", not "would Moodle
+     * have chosen exactly this list". The chat engine draws the list from a
+     * configured knowledge base, enrolments and what has been indexed; none of
+     * that is a permission, and repeating it here would make two places that
+     * must agree. What has to be stopped is a list naming courses somebody
+     * could not open in the browser -- and a list of courses they can open
+     * gains them nothing they did not already have.
+     *
+     * {@see can_access_course()} is that question in Moodle's own words. It
+     * also keeps the course somebody is asking from when they hold
+     * moodle/course:view there without an enrolment (for example a category
+     * manager), which is why the surface course needs no special case: it
+     * is checked like every other id, and passes for the same reason
+     * the person could stand on it. A forged surface id does not. Like
+     * require_login(), only an active enrolment counts: a suspended one does
+     * not open the course in the browser either.
+     *
+     * @param int[] $ids Course ids, in the order given.
+     * @param int $userid The authenticated user.
+     * @param array<string, mixed> $stringopts Options for format_string().
+     * @return array{0: int[], 1: array<int, array<string, mixed>>} Verified ids and light entries.
+     */
+    private static function verify_scope(array $ids, int $userid, array $stringopts): array {
+        global $DB;
+
+        if ($ids === []) {
+            return [[], []];
+        }
+
+        $records = $DB->get_records_list(
+            'course',
+            'id',
+            $ids,
+            '',
+            'id, category, shortname, fullname, visible, startdate, enddate'
+        );
+
+        $verified = [];
+        $entries = [];
+        foreach ($ids as $id) {
+            $course = $records[$id] ?? null;
+            if ($course === null || !can_access_course($course, $userid, '', true)) {
+                continue;
+            }
+            $verified[] = $id;
+            $entries[] = [
+                'id' => $id,
+                'shortname' => (string) $course->shortname,
+                'fullname' => format_string((string) $course->fullname, true, $stringopts),
+                'visible' => (bool) $course->visible,
+                'start_date' => self::format_timestamp((int) ($course->startdate ?? 0)),
+                'end_date' => self::format_timestamp((int) ($course->enddate ?? 0)),
+                'url' => (new moodle_url('/course/view.php', ['id' => $id]))->out(false),
+            ];
+        }
+
+        return [$verified, $entries];
     }
 
     /**

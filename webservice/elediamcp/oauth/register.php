@@ -29,7 +29,8 @@
  */
 
 define('NO_DEBUG_DISPLAY', true);
-define('NO_MOODLE_COOKIES', true);
+// WS_SERVER already implies NO_MOODLE_COOKIES (lib/setup.php); defining it here as well
+// raises "constant already defined", a fatal error on developer sites.
 define('WS_SERVER', true);
 
 // phpcs:ignore moodle.Files.RequireLogin.Missing
@@ -68,6 +69,15 @@ if ($method !== 'POST') {
 if (!service::is_enabled() || !security::oauth_allow_dynamic_registration()) {
     http_response_code(404);
     echo json_encode(['error' => 'registration_disabled']);
+    die;
+}
+
+// Registration needs no login, so it is limited per source address, stricter than the MCP calls.
+$limit = security::enforce_rate_limit('oauth_register_' . security::rate_limit_key(null), 5, 30);
+if (!$limit['allowed']) {
+    http_response_code(429);
+    header('Retry-After: ' . $limit['retry_after']);
+    echo json_encode(['error' => 'temporarily_unavailable', 'error_description' => 'Too many registrations']);
     die;
 }
 

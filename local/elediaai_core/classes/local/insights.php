@@ -57,6 +57,18 @@ final class insights {
     public const DEFAULT_DAYS = 30;
 
     /**
+     * The action name of a chat turn, as the chat engine records it.
+     *
+     * The turn table holds every AI request of the suite: chat turns, and
+     * since the credit chokepoint also every core_ai call a feature makes --
+     * the question generator's prompt among them. The insights are about what
+     * learners asked, so they read chat turns only (#170). Before, a teacher
+     * found the generator prompt "Generate 5 quiz questions ... Return ONLY
+     * Moodle question XML" listed as a learner's question.
+     */
+    public const ACTION_CHAT = 'chat_turn';
+
+    /**
      * Static-only.
      */
     private function __construct() {
@@ -340,8 +352,9 @@ final class insights {
             "SELECT DISTINCT courseid
                FROM {" . turn_recorder::TABLE . "}
               WHERE courseid > 0
-                AND timecreated >= :cutoff",
-            ['cutoff' => self::cutoff($days)]
+                AND timecreated >= :cutoff
+                AND actionname = :chataction",
+            ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT]
         );
 
         return array_map('intval', array_keys($rows));
@@ -417,10 +430,12 @@ final class insights {
                FROM {" . turn_recorder::TABLE . "}
               WHERE timecreated >= :cutoff
                 AND courseid > 0
+                AND actionname = :chataction
            GROUP BY courseid
            ORDER BY COUNT(1) DESC",
             [
                 'cutoff' => self::cutoff($days),
+                'chataction' => self::ACTION_CHAT,
                 'emptykey' => '',
                 'grounded' => turn_recorder::ORIGIN_GROUNDED,
             ],
@@ -461,8 +476,9 @@ final class insights {
             "SELECT DISTINCT topic
                FROM {" . turn_recorder::TABLE . "}
               WHERE courseid = :courseid
-                AND topic IS NOT NULL",
-            ['courseid' => $courseid],
+                AND topic IS NOT NULL
+                AND actionname = :chataction",
+            ['courseid' => $courseid, 'chataction' => self::ACTION_CHAT],
             0,
             max(1, $limit)
         );
@@ -487,8 +503,8 @@ final class insights {
 
         return array_values($DB->get_records_select(
             turn_recorder::TABLE,
-            'courseid = :courseid AND timecreated >= :since',
-            ['courseid' => $courseid, 'since' => time() - max(1, $days) * DAYSECS],
+            'courseid = :courseid AND timecreated >= :since AND actionname = :chataction',
+            ['courseid' => $courseid, 'since' => time() - max(1, $days) * DAYSECS, 'chataction' => self::ACTION_CHAT],
             'id ASC',
             'id, prompt',
             max(0, $offset),
@@ -665,8 +681,8 @@ final class insights {
      */
     private static function scope(int $courseid, int $days, string $alias = ''): array {
         $prefix = $alias === '' ? '' : $alias . '.';
-        $where = "{$prefix}timecreated >= :cutoff";
-        $params = ['cutoff' => self::cutoff($days)];
+        $where = "{$prefix}timecreated >= :cutoff AND {$prefix}actionname = :chataction";
+        $params = ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT];
 
         if ($courseid > 0) {
             $where .= " AND {$prefix}courseid = :courseid";

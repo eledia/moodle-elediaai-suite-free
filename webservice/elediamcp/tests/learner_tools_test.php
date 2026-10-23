@@ -141,6 +141,7 @@ final class learner_tools_test extends advanced_testcase {
         $DB->insert_record('quiz_grades', (object) [
             'quiz' => $quiz->id, 'userid' => $user->id, 'grade' => 5.0, 'timemodified' => $now,
         ]);
+        quiz_update_grades($DB->get_record('quiz', ['id' => $quiz->id]), $user->id);
 
         $output = moodle_quiz_info::execute(['cmid' => (int) $quiz->cmid], $user);
 

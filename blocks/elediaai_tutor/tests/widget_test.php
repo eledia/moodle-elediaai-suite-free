@@ -156,6 +156,33 @@ final class widget_test extends \advanced_testcase {
     }
 
     /**
+     * A course without material grounds on its knowledge base (#171).
+     *
+     * The instance names an indexed course; the own course holds nothing.
+     * Grounded mode needs an MCP service, model-only does not -- so the
+     * missing service is reported only when the widget sees the knowledge
+     * base. Before, it built the block config from the mode alone, resolved
+     * to model-only and showed the "general knowledge" banner, while the turn
+     * (which gets the whole instance) answered from the knowledge base.
+     */
+    public function test_knowledge_base_counts_for_an_empty_course(): void {
+        $this->resetAfterTest();
+        $this->require_aisources();
+        $this->configure_backend();
+        $this->with_backend();
+        set_config('allowllmonly', 1, 'block_elediaai_tutor');
+        set_config('mcpserviceid', 0, 'local_elediaai_chatengine');
+        $handbook = $this->make_ingested_course();
+        $empty = (int) $this->getDataGenerator()->create_course()->id;
+
+        $this->assertNull(widget::config_error($empty, ['ragmode' => chat_mode::MODE_GROUNDED]), 'without a knowledge base: model-only');
+        $this->assertSame(
+            get_string('error_service_not_configured', 'block_elediaai_tutor'),
+            widget::config_error($empty, ['ragmode' => chat_mode::MODE_GROUNDED, 'coursescope' => 'course:' . $handbook])
+        );
+    }
+
+    /**
      * Prepare a renderable global-chat setup (LLM-only, no ingestion) and a
      * logged-in user.
      *
@@ -177,7 +204,7 @@ final class widget_test extends \advanced_testcase {
     public function test_render_dashboard_shows_hero_and_briefing(): void {
         $this->resetAfterTest();
         $user = $this->setup_render_user();
-        set_config('promptstarters', "What is due this week?", 'block_elediaai_tutor');
+        set_config('promptstarters_student', "What is due this week?", 'block_elediaai_tutor');
 
         $html = widget::render(\core\context\system::instance(), 0, ['dashboard' => true]);
 
@@ -278,7 +305,7 @@ final class widget_test extends \advanced_testcase {
         $this->resetAfterTest();
         $this->setup_render_user();
         set_config(
-            'promptstarters',
+            'promptstarters_student',
             "fa-tasks | Open tasks | Which tasks are currently open for me?\n"
                 . 'action | fa-plus | Create course | Create a new course for me.',
             'block_elediaai_tutor'
@@ -311,18 +338,24 @@ final class widget_test extends \advanced_testcase {
     }
 
     /**
-     * Teachers get the teacher starter list on the dashboard; the base list
-     * stays for everyone else.
+     * On the dashboard every audience reads its own list (#172).
+     *
+     * The base list is for the course tutor. On the test instance it held admin tiles,
+     * and because students used to get it on the dashboard, learners saw
+     * "Create a course". Now students read the learner list, teachers the
+     * teacher list, and the base list does not appear on the dashboard.
      */
-    public function test_render_dashboard_teacher_starters(): void {
+    public function test_render_dashboard_audience_starters(): void {
         $this->resetAfterTest();
         $user = $this->setup_render_user();
-        set_config('promptstarters', "Student question", 'block_elediaai_tutor');
+        set_config('promptstarters', "Create a course", 'block_elediaai_tutor');
+        set_config('promptstarters_student', "What is due?", 'block_elediaai_tutor');
         set_config('promptstarters_teacher', "Show my grading queue", 'block_elediaai_tutor');
 
-        // As a plain user: the base list.
+        // As a learner: the learner list, never the base list.
         $html = widget::render(\core\context\system::instance(), 0, ['dashboard' => true]);
-        $this->assertStringContainsString('Student question', $html);
+        $this->assertStringContainsString('What is due?', $html);
+        $this->assertStringNotContainsString('Create a course', $html);
         $this->assertStringNotContainsString('Show my grading queue', $html);
 
         // As a teacher (audience cache purged after the role change): the teacher list.
@@ -332,7 +365,36 @@ final class widget_test extends \advanced_testcase {
 
         $html = widget::render(\core\context\system::instance(), 0, ['dashboard' => true]);
         $this->assertStringContainsString('Show my grading queue', $html);
-        $this->assertStringNotContainsString('Student question', $html);
+        $this->assertStringNotContainsString('What is due?', $html);
+        $this->assertStringNotContainsString('Create a course', $html);
+    }
+
+    /**
+     * A learner without a learner list gets the built-in learner pills, even
+     * when the base list is full of admin tiles (#172, the test instance case).
+     */
+    public function test_render_dashboard_learner_ignores_base_list(): void {
+        $this->resetAfterTest();
+        $this->setup_render_user();
+        set_config('promptstarters', "fa-plus | Kurs anlegen | Lege einen Kurs an", 'block_elediaai_tutor');
+
+        $html = widget::render(\core\context\system::instance(), 0, ['dashboard' => true]);
+
+        $this->assertStringNotContainsString('Kurs anlegen', $html);
+        $this->assertStringContainsString('data-action="starter"', $html, 'the built-in learner pills');
+    }
+
+    /**
+     * Off the dashboard the base list still applies.
+     */
+    public function test_render_course_tutor_keeps_base_list(): void {
+        $this->resetAfterTest();
+        $this->setup_render_user();
+        set_config('promptstarters', "Explain this course", 'block_elediaai_tutor');
+
+        $html = widget::render(\core\context\system::instance(), 0, []);
+
+        $this->assertStringContainsString('Explain this course', $html);
     }
 
     /**

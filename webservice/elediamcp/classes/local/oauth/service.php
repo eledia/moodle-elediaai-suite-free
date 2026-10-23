@@ -108,9 +108,9 @@ class service {
     /**
      * The scopes advertised by the resource and authorization server.
      *
-     * Scopes are advisory in this release: an issued token authenticates as the
-     * user and is bound to the MCP service; effective authority is the user's
-     * Moodle capabilities, not the requested scope string.
+     * A token issued after consent is limited to the scopes the person agreed to (see
+     * {@see \webservice_elediamcp\local\scope_gate}); within them the effective authority is
+     * still the user's Moodle capabilities. A token without a scope is not limited.
      *
      * @return string[]
      */
@@ -336,7 +336,17 @@ class service {
             );
         }
 
-        $scope = self::filter_scope(isset($params['scope']) ? (string) $params['scope'] : null);
+        $requestedscope = isset($params['scope']) ? (string) $params['scope'] : null;
+        $scope = self::filter_scope($requestedscope);
+        if ($scope === null && $requestedscope !== null && trim($requestedscope) !== '') {
+            // Only unknown scopes were asked for: refuse instead of issuing a token that is not limited.
+            throw new oauth_exception(
+                'invalid_scope',
+                get_string('oauth_err_invalid_scope', 'webservice_elediamcp'),
+                400,
+                true
+            );
+        }
 
         $ctx = new stdClass();
         $ctx->client = $client;
@@ -530,7 +540,8 @@ class service {
                 $label,
                 $validuntil,
                 null,
-                (int) $record->userid
+                (int) $record->userid,
+                !empty($record->scope) ? (string) $record->scope : null
             );
         } catch (\moodle_exception $ex) {
             // The user no longer satisfies the service's required capability, etc.
@@ -645,6 +656,21 @@ class service {
         // Custom / private-use scheme for native apps (e.g. com.example.app:/cb).
         // Require a reverse-domain-style scheme to avoid ambiguous single tokens.
         return (bool) preg_match('/^[a-z][a-z0-9+.\-]*\.[a-z0-9+.\-]+$/', $scheme);
+    }
+
+    /**
+     * Whether a (validated) redirect URI is a web address that Moodle's redirect() can handle.
+     *
+     * moodle_url only understands http(s); a private-use scheme of a native app
+     * (RFC 8252 section 7.1, e.g. `de.eledia.lernhive://oauth`) would be treated as a
+     * relative path below the current script. Such URIs need the Location header as is.
+     *
+     * @param string $uri Redirect URI including the response query.
+     * @return bool
+     */
+    public static function is_web_redirect_uri(string $uri): bool {
+        $scheme = strtolower((string) parse_url($uri, PHP_URL_SCHEME));
+        return $scheme === 'http' || $scheme === 'https';
     }
 
     /**

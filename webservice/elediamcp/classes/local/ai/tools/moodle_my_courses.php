@@ -24,6 +24,7 @@ use moodle_url;
 use stdClass;
 use Throwable;
 use webservice_elediamcp\local\ai\ai_tool;
+use webservice_elediamcp\local\ai\response_budget;
 use webservice_elediamcp\local\ai\tool_exception;
 
 /**
@@ -80,7 +81,7 @@ class moodle_my_courses implements ai_tool {
             . 'Lighter than moodle_verify_user_context: no roles, no groups, no capability set. '
             . 'Use this to enumerate the user\'s own courses, then call moodle_course_contents '
             . 'with a specific course_id to see what is inside. To find courses the user is NOT '
-            . 'enrolled in, use moodle_search_courses (scope=catalogue).';
+            . 'enrolled in, use moodle_search_courses (scope=catalogue). ' . response_budget::DESCRIPTION_SENTENCE;
     }
 
     /**
@@ -126,7 +127,7 @@ class moodle_my_courses implements ai_tool {
     public static function output_schema(): array {
         return [
             'type' => 'object',
-            'required' => ['courses', 'total', 'summary'],
+            'required' => ['courses', 'total', 'has_more', 'next_offset', 'summary'],
             'properties' => [
                 'courses' => [
                     'type' => 'array',
@@ -151,6 +152,10 @@ class moodle_my_courses implements ai_tool {
                 'offset' => ['type' => 'integer'],
                 'classification' => ['type' => 'string'],
                 'has_more' => ['type' => 'boolean'],
+                'next_offset' => [
+                    'type' => ['integer', 'null'],
+                    'description' => 'offset for the next call while has_more is true, else null',
+                ],
                 'summary' => ['type' => 'string'],
             ],
         ];
@@ -191,15 +196,17 @@ class moodle_my_courses implements ai_tool {
         $search = isset($arguments['search']) ? trim((string) $arguments['search']) : '';
         $limit = isset($arguments['limit']) ? max(1, min(self::MAX_LIMIT, (int) $arguments['limit'])) : self::DEFAULT_LIMIT;
         $offset = isset($arguments['offset']) ? max(0, (int) $arguments['offset']) : 0;
+        $maxchars = response_budget::max_chars();
 
         $cache = cache::make('webservice_elediamcp', 'responses');
         $cachekey = sprintf(
-            'mycourses_%d_%s_%s_%d_%d',
+            'mycourses_%d_%s_%s_%d_%d_%d',
             $userid,
             $classification,
             $search !== '' ? substr(sha1($search), 0, 12) : 'none',
             $limit,
-            $offset
+            $offset,
+            $maxchars
         );
         $cached = $cache->get($cachekey);
         if (is_array($cached)) {
@@ -254,21 +261,34 @@ class moodle_my_courses implements ai_tool {
             if ($aweight !== $bweight) {
                 return $aweight <=> $bweight;
             }
-            return strcasecmp($a['fullname'], $b['fullname']);
+            // The course id breaks ties, so pages stay stable between calls.
+            return strcasecmp($a['fullname'], $b['fullname']) ?: $a['id'] <=> $b['id'];
         });
 
         $total = count($classified);
-        $page = array_slice($classified, $offset, $limit);
 
-        $payload = [
-            'courses' => $page,
-            'total' => $total,
-            'limit' => $limit,
-            'offset' => $offset,
-            'classification' => $classification,
-            'has_more' => ($offset + $limit) < $total,
-            'summary' => self::build_summary($total, $classification, $search, count($page)),
-        ];
+        // The page is as large as the limit allows and the answer still fits
+        // into the character budget (response_budget).
+        $payload = response_budget::fit_page(
+            array_slice($classified, $offset, $limit),
+            static function (array $page) use ($total, $limit, $offset, $classification, $search): array {
+                $paging = response_budget::paging($offset, count($page), $total);
+                return [
+                    'courses' => $page,
+                    'total' => $total,
+                    'limit' => $limit,
+                    'offset' => $offset,
+                    'classification' => $classification,
+                    'has_more' => $paging['has_more'],
+                    'next_offset' => $paging['next_offset'],
+                    'summary' => response_budget::summary(
+                        self::build_summary($total, $classification, $search, count($page)),
+                        $paging['has_more']
+                    ),
+                ];
+            },
+            $maxchars
+        );
 
         try {
             $cache->set($cachekey, $payload);

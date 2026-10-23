@@ -161,7 +161,7 @@ class tutor_edit_form extends moodleform {
                     'autocomplete',
                     $name,
                     $label,
-                    \local_elediaai_chatengine\local\knowledge_scope::options(),
+                    \local_elediaai_chatengine\local\knowledge_scope::options((string) ($settings[$key] ?? '')),
                     ['multiple' => true]
                 );
                 if (get_string_manager()->string_exists('reg_' . $key . '_help', 'block_elediaai_tutor')) {

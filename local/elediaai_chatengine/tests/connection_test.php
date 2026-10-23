@@ -251,4 +251,63 @@ final class connection_test extends \advanced_testcase {
         // The failure is reported to developers only; the token is not logged.
         $this->assertDebuggingCalled();
     }
+
+    /**
+     * Without a stored value the timeout is two minutes, not thirty seconds (#38).
+     */
+    public function test_request_timeout_defaults_to_two_minutes(): void {
+        $this->resetAfterTest();
+        unset_config('requesttimeout', 'local_elediaai_chatengine');
+        $this->assertSame(120, connection::request_timeout());
+
+        set_config('requesttimeout', 45, 'local_elediaai_chatengine');
+        $this->assertSame(45, connection::request_timeout());
+    }
+
+    /**
+     * The chat tool always carries its contract name; nothing can rename it (#54).
+     */
+    public function test_chat_tool_name_is_fixed(): void {
+        $this->resetAfterTest();
+        // A leftover from the former name setting changes nothing.
+        set_config('tool_chat', 'my_chat', 'local_elediaai_chatengine');
+        $this->assertSame('tutor_chat', connection::tool_name('chat'));
+    }
+
+    /**
+     * An optional tool is named only while its switch is on, and then always
+     * with the contract name.
+     */
+    public function test_optional_tool_follows_its_switch(): void {
+        $this->resetAfterTest();
+        set_config('enabletool_memoryoptin', 1, 'local_elediaai_chatengine');
+        $this->assertSame('tutor_set_memory_optin', connection::tool_name('memoryoptin'));
+
+        set_config('enabletool_memoryoptin', 0, 'local_elediaai_chatengine');
+        $this->assertSame('', connection::tool_name('memoryoptin'));
+    }
+
+    /**
+     * Without a stored switch, deletion and transcript are on, memory and
+     * reclustering off.
+     */
+    public function test_optional_tool_defaults(): void {
+        $this->resetAfterTest();
+        foreach (array_keys(connection::OPTIONAL_TOOL_DEFAULTS) as $key) {
+            unset_config('enabletool_' . $key, 'local_elediaai_chatengine');
+        }
+        $this->assertSame('tutor_get_history', connection::tool_name('history'));
+        $this->assertSame('tutor_delete_conversation', connection::tool_name('delete'));
+        $this->assertSame('tutor_delete_user_data', connection::tool_name('deleteuser'));
+        $this->assertSame('', connection::tool_name('memoryoptin'));
+        $this->assertSame('', connection::tool_name('recluster'));
+    }
+
+    /**
+     * An unknown key is a programming error, not an absent tool.
+     */
+    public function test_unknown_tool_key_throws(): void {
+        $this->expectException(\coding_exception::class);
+        connection::tool_name('nosuchtool');
+    }
 }

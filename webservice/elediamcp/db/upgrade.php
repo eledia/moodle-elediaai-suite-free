@@ -145,5 +145,17 @@ function xmldb_webservice_elediamcp_upgrade($oldversion): bool {
         upgrade_plugin_savepoint(true, 2026092800, 'webservice', 'elediamcp');
     }
 
+    if ($oldversion < 2026102101) {
+        // OAuth scopes are enforced: the token metadata keeps the granted scope.
+        $table = new xmldb_table('webservice_elediamcp_token');
+        $field = new xmldb_field('scope', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'revokedby');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // MCP savepoint reached.
+        upgrade_plugin_savepoint(true, 2026102101, 'webservice', 'elediamcp');
+    }
+
     return true;
 }

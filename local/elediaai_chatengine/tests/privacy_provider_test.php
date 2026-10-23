@@ -232,4 +232,26 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $this->assertFalse($DB->record_exists(usage::TABLE, ['userid' => $user->id]));
         $this->assertTrue($DB->record_exists(usage::TABLE, ['userid' => $other->id]));
     }
+
+    /**
+     * The export marks which turns a model wrote (#52, Art. 50 Abs. 2).
+     *
+     * @return void
+     */
+    public function test_export_marks_model_output(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $system = \core\context\system::instance();
+
+        $thread = $this->converse($user, $system);
+        thread_store::add_message((int) $thread->id, message::ROLE_ASSISTANT, 'Photosynthesis turns light into sugar.');
+
+        $this->export_context_data_for_user((int) $user->id, $system, 'local_elediaai_chatengine');
+        $conversation = writer::with_context($system)->get_data(
+            [get_string('pluginname', 'local_elediaai_chatengine'), 'conversation-' . $thread->id]
+        );
+
+        $flags = array_map(static fn(array $m): bool => $m['ai_generated'], $conversation->messages);
+        $this->assertSame([false, true], array_values($flags));
+    }
 }

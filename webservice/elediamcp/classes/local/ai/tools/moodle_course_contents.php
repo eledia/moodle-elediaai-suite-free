@@ -33,7 +33,9 @@ use webservice_elediamcp\local\ai\tool_exception;
  *
  * Returns the section / activity-module structure of a single course so the
  * LLM can answer "what is in this course?" and reason about the right module
- * to open. Honours the user's enrolment and the per-cm uservisible flag, so
+ * to open. The user needs an active enrolment or moodle/course:view and must be
+ * able to open the course in Moodle (can_access_course(): course visibility).
+ * Guest access does not count. Modules honour the per-cm uservisible flag, so
  * the response is restricted to what the user is actually allowed to see.
  *
  * @package     webservice_elediamcp
@@ -236,26 +238,30 @@ class moodle_course_contents implements ai_tool {
         }
         $modtypeskey = empty($modtypes) ? 'all' : substr(sha1(implode(',', array_keys($modtypes))), 0, 12);
 
-        // Locate the course or fail with a friendly LLM message.
-        $course = $DB->get_record('course', ['id' => $courseid], 'id, shortname, fullname, format, visible, summary');
-        if (!$course) {
-            throw new tool_exception(
-                "Course with id {$courseid} does not exist.",
-                ['course_id' => $courseid]
-            );
+        // A missing course and a course the user may not open get the same
+        // message, so the answer does not reveal whether a course exists or is hidden.
+        $denied = "Course {$courseid} is not available to you.";
+        if (!$DB->record_exists('course', ['id' => $courseid])) {
+            throw new tool_exception($denied, ['course_id' => $courseid]);
         }
+        $course = get_course($courseid);
 
+        // Course-access gate: an active enrolment or moodle/course:view
+        // (is_viewing()) is required, as before; guest access does not count, so
+        // the tutor never reads a course through a guest enrolment instance.
+        // can_access_course() then adds the course-visible flag
+        // (moodle/course:viewhiddencourses): enrolment alone does not open a hidden
+        // course, and viewhiddenactivities does not open a course at all. The
+        // first check runs first, so can_access_course() never reaches its guest
+        // branch (no temporary guest role is loaded).
         $context = context_course::instance($courseid);
         $isadmin = is_siteadmin($user);
-        $canaccess = $isadmin
-            || is_enrolled($context, $userid, '', true)
-            || has_capability('moodle/course:view', $context, $userid)
-            || has_capability('moodle/course:viewhiddenactivities', $context, $userid);
+        $canaccess = $isadmin || (
+            (is_enrolled($context, $userid, '', true) || is_viewing($context, $userid))
+            && can_access_course($course, $user, '', true)
+        );
         if (!$canaccess) {
-            throw new tool_exception(
-                "You are not enrolled in course {$courseid} and cannot view its contents.",
-                ['course_id' => $courseid]
-            );
+            throw new tool_exception($denied, ['course_id' => $courseid]);
         }
 
         $cache = cache::make('webservice_elediamcp', 'responses');

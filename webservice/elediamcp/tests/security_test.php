@@ -100,6 +100,39 @@ final class security_test extends advanced_testcase {
     }
 
     /**
+     * A bucket may be stricter than the site setting (client registration), never looser.
+     */
+    public function test_rate_limit_bucket_can_be_stricter_not_looser(): void {
+        set_config('rate_limit_per_minute', 60, 'webservice_elediamcp');
+        set_config('rate_limit_per_hour', 600, 'webservice_elediamcp');
+
+        $key = 'oauth_register_' . bin2hex(random_bytes(8));
+        for ($i = 1; $i <= 2; $i++) {
+            $this->assertTrue(security::enforce_rate_limit($key, 2, 30)['allowed'], "Request {$i}");
+        }
+        $this->assertFalse(security::enforce_rate_limit($key, 2, 30)['allowed'], 'Third request is over the bucket limit.');
+
+        // A looser bucket value does not raise the site limit.
+        set_config('rate_limit_per_minute', 2, 'webservice_elediamcp');
+        $other = 'oauth_register_' . bin2hex(random_bytes(8));
+        $this->assertTrue(security::enforce_rate_limit($other, 50, null)['allowed']);
+        $this->assertTrue(security::enforce_rate_limit($other, 50, null)['allowed']);
+        $this->assertFalse(security::enforce_rate_limit($other, 50, null)['allowed']);
+    }
+
+    /**
+     * With rate limiting switched off on the site, no bucket limit applies either.
+     */
+    public function test_rate_limit_off_stays_off_for_stricter_buckets(): void {
+        set_config('rate_limit_per_minute', 0, 'webservice_elediamcp');
+        set_config('rate_limit_per_hour', 0, 'webservice_elediamcp');
+        $key = 'oauth_register_' . bin2hex(random_bytes(8));
+        for ($i = 1; $i <= 5; $i++) {
+            $this->assertTrue(security::enforce_rate_limit($key, 1, 1)['allowed']);
+        }
+    }
+
+    /**
      * Configuration toggles take effect.
      */
     public function test_config_helpers(): void {

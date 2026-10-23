@@ -240,6 +240,13 @@ class registry {
         $entries['dashboardgreeting'] = self::entry('dashboard', 'text', [
             'exposedefault' => true,
         ]);
+        // Each audience has its own dashboard list (#172). The base list above
+        // is for the course tutor; on the dashboard it used to be what students
+        // got, and an admin who filled it with admin tiles showed "Create a
+        // course" to every student.
+        $entries['promptstarters_student'] = self::entry('dashboard', 'textarea', [
+            'exposedefault' => true,
+        ]);
         $entries['promptstarters_teacher'] = self::entry('dashboard', 'textarea', [
             'exposedefault' => true,
         ]);

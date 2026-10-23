@@ -465,6 +465,7 @@ $string['insights_gap_nosource'] = 'No course material covers this';
 $string['insights_gap_share'] = '{$a} % not covered';
 $string['insights_gap_share_label'] = '{$a->topic}: {$a->percent} % of the answers were not covered by course material';
 $string['insights_gaps_empty'] = 'Every topic asked in this period was answered from your course material.';
+$string['insights_gaps_untopiced'] = 'Some questions were not answered from your course material, but none of them has been assigned a topic yet. You will find them below, word for word.';
 $string['insights_gaps_eyebrow'] = 'Gaps';
 $string['insights_gaps_intro'] = 'Sorted by the share of answers your material could not cover, not by how often a topic was asked. The first row is the one most worth your time.';
 $string['insights_gaps_title'] = 'Asked, but not answered by the material';

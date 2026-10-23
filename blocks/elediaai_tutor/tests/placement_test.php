@@ -239,4 +239,46 @@ final class placement_test extends \advanced_testcase {
 
         return \core\context\block::instance($block->id);
     }
+
+    /**
+     * Ein Block auf der persoenlichen Startseite nennt keinen Kurs.
+     *
+     * Dort ist $PAGE->course die Website-Startseite, der Block liegt aber in
+     * keinem Kurs. Meldete der Block trotzdem deren Kurs, passte er nicht mehr
+     * zu dem, was die Pruefung aus dem Blockkontext liest -- die Anfrage wurde
+     * mit error_invalid_context abgewiesen, ohne Spur in den Protokollen.
+     *
+     * @covers \block_elediaai_tutor\local\placement::courseid
+     */
+    public function test_a_block_on_the_dashboard_names_no_course(): void {
+        $this->resetAfterTest();
+        $user = $this->getDataGenerator()->create_user();
+        $usercontext = \core\context\user::instance((int) $user->id);
+        $block = $this->getDataGenerator()->create_block('elediaai_tutor', [
+            'parentcontextid' => $usercontext->id,
+            'pagetypepattern' => 'my-index',
+        ]);
+
+        $this->assertSame(0, \block_elediaai_tutor\local\placement::courseid(\core\context\block::instance((int) $block->id)));
+    }
+
+    /**
+     * Auf der Website-Startseite bleibt es bei deren Kurs.
+     *
+     * Die Festlegung vom 20.09.2026: Die Startseite der Website ist ein Kurs
+     * und wird als solcher behandelt. Nur ein Block ausserhalb jedes
+     * Kurskontextes antwortet mit 0.
+     *
+     * @covers \block_elediaai_tutor\local\placement::courseid
+     */
+    public function test_a_block_on_the_site_front_page_names_the_site_course(): void {
+        $this->resetAfterTest();
+        $sitecontext = \core\context\course::instance(SITEID);
+        $block = $this->getDataGenerator()->create_block('elediaai_tutor', [
+            'parentcontextid' => $sitecontext->id,
+            'pagetypepattern' => 'site-index',
+        ]);
+
+        $this->assertSame((int) SITEID, \block_elediaai_tutor\local\placement::courseid(\core\context\block::instance((int) $block->id)));
+    }
 }

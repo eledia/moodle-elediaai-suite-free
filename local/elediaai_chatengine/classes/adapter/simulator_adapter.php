@@ -153,7 +153,7 @@ class simulator_adapter implements adapter {
             sources: $command === 'sources' ? $this->sources() : [],
             origin: $command === 'sources' ? chat_response::ORIGIN_GROUNDED : chat_response::ORIGIN_GENERAL,
             topic: get_string('simulator_topic', 'local_elediaai_chatengine'),
-            confirmation: $command === 'confirm' ? $this->confirmation() : null,
+            confirmation: in_array($command, ['confirm', 'outline'], true) ? $this->confirmation($command === 'outline') : null,
             prompttokens: $command === 'tokens' ? 1234 : null,
             completiontokens: $command === 'tokens' ? 567 : null,
         );
@@ -177,11 +177,11 @@ class simulator_adapter implements adapter {
      * Which variant a message asks for.
      *
      * @param string $message The learner's message.
-     * @return string One of help|sources|error|slow|long|confirm|tokens|default.
+     * @return string One of help|sources|error|slow|long|confirm|outline|tokens|default.
      */
     private static function command(string $message): string {
         $known = ['help', 'hilfe', 'sources', 'quellen', 'error', 'fehler',
-            'slow', 'langsam', 'long', 'lang', 'confirm', 'bestaetigen', 'tokens'];
+            'slow', 'langsam', 'long', 'lang', 'confirm', 'bestaetigen', 'tokens', 'outline', 'gliederung'];
         if (!preg_match('~(?:^|\s)/([a-zA-Z]+)~', $message, $found)) {
             return 'default';
         }
@@ -197,6 +197,7 @@ class simulator_adapter implements adapter {
             'langsam' => 'slow',
             'lang' => 'long',
             'bestaetigen' => 'confirm',
+            'gliederung' => 'outline',
             default => $word,
         };
     }
@@ -217,6 +218,7 @@ class simulator_adapter implements adapter {
                 . "\n\n" . str_repeat(get_string('simulator_long_para', 'local_elediaai_chatengine') . "\n\n", 8),
             'sources' => get_string('simulator_sources_body', 'local_elediaai_chatengine'),
             'confirm' => get_string('simulator_confirm_body', 'local_elediaai_chatengine'),
+            'outline' => get_string('simulator_outline_body', 'local_elediaai_chatengine'),
             'tokens' => get_string('simulator_tokens_body', 'local_elediaai_chatengine'),
             'slow' => get_string('simulator_slow_body', 'local_elediaai_chatengine'),
             default => get_string('simulator_default', 'local_elediaai_chatengine', (object) [
@@ -292,13 +294,41 @@ class simulator_adapter implements adapter {
      * and a confirmation that did something would make this backend dangerous
      * rather than merely fake.
      *
+     * In the shape the panel renders. It used to carry a pending action's
+     * fields (`tool`, `arguments`) instead, which the panel does not read --
+     * without `required` no card ever appeared.
+     *
+     * @param bool $withoutline Whether to carry a course outline, as the course
+     *        author's confirmation does (#79).
      * @return array<string, mixed>
      */
-    private function confirmation(): array {
-        return [
-            'tool' => 'moodle_send_message',
-            'summary' => get_string('simulator_confirm_summary', 'local_elediaai_chatengine'),
-            'arguments' => [],
+    private function confirmation(bool $withoutline = false): array {
+        $confirmation = [
+            'required' => true,
+            'yeslabel' => get_string('yes'),
+            'nolabel' => get_string('no'),
+            'yesmessage' => get_string('yes'),
+            'nomessage' => get_string('no'),
+            'summary' => get_string(
+                $withoutline ? 'simulator_outline_summary' : 'simulator_confirm_summary',
+                'local_elediaai_chatengine'
+            ),
+            'destructive' => false,
+            'tooltitle' => $withoutline ? 'moodle_generate_course' : 'moodle_send_message',
         ];
+        if ($withoutline) {
+            $sections = [];
+            for ($index = 1; $index <= 8; $index++) {
+                $sections[] = [
+                    'title' => get_string('simulator_outline_section', 'local_elediaai_chatengine', $index),
+                    'summary' => $index % 2 ? get_string('simulator_outline_section_summary', 'local_elediaai_chatengine') : '',
+                ];
+            }
+            $confirmation['outline'] = [
+                'title' => get_string('simulator_outline_title', 'local_elediaai_chatengine'),
+                'sections' => $sections,
+            ];
+        }
+        return $confirmation;
     }
 }

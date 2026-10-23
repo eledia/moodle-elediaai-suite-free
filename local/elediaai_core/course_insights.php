@@ -140,7 +140,7 @@ if ($summary->total === 0) {
         'eai-audit-panel'
     );
 } else {
-    echo insights_page::gaps(insights::gaps($courseid, $days, 8), $context);
+    echo insights_page::gaps(insights::gaps($courseid, $days, 8), $context, $summary);
     echo insights_page::unclear(insights::unclear($courseid, $days, 6));
     echo insights_page::trend(insights::per_day($courseid, 14));
     echo insights_page::verbatim(

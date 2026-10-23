@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+use block_elediaai_tutor\local\placement;
 use block_elediaai_tutor\local\security;
 use block_elediaai_tutor\local\widget;
 
@@ -253,10 +254,28 @@ class block_elediaai_tutor extends block_base {
      */
     private function resolve_course_id(): int {
         $passcontext = (int) $this->get_instance_config('passcoursecontext', 1) === 1;
-        if ($passcontext && security::course_chat_enabled() && !empty($this->page->course->id)) {
-            return (int) $this->page->course->id;
+        if (!$passcontext || !security::course_chat_enabled()) {
+            return 0;
         }
-        return 0;
+
+        // Den Kurs aus dem eigenen Kontext bestimmen, nicht aus der Seite.
+        //
+        // Auf der persoenlichen Startseite ist $PAGE->course die Website-
+        // Startseite, obwohl der Block dort in keinem Kurs liegt. Der Client
+        // meldete deshalb Kurs 1, waehrend helper::block_courseid() ueber den
+        // Blockkontext 0 ermittelte -- resolve_scoped_context() sah eine nicht
+        // zusammenpassende Kombination und wies die Anfrage mit
+        // error_invalid_context ab, ohne dass irgendwo ein Eintrag entstand.
+        //
+        // placement::courseid() ist dieselbe Quelle, aus der die Pruefung
+        // schoepft. Auf einer Kursseite aendert sich nichts, auf der
+        // Website-Startseite bleibt es bei deren Kurs, und auf /my ergibt sich
+        // 0 -- also globaler Chat, wie es der Platzierung entspricht.
+        if (empty($this->context)) {
+            return 0;
+        }
+
+        return placement::courseid($this->context);
     }
 
     /**

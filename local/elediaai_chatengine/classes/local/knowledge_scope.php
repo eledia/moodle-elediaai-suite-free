@@ -249,11 +249,7 @@ final class knowledge_scope {
      * @return string[] The rejected entries in stored form, empty when all are allowed.
      */
     public static function rejected_for(self $wish, int $userid): array {
-        $system = \core\context\system::instance();
-        if (
-            has_capability('moodle/site:config', $system, $userid)
-            || has_capability('moodle/category:manage', $system, $userid)
-        ) {
+        if (self::chooses_freely($userid)) {
             return [];
         }
 
@@ -290,6 +286,22 @@ final class knowledge_scope {
     }
 
     /**
+     * Whether somebody may name any category or course, not only their own.
+     *
+     * The same test as at the top of {@see rejected_for()}: the option list
+     * and the check on saving must agree, or the list offers what saving
+     * refuses (or hides what saving allows).
+     *
+     * @param int $userid The person choosing.
+     * @return bool
+     */
+    private static function chooses_freely(int $userid): bool {
+        $system = \core\context\system::instance();
+        return has_capability('moodle/site:config', $system, $userid)
+            || has_capability('moodle/category:manage', $system, $userid);
+    }
+
+    /**
      * The option list for the selection field, categories first.
      *
      * One list for both kinds, because they are one selection; each entry says
@@ -297,37 +309,69 @@ final class knowledge_scope {
      * mistake. The keys are the stored entries, which is what lets
      * {@see from_selection()} be parse() with a join.
      *
-     * Everything is loaded, as the ingestion settings of
-     * `local_elediaai_sources` already do for the same purpose. On a site with
-     * thousands of courses that is a heavy list; if it ever hurts, the place to
-     * fix it is here and in that plugin at the same time, not in three forms.
+     * Only what the current user may choose (#169): somebody who administers
+     * the site sees everything; everybody else sees the categories in which
+     * they may update courses and the courses they may update -- the rule
+     * {@see rejected_for()} applies on saving. Before, the course half was read
+     * straight from the table, and a teacher in a sandbox saw the course names
+     * of every other customer on the site. Saving was safe even then; the list
+     * was not.
      *
-     * The two halves are not equally neutral: `make_categories_list()` answers
-     * for the **current user** and leaves out what they may not see, while the
-     * course half is read straight from the table and leaves out nothing. That
-     * asymmetry is deliberate for now -- the list is a convenience, and the
-     * rule that a teacher may only narrow is enforced when the value is saved
-     * (T-004), not by what a dropdown happens to show.
+     * Entries already stored stay in the list with their names, whoever put
+     * them there. Otherwise a selection an administrator made would vanish
+     * from the field when a teacher opens the form, and the next save would
+     * drop it without anybody deciding so.
      *
+     * @param string $stored The stored selection to keep in the list, as {@see parse()} reads it.
      * @return array<string, string> Option key => label.
      */
-    public static function options(): array {
-        global $DB;
+    public static function options(string $stored = ''): array {
+        global $DB, $USER;
 
         if (during_initial_install()) {
             return [];
         }
 
+        $freely = self::chooses_freely((int) $USER->id);
+        $kept = self::parse($stored);
+
         $options = [];
-        foreach (\core_course_category::make_categories_list() as $id => $path) {
+        // Categories: make_categories_list() answers for the current user and,
+        // given a capability, only lists the categories where they hold it.
+        $categories = \core_course_category::make_categories_list($freely ? '' : 'moodle/course:update');
+        foreach ($kept->categories as $id) {
+            if (!isset($categories[$id])) {
+                $category = \core_course_category::get($id, IGNORE_MISSING, true);
+                if ($category) {
+                    $categories[$id] = $category->get_nested_name(false);
+                }
+            }
+        }
+        foreach ($categories as $id => $path) {
             $options[self::PREFIX_CATEGORY . ':' . $id] =
                 get_string('scope_category', 'local_elediaai_chatengine', $path);
         }
 
         // Including the site front page: it is a course, it can be indexed,
         // and a knowledge base that may not name it would leave a hole nobody
-        // could explain.
-        $courses = $DB->get_records('course', null, 'fullname ASC', 'id, fullname, shortname');
+        // could explain. Only for those who choose freely; nobody else may
+        // update it.
+        if ($freely) {
+            $courses = $DB->get_records('course', null, 'fullname ASC', 'id, fullname, shortname');
+        } else {
+            $courses = get_user_capability_course(
+                'moodle/course:update',
+                (int) $USER->id,
+                true,
+                'fullname, shortname',
+                'fullname ASC'
+            ) ?: [];
+            $missing = array_diff($kept->courses, array_map(fn($course) => (int) $course->id, $courses));
+            if ($missing) {
+                $courses = array_merge($courses, $DB->get_records_list('course', 'id', $missing, '', 'id, fullname, shortname'));
+                \core_collator::asort_objects_by_property($courses, 'fullname');
+            }
+        }
         foreach ($courses as $course) {
             $options[self::PREFIX_COURSE . ':' . $course->id] = get_string(
                 'scope_course',

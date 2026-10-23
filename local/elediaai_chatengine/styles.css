@@ -41,22 +41,39 @@
  * (docked/modal/fullscreen) portal the panel to <body>, i.e. outside the root,
  * so the panel must carry its own variables or it would render unstyled.
  */
+:root {
+    /* Feste Grundpalette des Chats, die eLeDia-Werte vom 15.10.2026. Sie haengt
+       bewusst nicht am Theme: die Farben des Chats stellt man ueber Designs
+       ein, nicht ueber das Theme der Seite. */
+    --eac-default-accent: #eb7306;
+    --eac-default-accent-dark: #cf6404;
+    --eac-default-brand: #f98012;
+    --eac-default-surface: #ffffff;
+    --eac-default-bg: #f7f8fb;
+    --eac-default-line: #e6e9f0;
+    --eac-default-ink: #1f2430;
+    --eac-default-ink-soft: #3d4453;
+    --eac-default-muted: #6b7280;
+    --eac-default-user-bg: rgba(235, 115, 6, 0.1);
+    --eac-default-success: #157f3f;
+    --eac-default-danger: #ab1d79;
+    --eac-default-danger-wash: #f5e4ef;
+}
+
 .elediaai-chat-root,
 .elediaai-chat-panel,
 .elediaai-chat-modal,
 .elediaai-chat-launch {
-    /* Die Vorgaben leiten sich aus den Suite-Token ab (adr05, task26). Ein
-       unkonfigurierter Tutor traegt damit die Farben der Suite statt eines
-       eigenen Dunkelblaus -- vorher sah eine frische Installation aus wie ein
-       fremdes Produkt neben der Suite, in der sie steht.
-       Eine gesetzte Instanz-Konfiguration gewinnt weiterhin: sie kommt als
+    /* Die Vorgaben kommen aus der festen Palette im :root oben, nicht aus den
+       Suite-Token. Die --eai-* folgen seit 16.10.2026 dem aktiven Theme; der
+       Chat ist dagegen ueber seine Designs frei einstellbar und soll unter
+       jedem Theme gleich aussehen, ein nicht gesetztes Token eingeschlossen.
+       Eine gesetzte Design-Konfiguration gewinnt weiterhin: sie kommt als
        Inline-Style auf dasselbe Element.
-       Nicht abgeleitet sind die eigenen Achsen -- Status, Fehler, Fundierung,
-       Backdrop: gruen fuer "online" und rot fuer "Fehler" sind keine
-       Markenfarben und sollen es nicht werden. */
-    --eac-accent: var(--eai-accent);
-    --eac-accent-dark: var(--eai-accent-hover);
-    --eac-accent-contrast: var(--eai-accent-ink);
+       Schatten, Radius und Schrift bleiben an der Suite, sie sind keine Farben. */
+    --eac-accent: var(--eac-default-accent);
+    --eac-accent-dark: var(--eac-default-accent-dark);
+    --eac-accent-contrast: var(--eac-default-surface);
     /* The accent one step deeper, for where it carries words: as text on a
        light surface, or as the fill behind white text. The accent itself
        holds 3:1 (enough for an icon or a border, WCAG 1.4.11) but not the
@@ -68,24 +85,24 @@
     /* design-lint: erlaubt — Schwarz ist hier kein Farbwert, sondern der Abdunkler in color-mix. */
     --eac-accent-strong: color-mix(in srgb, var(--eac-accent) 70%, #000);
     /* eLeDia brand orange — used sparingly (logo only). */
-    --eac-brand: var(--eai-brand);
+    --eac-brand: var(--eac-default-brand);
     /* Neutral surfaces and hairlines. */
-    --eac-surface: var(--eai-surface);
-    --eac-body-bg: var(--eai-bg);
-    --eac-line: var(--eai-line);
+    --eac-surface: var(--eac-default-surface);
+    --eac-body-bg: var(--eac-default-bg);
+    --eac-line: var(--eac-default-line);
     /* Text. */
-    --eac-ink: var(--eai-fg);
+    --eac-ink: var(--eac-default-ink);
     /* 4.63:1 on white — keep >= 4.5:1 (WCAG 1.4.3) when tuning. */
-    --eac-muted: var(--eai-muted);
-    --eac-header-fg: var(--eai-fg);
+    --eac-muted: var(--eac-default-muted);
+    --eac-header-fg: var(--eac-default-ink);
     /* Bubbles: warm peach for the learner, clean white card for the tutor. */
-    --eac-user-bg: var(--eai-accent-wash);
-    --eac-user-fg: var(--eai-fg);
-    --eac-bot-bg: var(--eai-surface);
-    --eac-bot-fg: var(--eai-fg);
+    --eac-user-bg: var(--eac-default-user-bg);
+    --eac-user-fg: var(--eac-default-ink);
+    --eac-bot-bg: var(--eac-default-surface);
+    --eac-bot-fg: var(--eac-default-ink);
     /* Composer input text. */
-    --eac-assistant-bg: var(--eai-surface);
-    --eac-assistant-fg: var(--eai-fg);
+    --eac-assistant-bg: var(--eac-default-surface);
+    --eac-assistant-fg: var(--eac-default-ink);
     /* Shape + rhythm. */
     --eac-radius: var(--eai-radius-lg);
     --eac-bubble-radius: 16px;
@@ -94,7 +111,7 @@
     /* Typography — inherits the Moodle theme font unless an institution sets one. */
     --eac-font: var(--eai-font);
     /* State + accent surfaces (tokenised so branding overrides reach them). */
-    --eac-status-online: var(--eai-success);
+    --eac-status-online: var(--eac-default-success);
     /* Hover wash for the header icon buttons (settable + per-theme). */
     --eac-icon-hover: rgba(16, 24, 40, 0.06);
     /* Focus / pressed ring. Derived from the accent so it is theme-specific and
@@ -104,13 +121,13 @@
     --eac-overlay-strong: rgba(0, 0, 0, 0.04);
     --eac-code-bg: rgba(0, 0, 0, 0.06);
     --eac-backdrop: rgba(16, 24, 40, 0.45);
-    --eac-error-bg: var(--eai-danger-wash);
-    --eac-error-fg: var(--eai-danger);
-    --eac-error-line: var(--eai-danger);
+    --eac-error-bg: var(--eac-default-danger-wash);
+    --eac-error-fg: var(--eac-default-danger);
+    --eac-error-line: var(--eac-default-danger);
     --eac-grounded-bg: #eaf1f3;
     --eac-grounded-line: #c9d8dd;
-    --eac-muted-soft: var(--eai-fg-dim);
-    --eac-tint: var(--eai-bg);
+    --eac-muted-soft: var(--eac-default-ink-soft);
+    --eac-tint: var(--eac-default-bg);
     /* Cohesive shadow scale — all elevation flows from these three. */
     --eac-shadow-sm: var(--eai-shadow-card);
     --eac-shadow-md: var(--eai-shadow-raised);
@@ -286,7 +303,7 @@
     width: 2.6rem;
     height: 2.6rem;
     border-radius: 50%;
-    background: var(--eai-surface);
+    background: var(--eac-surface);
     color: var(--eac-accent);
     font-size: var(--font-size-h4);
     flex: 0 0 auto;
@@ -524,7 +541,7 @@ a.elediaai-chat-avatar:focus-visible {
     width: 1.45rem;
     height: 1.45rem;
     border-radius: 50%;
-    background: var(--eai-surface);
+    background: var(--eac-surface);
     flex: 0 0 auto;
     padding: 2px;
     border: 1px solid var(--eac-line);
@@ -644,34 +661,109 @@ a.elediaai-chat-avatar:focus-visible {
     max-width: 100%;
 }
 
-/* --- Write confirmations (generic card from tool annotations). --------- */
-.elediaai-chat-confirmation {
-    display: block;
-    margin-top: 0.75rem;
-    padding: 0.75rem;
-    border: 1px solid var(--eac-border, var(--eai-line));
-    border-left: 3px solid var(--eac-accent);
-    border-radius: 8px;
-    background: var(--eai-bg);
+/* --- Write confirmations: the answer itself is the card. ---------------- */
+/* An answer that asks for a decision reads top to bottom as one thing: that a
+   confirmation is needed, what is about to happen, the facts (the agent's
+   text), the two buttons, and that nothing changes before the click. The
+   answer text is folded into the card's column with display: contents, so the
+   AI notice the server rendered into it can move to the end by order -- below
+   the decision instead of between the facts and the buttons. */
+.elediaai-chat-bubble--confirmation {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--eac-line);
+    border-top: 3px solid var(--eac-accent);
 }
 
-.elediaai-chat-confirmation--destructive {
-    border-left-color: var(--eai-danger);
+.elediaai-chat-bubble--destructive {
+    border-top-color: var(--eac-error-line);
+}
+
+.elediaai-chat-bubble--confirmation > .elediaai-chat-markdown {
+    display: contents;
+}
+
+.elediaai-chat-bubble--confirmation .aitransparency-notice {
+    order: 99;
+    margin: 0.75rem 0 0;
+    padding: 0.5rem 0 0;
+    border-top: 1px solid var(--eac-line);
+    border-radius: 0;
+    background: none;
+    font-size: var(--font-size-small);
+    color: var(--eac-muted);
+}
+
+.elediaai-chat-confirmation__head {
+    margin-bottom: 0.6rem;
+    padding-bottom: 0.6rem;
+    border-bottom: 1px solid var(--eac-line);
+}
+
+.elediaai-chat-confirmation__eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    font-size: var(--font-size-small);
+    color: var(--eac-accent-strong);
+}
+
+.elediaai-chat-bubble--destructive .elediaai-chat-confirmation__eyebrow,
+.elediaai-chat-bubble--destructive .elediaai-chat-confirmation__title {
+    color: var(--eac-error-fg);
 }
 
 .elediaai-chat-confirmation__title {
-    font-weight: 700;
-    margin-bottom: 0.25rem;
+    margin: 0.15rem 0 0;
+    font-weight: 600;
 }
 
-.elediaai-chat-confirmation--destructive .elediaai-chat-confirmation__title {
-    color: var(--eai-danger);
+.elediaai-chat-confirmation {
+    display: block;
+    margin-top: 0.75rem;
 }
 
 .elediaai-chat-confirmation__summary {
     font-size: var(--font-size-small);
-    color: var(--eac-muted, var(--eai-muted));
+    color: var(--eac-muted);
     margin-bottom: 0.5rem;
+}
+
+.elediaai-chat-confirmation__hint {
+    margin: 0.5rem 0 0;
+    font-size: var(--font-size-small);
+    color: var(--eac-muted);
+}
+
+/* The outline a course confirmation asks the person to agree to (#79). */
+.elediaai-chat-confirmation__outline {
+    margin-bottom: 0.5rem;
+    font-size: var(--font-size-small);
+}
+
+.elediaai-chat-confirmation__outline > summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.elediaai-chat-confirmation__outline-title {
+    margin: 0.5rem 0 0.25rem;
+    font-weight: 600;
+}
+
+.elediaai-chat-confirmation__outline-list {
+    margin: 0.25rem 0 0;
+    padding-left: 1.25rem;
+}
+
+.elediaai-chat-confirmation__outline-list li + li {
+    margin-top: 0.25rem;
+}
+
+.elediaai-chat-confirmation__outline-summary {
+    display: block;
+    color: var(--eac-muted);
 }
 
 .elediaai-chat-confirmation__actions {
@@ -690,7 +782,18 @@ a.elediaai-chat-avatar:focus-visible {
 }
 
 .elediaai-chat-confirmation .btn-outline-secondary {
-    background: var(--eai-surface);
+    background: var(--eac-surface);
+}
+
+/* The AI notice once at the chat (#42); the answers carry the compact mark. */
+.elediaai-chat-ainotice {
+    margin: 0.5rem 1rem 0;
+}
+
+/* The compact AI mark is a badge, not a running link: the bubble's link rule
+   would underline it. */
+.elediaai-chat-assistant .elediaai-chat-bubble .aitransparency-notice a.aitransparency-notice__mark {
+    text-decoration: none;
 }
 
 /* --- Sources / citations. --------------------------------------------- */
@@ -878,7 +981,7 @@ a.elediaai-chat-avatar:focus-visible {
 .elediaai-chat-mcp {
     background: var(--eai-ai-wash);
     color: var(--eai-ai);
-    border: 1px solid var(--eai-line);
+    border: 1px solid var(--eac-line);
 }
 
 /* --- Overlay: expanded chat. ------------------------------------------ */

@@ -46,6 +46,30 @@ import {renderInto as renderLiveMarkdown} from 'local_elediaai_chatengine/markdo
 import {notifyFilterContentUpdated} from 'core_filters/events';
 import {typeset as typesetMaths} from 'filter_mathjaxloader/loader';
 
+/**
+ * Error codes after which sending the same message again cannot succeed.
+ *
+ * Decided on the code, never on the text. A backend refusal that may pass
+ * (rate limit, overload) arrives as error_backend_busy and keeps its retry.
+ *
+ * @type {string[]}
+ */
+const NO_RETRY = [
+    'error_backend_refused',
+    'error_daily_limit',
+    'error_message_empty',
+    'error_message_too_long',
+    'error_mode_unsupported',
+    'error_quota_token_exceeded',
+    'error_invalid_context',
+    'error_consentrequired',
+    'error_course_chat_disabled',
+    'error_global_chat_disabled',
+];
+
+/** @var {number} Longest outline shown unfolded on a confirmation card. */
+const OUTLINE_OPEN_MAX = 6;
+
 /** @var {object} Cached localised strings. */
 const strings = {};
 
@@ -120,9 +144,32 @@ export class ChatPanel {
         this.backdrop = root.querySelector('.' + this.prefix + '-backdrop');
         this.expandButton = root.querySelector('[data-action="expand"]');
 
+        this.showNoticeOnce();
         this.bind();
         this.bindPlacement();
         this.restoreThread();
+    }
+
+    /**
+     * The AI notice once at the chat, instead of under every answer (#42).
+     *
+     * Only when the site chose that style; each answer then carries the
+     * compact mark with its link. Placed just before the transcript, so both
+     * the engine's panel and a placement's own markup get it in the same spot.
+     *
+     * @return void
+     */
+    showNoticeOnce() {
+        const text = this.config.ainoticeonce || '';
+        if (!text || !this.log || !this.log.parentNode) {
+            return;
+        }
+        const notice = document.createElement('div');
+        notice.className = 'aitransparency-notice ' + this.prefix + '-ainotice';
+        notice.setAttribute('role', 'note');
+        notice.setAttribute('data-region', 'ainotice');
+        notice.textContent = text;
+        this.log.parentNode.insertBefore(notice, this.log);
     }
 
     /**
@@ -724,13 +771,17 @@ export class ChatPanel {
                                 data.sources || [],
                                 data.iserror,
                                 data.confirmation || null,
-                                data.origin || ''
+                                data.origin || '',
+                                data.aigenerated
                             ));
                         } else if (parsed.event === 'error') {
                             settled = true;
                             finish();
                             this.showError(parsed.data.message || strings.failed);
-                            replaceLive(() => this.appendFailure(new Error(parsed.data.message || '')));
+                            replaceLive(() => this.appendFailure({
+                                message: parsed.data.message || '',
+                                errorcode: parsed.data.errorcode || ''
+                            }));
                         }
                     }
                     split = buffer.indexOf('\n\n');
@@ -912,7 +963,8 @@ export class ChatPanel {
                 response.sources || [],
                 response.iserror,
                 response.confirmation || null,
-                response.origin || ''
+                response.origin || '',
+                response.aigenerated
             );
         }).catch((error) => {
             this.hideTyping();
@@ -1043,7 +1095,7 @@ export class ChatPanel {
                 // in exactly one place. Rendering history through a second,
                 // simpler path is what silently dropped both.
                 (chain, item) => chain.then(() => (item.role === 'assistant'
-                    ? this.appendAssistant(item.html, item.sources || [], false, null, item.origin || '')
+                    ? this.appendAssistant(item.html, item.sources || [], false, null, item.origin || '', item.aigenerated)
                     : this.appendMessage({
                         isuser: true,
                         sendername: strings.you,
@@ -1134,6 +1186,34 @@ export class ChatPanel {
     }
 
     /**
+     * The template context of a confirmation's course outline.
+     *
+     * Short outlines are shown open; a long one starts folded, so the buttons
+     * stay within reach and the card is still one glance (#79).
+     *
+     * @param {object|null} outline The normalised outline, or null.
+     * @return {object|null}
+     */
+    outlineContext(outline) {
+        const sections = (outline && Array.isArray(outline.sections)) ? outline.sections : [];
+        if (!sections.length) {
+            return null;
+        }
+        return {
+            title: outline.title || '',
+            hastitle: !!(outline.title || ''),
+            count: sections.length,
+            open: sections.length <= OUTLINE_OPEN_MAX,
+            sections: sections.map((s, i) => ({
+                num: i + 1,
+                title: s.title || '',
+                summary: s.summary || '',
+                hassummary: !!(s.summary || '')
+            }))
+        };
+    }
+
+    /**
      * Append an assistant bubble.
      *
      * @param {string} html Server-sanitised HTML answer.
@@ -1141,9 +1221,10 @@ export class ChatPanel {
      * @param {boolean} iserror Whether the backend reported a tool-level error.
      * @param {object|null} confirmation Optional confirmation card payload.
      * @param {string} origin Answer origin: grounded or general.
+     * @param {boolean} aigenerated Whether a model wrote it (Art. 50 Abs. 2).
      * @return {Promise}
      */
-    appendAssistant(html, sources, iserror, confirmation, origin) {
+    appendAssistant(html, sources, iserror, confirmation, origin, aigenerated) {
         const mappedSources = (sources || []).map((s, i) => ({
             num: i + 1,
             title: s.title,
@@ -1160,7 +1241,8 @@ export class ChatPanel {
             hassummary: !!(confirmation.summary || ''),
             destructive: !!confirmation.destructive,
             tooltitle: confirmation.tooltitle || '',
-            hastooltitle: !!(confirmation.tooltitle || '')
+            hastooltitle: !!(confirmation.tooltitle || ''),
+            outline: this.outlineContext(confirmation.outline)
         } : null;
         // Three origins, not two: an answer read out of Moodle through the
         // connector's tools is neither grounded in course material nor the
@@ -1182,6 +1264,7 @@ export class ChatPanel {
             failed: !!iserror,
             hasconfirmation: !!confirm,
             confirmation: confirm,
+            aigenerated: !!aigenerated,
             sources: visibleSources,
             hassources: visibleSources.length > 0,
             showmcpbadge: !iserror && ismcp,
@@ -1200,11 +1283,15 @@ export class ChatPanel {
      */
     appendFailure(error) {
         const message = (error && error.message) ? error.message : strings.failed;
+        const errorcode = (error && error.errorcode) ? String(error.errorcode) : '';
         return this.appendMessage({
             isassistant: true,
             sendername: this.config.persona || '',
             failuretext: message,
             failed: true,
+            // A retry button for a failure no retry can cure only sends the
+            // learner round in circles (#39, #37).
+            noretry: NO_RETRY.includes(errorcode),
             copylabel: strings.copy,
             retrylabel: strings.retry
         });
@@ -1256,6 +1343,11 @@ export class ChatPanel {
      */
     appendMessage(context) {
         context.prefix = this.prefix;
+        // Art. 50 Abs. 2 (#52): a model's turn says so in the DOM, live or
+        // restored. Only what the server flagged; an error, a simulated answer
+        // and the typing dots are no model output.
+        context.aigenerated = !!context.aigenerated && !context.failed;
+        context.aisystem = this.config.aisystem || '';
         if (context.avatarurl === undefined) {
             context.avatarurl = this.config.avatarurl || '';
         }

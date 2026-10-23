@@ -230,6 +230,139 @@ final class ai_tools_test extends advanced_testcase {
     }
 
     /**
+     * Without course_ids nothing about a scope is said -- not even "none".
+     *
+     * The agent reads an absent field as "this Moodle cannot check yet" and an
+     * empty one as "checked, nothing allowed". The two must not collapse.
+     */
+    public function test_moodle_verify_user_context_without_scope_says_nothing(): void {
+        $this->resetAfterTest(true);
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+
+        $output = moodle_verify_user_context::execute([], $user);
+
+        $this->assertArrayNotHasKey('verified_course_ids', $output);
+        $this->assertArrayNotHasKey('verified_courses', $output);
+    }
+
+    /**
+     * A search scope comes back as the courses this user may read.
+     *
+     * Enrolled in one, not in the other, and one id that does not exist: only
+     * the first survives, and the order of what survives is the order given.
+     */
+    public function test_moodle_verify_user_context_verifies_the_scope(): void {
+        $this->resetAfterTest(true);
+        $mine = $this->getDataGenerator()->create_course(['fullname' => 'Mein Kurs']);
+        $foreign = $this->getDataGenerator()->create_course();
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $mine->id, 'student');
+        $this->setUser($user);
+
+        $output = moodle_verify_user_context::execute([
+            'course_ids' => [(int) $foreign->id, (int) $mine->id, 999999],
+        ], $user);
+
+        $this->assertSame([(int) $mine->id], $output['verified_course_ids']);
+        $this->assertCount(1, $output['verified_courses']);
+        $this->assertSame('Mein Kurs', $output['verified_courses'][0]['fullname']);
+        $this->assertArrayNotHasKey('roles', $output['verified_courses'][0]);
+    }
+
+    /**
+     * Checked and nothing allowed is an empty list, not a missing one.
+     */
+    public function test_moodle_verify_user_context_empty_when_nothing_is_allowed(): void {
+        $this->resetAfterTest(true);
+        $foreign = $this->getDataGenerator()->create_course();
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+
+        $output = moodle_verify_user_context::execute(['course_ids' => [(int) $foreign->id]], $user);
+
+        $this->assertSame([], $output['verified_course_ids']);
+        $this->assertSame([], $output['verified_courses']);
+    }
+
+    /**
+     * The course somebody teaches without an enrolment stays in.
+     *
+     * The chat engine keeps the surface course even without an enrolment, so
+     * the check must not throw it out again -- otherwise a teacher standing in
+     * their own course would lose its material the moment the agent verifies.
+     */
+    public function test_moodle_verify_user_context_keeps_a_course_taught_without_enrolment(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $teacher = $this->getDataGenerator()->create_user();
+        $roleid = (int) $this->getDataGenerator()->create_role();
+        assign_capability('moodle/course:view', CAP_ALLOW, $roleid, \context_system::instance()->id);
+        role_assign($roleid, (int) $teacher->id, \context_course::instance((int) $course->id)->id);
+        $this->setUser($teacher);
+
+        $output = moodle_verify_user_context::execute([
+            'course_id' => (int) $course->id,
+            'course_ids' => [(int) $course->id],
+        ], $teacher);
+
+        $this->assertSame([(int) $course->id], $output['verified_course_ids']);
+    }
+
+    /**
+     * A hidden course is not readable, so it is not verified.
+     */
+    public function test_moodle_verify_user_context_drops_a_hidden_course(): void {
+        $this->resetAfterTest(true);
+        $hidden = $this->getDataGenerator()->create_course(['visible' => 0]);
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $hidden->id, 'student');
+        $this->setUser($user);
+
+        $output = moodle_verify_user_context::execute(['course_ids' => [(int) $hidden->id]], $user);
+
+        $this->assertSame([], $output['verified_course_ids']);
+    }
+
+    /**
+     * The scope is part of the cache key.
+     *
+     * Asked once without and once with a scope inside the cache lifetime, the
+     * second call must still carry its answer.
+     */
+    public function test_moodle_verify_user_context_scope_is_not_served_from_another_key(): void {
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $this->setUser($user);
+
+        moodle_verify_user_context::execute([], $user);
+        $output = moodle_verify_user_context::execute(['course_ids' => [(int) $course->id]], $user);
+
+        $this->assertSame([(int) $course->id], $output['verified_course_ids']);
+    }
+
+    /**
+     * The comma-separated form of the chat request is accepted as well.
+     */
+    public function test_moodle_verify_user_context_accepts_a_comma_separated_scope(): void {
+        $this->resetAfterTest(true);
+        $first = $this->getDataGenerator()->create_course();
+        $second = $this->getDataGenerator()->create_course();
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $first->id, 'student');
+        $this->getDataGenerator()->enrol_user($user->id, $second->id, 'student');
+        $this->setUser($user);
+
+        $output = moodle_verify_user_context::execute([
+            'course_ids' => $second->id . ',' . $first->id . ',abc,0',
+        ], $user);
+
+        $this->assertSame([(int) $second->id, (int) $first->id], $output['verified_course_ids']);
+    }
+
+    /**
      * The course_id filter restricts the response to one course.
      */
     public function test_moodle_verify_user_context_filter(): void {

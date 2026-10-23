@@ -51,7 +51,20 @@ $PAGE->requires->css('/local/aitransparency/styles.css');
 
 $record = $uuid === '' ? null : provenance::get($uuid);
 
+[$backurl, $backlabel] = \local_aitransparency\verify_back::resolve($record?->contextid, get_local_referer(false));
+$back = html_writer::div(
+    html_writer::link(
+        $backurl,
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24" fill="none" '
+            . 'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" '
+            . 'focusable="false" class="lucide"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg> ' . s($backlabel),
+        ['class' => 'eai-waypoint aitransparency-verify__back']
+    ),
+    'aitransparency-verify__nav'
+);
+
 echo $OUTPUT->header();
+echo $back;
 
 if ($record === null) {
     echo $OUTPUT->notification(

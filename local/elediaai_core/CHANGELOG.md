@@ -4,6 +4,42 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.1.2] – 2026-10-22
+
+### Behoben
+
+- Kurs-Einblicke zaehlen nur noch Chat-Fragen (#170). Das Turn-Protokoll
+  enthaelt seit der Credit-Sperre auch jeden core_ai-Aufruf eines Werkzeugs.
+  Der Prompt des Fragengenerators („Generate 5 quiz questions … Return ONLY
+  Moodle question XML“) stand deshalb unter „Im Wortlaut“ als Frage einer
+  lernenden Person. Kennzahlen, Luecken, Unklarheiten, Verlauf, Wortlaut und
+  Themen-Neuordnung lesen jetzt nur Zeilen mit `actionname = chat_turn`.
+  Verbrauch je Funktion und die Aufsichtsseiten zaehlen weiter alles.
+- „Luecken“ meldete bei 0 % Abdeckung „Jedes Thema … war aus Ihrem
+  Kursmaterial beantwortbar“. Die leere Liste hiess nur, dass kein *Thema*
+  offen war; Fragen ohne Thema bilden keine Zeile. Die Erfolgsmeldung kommt
+  jetzt nur, wenn alle Fragen gedeckt waren, sonst ein Hinweis auf den
+  Wortlaut.
+
+## [1.1.1] – 2026-10-20
+
+### Behoben
+
+- Die Rueckfallwerte fuer die LernHive-Token (`--lh-*`) stehen jetzt in der Kaskadenebene `eledia-lh-fallback` statt direkt auf `:root` (#132). LernHive definiert diese Token selbst; bisher ueberschrieb die Suite sie auf jeder LernHive-Seite, und dort griffen Boost Union und der Akzent nicht mehr. Deklarationen ausserhalb einer Ebene gewinnen unabhaengig von der Reihenfolge, also gelten mit LernHive dessen Werte, ohne LernHive unsere. Zusammengefuehrt sind auch die Werte, die bisher Tutor, LiteRAG und Uebersetzung je auf `.lh-plugin-shell` setzten. Radius und Kartenschatten gelten dort jetzt einheitlich als Suite-Wert (10px statt 8px, ohne Schatten).
+
+## [1.1.0] – 2026-10-16
+### Geändert
+- **Die Suite folgt den Farben des aktiven Themes** (Betreiberentscheidung).
+  Akzent, Marke, Linkton, Seitengrund, Schrift, Linien und Zustände lesen die
+  Bootstrap-Variablen des Themes (`--bs-primary`, `--bs-body-color`,
+  `--bs-border-color`, `--bs-success` usw.; unter 4.5 `--primary` usw.); die
+  eLeDia-Werte sind nur noch Rückfall. Abstufungen werden per `color-mix()`
+  aus dem Grundton gerechnet. Ein Kunde mit eigenem Theme oder Boost mit
+  eigener Markenfarbe sieht die Suite in seinen Farben statt im eLeDia-Orange.
+- Bewusst nicht aus dem Theme: die weiße Kartenfläche, das Lavendel der
+  KI-Herkunft und die einstellbaren Tutor-Designs.
+- `03-dev-doc.md` (Token-Schicht) und `ci/README.md` nachgezogen.
+
 ## [1.0.3] – 2026-09-28
 ### Hinzugefügt
 - **Funktionsschalter** unter „Funktionen" in den Einstellungen: eine

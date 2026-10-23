@@ -120,6 +120,11 @@ class extractor implements content_extractor {
             ];
         }
 
+        // The index is searched course-wide, so only what every learner of the
+        // course may read goes into it (#100). In separate groups a record that
+        // belongs to a group is for that group only.
+        $groupsql = (int) $cm->effectivegroupmode === SEPARATEGROUPS ? 'AND dr.groupid = 0' : '';
+
         // Get approved text content joined with field info.
         $fieldids = array_keys($fields);
         [$finsql, $finparams] = $DB->get_in_or_equal($fieldids, SQL_PARAMS_NAMED);
@@ -133,6 +138,7 @@ class extractor implements content_extractor {
                   JOIN {data_records} dr ON dr.id = dc.recordid
                  WHERE dr.dataid = :dataid
                    AND dr.approved = 1
+                   {$groupsql}
                    AND dc.fieldid {$finsql}
                    AND dc.content IS NOT NULL
                    AND dc.content <> ''

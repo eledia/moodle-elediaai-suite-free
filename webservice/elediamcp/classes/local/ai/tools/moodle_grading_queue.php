@@ -176,7 +176,8 @@ class moodle_grading_queue implements ai_tool {
         }
 
         [$insql, $params] = $DB->get_in_or_equal(array_keys($courses), SQL_PARAMS_NAMED, 'cid');
-        $sql = "SELECT a.id AS assignid, a.name, a.course AS courseid, cm.id AS cmid
+        $sql = "SELECT a.id AS assignid, a.name, a.course AS courseid, a.grade, a.teamsubmission,
+                       a.markingworkflow, a.markingallocation, cm.id AS cmid
                   FROM {assign} a
                   JOIN {course_modules} cm ON cm.instance = a.id
                   JOIN {modules} m ON m.id = cm.module AND m.name = 'assign'
@@ -186,6 +187,7 @@ class moodle_grading_queue implements ai_tool {
 
         $entries = [];
         $total = 0;
+        $grouprestricted = false;
         foreach ($rows as $row) {
             $context = context_module::instance((int) $row->cmid);
             if (!has_capability('mod/assign:grade', $context, $user->id)) {
@@ -197,7 +199,13 @@ class moodle_grading_queue implements ai_tool {
                 continue;
             }
 
-            $stats = self::submission_stats((int) $row->assignid);
+            $allowedgroupids = self::allowed_groupids($cm, $context, $user);
+            $grouprestricted = $grouprestricted || $allowedgroupids !== null;
+            // With marking allocation a grader counts only the students allocated to them, like the grading table.
+            $allocated = !empty($row->markingworkflow) && !empty($row->markingallocation)
+                ? grading_guard::allocated_student_ids((int) $row->cmid, $user)
+                : null;
+            $stats = self::submission_stats($row, $context, $allowedgroupids, $allocated);
             if (!$includeempty && $stats['needs_grading_count'] === 0) {
                 continue;
             }
@@ -221,50 +229,162 @@ class moodle_grading_queue implements ai_tool {
         return [
             'assignments' => $entries,
             'total_needing_grading' => $total,
-            'summary' => $total === 0
+            'summary' => ($total === 0
                 ? 'No submitted assignments appear to need grading.'
-                : "{$total} submitted assignment(s) appear to need grading.",
+                : "{$total} submitted assignment(s) appear to need grading.")
+                . ($grouprestricted ? ' Separate groups: only members of your own groups are counted.' : ''),
         ];
     }
 
     /**
-     * Count submissions for one assignment.
+     * Groups the grader is limited to in this assignment, or null when no group limit applies.
      *
-     * @param int $assignmentid Assignment id.
+     * With separate groups on activity level and without moodle/site:accessallgroups the
+     * grader sees only own groups that are marked for participation
+     * (groups_get_activity_allowed_groups()). A grader without such a group sees nobody.
+     *
+     * @param \cm_info $cm Course module.
+     * @param context_module $context Module context.
+     * @param stdClass $user Acting user.
+     * @return int[]|null Group ids (possibly empty) or null for no restriction.
+     */
+    private static function allowed_groupids(\cm_info $cm, context_module $context, stdClass $user): ?array {
+        if (
+            (int) groups_get_activity_groupmode($cm) !== SEPARATEGROUPS
+                || has_capability('moodle/site:accessallgroups', $context, $user->id)
+        ) {
+            return null;
+        }
+        // Only groups marked for participation, as groups_get_activity_allowed_groups() does.
+        return array_map('intval', array_keys(
+            groups_get_all_groups((int) $cm->course, (int) $user->id, (int) $cm->groupingid, 'g.*', false, true)
+        ));
+    }
+
+    /**
+     * Count submissions for one assignment the way the grading summary of mod_assign does.
+     *
+     * Same rules as assign::count_submissions_need_grading_with_groups() (Moodle 5.1+; 4.5 has
+     * count_submissions_need_grading() for one selected group with the same conditions): only
+     * active enrolments, optionally limited to groups, and "needs grading" means no grade yet,
+     * a grade older than or as old as the submission, or "no grade" on a scale. Team submissions
+     * are counted per team: "needs grading" like core 5.1+ via the groups of the submitting
+     * members (the default team without a group is not counted there, as in core), "submitted"
+     * from the submitted team records like assign::count_submissions_with_status_and_groups().
+     *
+     * @param stdClass $assign Row with assignid, grade and teamsubmission.
+     * @param context_module $context Module context.
+     * @param int[]|null $groupids Limit to members of these groups; null for all.
+     * @param int[]|null $allocated Limit to these allocated students (marking allocation); null for all.
      * @return array{needs_grading_count: int, submitted_count: int, oldest_submission: int|null}
      */
-    private static function submission_stats(int $assignmentid): array {
+    private static function submission_stats(
+        stdClass $assign,
+        context_module $context,
+        ?array $groupids,
+        ?array $allocated = null
+    ): array {
         global $DB;
 
+        if ($groupids === []) {
+            return ['needs_grading_count' => 0, 'submitted_count' => 0, 'oldest_submission' => null];
+        }
+        [$esql, $params] = get_enrolled_sql($context, '', $groupids ?? 0, true);
+        $params['assignment'] = (int) $assign->assignid;
+        $params['submitted'] = 'submitted';
+        $scalegrade = (int) $assign->grade < 0 ? ' OR g.grade = -1' : '';
         $sql = "SELECT s.id, s.userid, s.timemodified,
-                       g.timemodified AS gradetime, g.grade
+                       CASE WHEN (s.timemodified >= g.timemodified OR g.timemodified IS NULL
+                                  OR g.grade IS NULL$scalegrade) THEN 1 ELSE 0 END AS needsgrading
                   FROM {assign_submission} s
              LEFT JOIN {assign_grades} g
                     ON g.assignment = s.assignment
                    AND g.userid = s.userid
                    AND g.attemptnumber = s.attemptnumber
+                  JOIN ($esql) e ON e.id = s.userid
                  WHERE s.assignment = :assignment
                    AND s.latest = 1
-                   AND s.status = :submitted";
-        $rows = $DB->get_records_sql($sql, ['assignment' => $assignmentid, 'submitted' => 'submitted']);
+                   AND s.status = :submitted
+                   AND s.timemodified IS NOT NULL";
+        $rows = $DB->get_records_sql($sql, $params);
+        if ($allocated !== null) {
+            $rows = array_filter($rows, static fn($row): bool => in_array((int) $row->userid, $allocated, true));
+        }
 
-        $needs = 0;
+        $submitted = [];
+        $needs = [];
         $oldest = null;
         foreach ($rows as $row) {
-            $graded = $row->grade !== null
-                && (float) $row->grade >= 0
-                && (int) $row->gradetime >= (int) $row->timemodified;
-            if (!$graded) {
-                $needs++;
+            $submitted[] = (int) $row->userid;
+            if ((int) $row->needsgrading === 1) {
+                $needs[] = (int) $row->userid;
                 $time = (int) $row->timemodified;
                 $oldest = $oldest === null ? $time : min($oldest, $time);
             }
         }
 
+        if (!empty($assign->teamsubmission)) {
+            return [
+                'needs_grading_count' => self::count_teams((int) $assign->assignid, $needs),
+                'submitted_count' => self::count_submitted_teams((int) $assign->assignid, $groupids),
+                'oldest_submission' => $oldest,
+            ];
+        }
         return [
-            'needs_grading_count' => $needs,
-            'submitted_count' => count($rows),
+            'needs_grading_count' => count($needs),
+            'submitted_count' => count($submitted),
             'oldest_submission' => $oldest,
         ];
+    }
+
+    /**
+     * Count the submission teams (groups with a team submission) the given members belong to.
+     *
+     * @param int $assignmentid Assignment id.
+     * @param int[] $userids Team members.
+     * @return int
+     */
+    private static function count_teams(int $assignmentid, array $userids): int {
+        global $DB;
+
+        if ($userids === []) {
+            return 0;
+        }
+        [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'member');
+        $params['assignment'] = $assignmentid;
+        return (int) $DB->count_records_sql(
+            "SELECT COUNT(DISTINCT gm.groupid)
+               FROM {groups_members} gm
+               JOIN {assign_submission} ts
+                 ON ts.groupid = gm.groupid
+                AND ts.assignment = :assignment
+                AND ts.userid = 0
+                AND ts.latest = 1
+              WHERE gm.userid $insql",
+            $params
+        );
+    }
+
+    /**
+     * Count submitted team records, optionally limited to the given groups (core rule).
+     *
+     * @param int $assignmentid Assignment id.
+     * @param int[]|null $groupids Limit to these teams; null for all (including the default team).
+     * @return int
+     */
+    private static function count_submitted_teams(int $assignmentid, ?array $groupids): int {
+        global $DB;
+
+        $select = 'assignment = :assignment AND userid = 0 AND latest = 1 AND status = :submitted';
+        $params = ['assignment' => $assignmentid, 'submitted' => 'submitted'];
+        if ($groupids !== null) {
+            if ($groupids === []) {
+                return 0;
+            }
+            [$insql, $inparams] = $DB->get_in_or_equal($groupids, SQL_PARAMS_NAMED, 'team');
+            $select .= " AND groupid $insql";
+            $params += $inparams;
+        }
+        return $DB->count_records_select('assign_submission', $select, $params);
     }
 }

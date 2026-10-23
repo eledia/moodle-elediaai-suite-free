@@ -93,7 +93,12 @@ class block_elediaai_tutor_edit_form extends block_edit_form {
 
         // Answer source (grounded vs LLM-only). Offered only when it is a real
         // choice: LLM-only allowed site-wide AND the course has a knowledge base.
-        $grounding = \block_elediaai_tutor\local\chat_mode::ingestion_available($this->effective_courseid());
+        // With the saved knowledge base: a course without material of its own
+        // still grounds when the knowledge base names an indexed one (#171).
+        $grounding = \block_elediaai_tutor\local\chat_mode::ingestion_available(
+            $this->effective_courseid(),
+            (string) \block_elediaai_tutor\local\registry::effective('coursescope', (array) ($this->block->config ?? []))
+        );
         $llmallowed = \block_elediaai_tutor\local\chat_mode::is_llm_allowed();
         // Grounded answers call back into Moodle, so they require the MCP connector:
         // never offer the grounded option when webservice_elediamcp is absent.
@@ -209,7 +214,7 @@ class block_elediaai_tutor_edit_form extends block_edit_form {
                     'autocomplete',
                     $field,
                     $label,
-                    \local_elediaai_chatengine\local\knowledge_scope::options(),
+                    \local_elediaai_chatengine\local\knowledge_scope::options((string) ($this->block->config->$key ?? '')),
                     ['multiple' => true]
                 );
                 // What the saved selection amounts to, where there is one.

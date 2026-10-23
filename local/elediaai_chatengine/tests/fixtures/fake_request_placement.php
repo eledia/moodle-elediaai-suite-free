@@ -14,13 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+declare(strict_types=1);
+
+namespace local_elediaai_chatengine\tests\fixtures;
+
+use local_elediaai_chatengine\placement\user_request_framing;
+
 /**
- * Language strings for the feedback content extractor subplugin.
+ * A fake placement that opts into the request frame.
  *
- * @package    aisourcesextractor_feedback
+ * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-$string['pluginname'] = 'Feedback Content Extractor';
-$string['privacy:metadata'] = 'The feedback content extractor does not store any personal data.';
+class fake_request_placement extends fake_placement implements user_request_framing {
+}

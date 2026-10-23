@@ -20,6 +20,7 @@
         <FIELD NAME="revoked" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when the token has been revoked, 0 otherwise."/>
         <FIELD NAME="timerevoked" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Revocation timestamp."/>
         <FIELD NAME="revokedby" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="User who revoked the token, or null when revoked programmatically."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated MCP scopes the token is limited to (OAuth tokens). Null means no limit: the token carries all rights of its user."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -42,7 +43,7 @@
         <FIELD NAME="granttypes" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="authorization_code" SEQUENCE="false" COMMENT="Space-separated OAuth grant types the client is allowed to use."/>
         <FIELD NAME="responsetypes" TYPE="char" LENGTH="255" NOTNULL="true" DEFAULT="code" SEQUENCE="false" COMMENT="Space-separated OAuth response types the client is allowed to request."/>
         <FIELD NAME="tokenendpointauthmethod" TYPE="char" LENGTH="40" NOTNULL="true" DEFAULT="none" SEQUENCE="false" COMMENT="Token endpoint authentication method; always 'none' (public PKCE client)."/>
-        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated scopes the client requested at registration, advisory only."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated scopes the client requested at registration (default for its authorization requests)."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Registration timestamp."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last modification timestamp."/>
       </FIELDS>
@@ -62,7 +63,7 @@
         <FIELD NAME="redirecturi" TYPE="char" LENGTH="1333" NOTNULL="true" SEQUENCE="false" COMMENT="Exact redirect URI presented in the authorization request; must be replayed identically at the token endpoint."/>
         <FIELD NAME="codechallenge" TYPE="char" LENGTH="128" NOTNULL="true" SEQUENCE="false" COMMENT="PKCE code challenge (base64url of SHA-256 of the verifier)."/>
         <FIELD NAME="codechallengemethod" TYPE="char" LENGTH="10" NOTNULL="true" DEFAULT="S256" SEQUENCE="false" COMMENT="PKCE challenge method; only S256 is accepted."/>
-        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Scopes approved for this code, advisory only."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Scopes approved for this code; they are copied to the token and enforced on its requests."/>
         <FIELD NAME="expires" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Expiry timestamp; the code is invalid at or after this time."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Issuance timestamp."/>
       </FIELDS>

@@ -157,7 +157,12 @@ class block_elediaai_tutor_instance_shell_form extends moodleform {
         $mform->setDefault('config_passcoursecontext', 1);
         $mform->addHelpButton('config_passcoursecontext', 'config_passcoursecontext', 'block_elediaai_tutor');
 
-        $grounding = chat_mode::ingestion_available($this->effective_courseid());
+        // With the saved knowledge base: a course without material of its own
+        // still grounds when the knowledge base names an indexed one (#171).
+        $grounding = chat_mode::ingestion_available(
+            $this->effective_courseid(),
+            (string) registry::effective('coursescope', (array) ($this->config ?? []))
+        );
         $llmallowed = chat_mode::is_llm_allowed();
         // Grounded answers call back into Moodle, so they require the MCP connector:
         // never offer the grounded option when webservice_elediamcp is absent.
@@ -244,7 +249,7 @@ class block_elediaai_tutor_instance_shell_form extends moodleform {
                     'autocomplete',
                     $field,
                     $label,
-                    \local_elediaai_chatengine\local\knowledge_scope::options(),
+                    \local_elediaai_chatengine\local\knowledge_scope::options((string) ($this->config->$key ?? '')),
                     ['multiple' => true]
                 );
                 // What the saved selection amounts to, where there is one.

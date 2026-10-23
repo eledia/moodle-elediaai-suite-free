@@ -14,17 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+declare(strict_types=1);
+
+namespace local_elediaai_chatengine\placement;
+
 /**
- * Plugin version for the assign content extractor subplugin.
+ * Opt-in: the person's message is framed as their request.
  *
- * @package    aisourcesextractor_assign
+ * A placement that implements this marker gets
+ * {@see \local_elediaai_chatengine\local\prompt_safety::frame_user_request()}
+ * instead of the default untrusted frame. The message then counts as the
+ * person's request, which a tutor with tools has to act on, and still cannot
+ * change the assistant's instructions, role or policies.
+ *
+ * It is a separate marker rather than a method on {@see placement} so that a
+ * placement which says nothing keeps the default frame word for word. Chat
+ * activities run their own system prompts on the agent side and must not
+ * change behaviour because another surface changed its framing.
+ *
+ * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->version   = 2026092800;
-$plugin->requires  = 2024100700;
-$plugin->supported = [405, 502];
-$plugin->component = 'aisourcesextractor_assign';
+interface user_request_framing {
+}

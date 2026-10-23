@@ -71,7 +71,9 @@ $string['config_promptstarters_help'] = 'Vorgeschlagene Prompts als antippbare C
 $string['config_promptstarters_manager'] = 'Vorschlagsfragen (Manager/innen)';
 $string['config_promptstarters_manager_help'] = 'Dashboard-Pills für kursverwaltende Personen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet.';
 $string['config_promptstarters_teacher'] = 'Vorschlagsfragen (Trainer/innen)';
+$string['config_promptstarters_student'] = 'Vorschlagsfragen (Lernende)';
 $string['config_promptstarters_teacher_help'] = 'Dashboard-Pills für Trainer/innen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet.';
+$string['config_promptstarters_student_help'] = 'Dashboard-Pills für Lernende, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet. Leer: Es gelten die eingebauten Pills für Lernende.';
 $string['config_ragmode'] = 'Antwortquelle';
 $string['config_ragmode_help'] = 'Verankert: Der Tutor antwortet aus den eingelesenen Materialien dieses Kurses (mit Quellenangaben). Nur LLM: Der Tutor antwortet aus dem Allgemeinwissen des Sprachmodells, ohne die Wissensbasis des Kurses zu durchsuchen. Hat der Kurs keine eingelesenen Inhalte, verwendet der Tutor automatisch den Nur-LLM-Modus.';
 $string['config_ragmode_nokb'] = 'Allgemeinwissen (nur LLM) — dieser Kurs hat keine eingelesene Wissensbasis, daher sind verankerte Antworten nicht verfügbar. Markieren Sie den Kurs für die Ingestion, um sie zu aktivieren.';
@@ -349,6 +351,10 @@ $string['reg_coursescope_help'] = 'Legt fest, aus welchem Material dieser Tutor 
 
 Der Kurs, in dem der Tutor steht — **plus** die hier gewählten Kurse, aber davon nur die, in denen die fragende Person eingeschrieben ist **und** die indexiert sind.
 
+**In einem Kurs: erst der eigene Kurs, dann auf Nachfrage der Rest**
+
+Steht der Tutor in einem Kurs, sucht er zuerst nur dort. Findet er nichts Passendes, bietet er an, auch in den übrigen Kursen der Wissensbasis zu suchen — und tut das erst, wenn die Person zustimmt. Die Wissensbasis legt also fest, wohin der Tutor ausweichen *darf*; der eigene Kurs hat Vorrang. Ohne Kurs, etwa auf dem Dashboard, gibt es diese Extrarunde nicht: dort wird immer die ganze Menge durchsucht.
+
 Die Auswahl ist damit ein Wunsch, **keine Berechtigung**: sie schränkt ein, sie erweitert nie. Wählen Sie einen Kurs, in dem jemand nicht eingeschrieben ist, bleibt er für diese Person stumm. Sie können also niemandem versehentlich Material zugänglich machen.
 
 **Kursbereiche**
@@ -361,7 +367,7 @@ Ein Kurs ist nur durchsuchbar, wenn er in die Wissensquellen aufgenommen und ind
 
 **Ohne Kurs entscheidet allein die Auswahl**
 
-Ein Tutor ohne Kurs — auf dem Dashboard oder mit abgeschaltetem Kurskontext — sucht in allen Kursen, in denen die fragende Person eingeschrieben ist. **Sobald hier aber etwas ausgewählt ist, gilt nur noch diese Auswahl** (weiterhin geschnitten mit den Einschreibungen). Genau so baut man einen Tutor für eine bestimmte Menge von Kursen: Kurskontext aus, Wissensbasis gesetzt.
+Ein Tutor ohne Kurs — auf dem Dashboard oder mit abgeschaltetem Kurskontext — sucht in allen Kursen, in denen die fragende Person eingeschrieben ist; ist sie nirgends eingeschrieben, in den Kursen, die sie zuletzt geöffnet hat und weiterhin lesen darf. **Sobald hier aber etwas ausgewählt ist, gilt nur noch diese Auswahl** (weiterhin geschnitten mit den Einschreibungen). Genau so baut man einen Tutor für eine bestimmte Menge von Kursen: Kurskontext aus, Wissensbasis gesetzt.
 
 Die Startseite der Website ist dabei keine Ausnahme: sie ist in Moodle ein Kurs und wird wie einer behandelt. Nur Flächen ohne Kurs — allen voran das Dashboard — fallen unter die Regel oben.
 
@@ -377,7 +383,7 @@ Eine leere Auswahl heißt „wie die Website es vorgibt". Sie erbt dann die Wiss
 
 **Grenze**
 
-Pro Frage geht nur eine begrenzte Zahl von Kursen an die Suche; die Zahl gibt das Backend vor und steht in den Einstellungen der Chat-Engine. Weil zuerst mit den Einschreibungen geschnitten und erst dann gezählt wird, ist ein großer Bereich unproblematisch, solange die fragende Person in wenigen seiner Kurse steckt. Wird es doch mehr, fällt der Tutor auf den Kurs zurück, in dem er steht.';
+Pro Frage geht nur eine begrenzte Zahl von Kursen an die Suche; die Zahl gibt das Backend vor und steht in den Einstellungen der Chat-Engine. Weil zuerst mit den Einschreibungen geschnitten und erst dann gezählt wird, ist ein großer Bereich unproblematisch, solange die fragende Person in wenigen seiner Kurse steckt. Wird es doch mehr, wird die Liste gekürzt statt verworfen: Der Kurs, in dem der Tutor steht, bleibt immer dabei, die übrigen Plätze gehen an die Kurse, die die fragende Person zuletzt geöffnet hat. Mehr einzelne Kurse als diese Zahl lassen sich gar nicht erst speichern.';
 $string['reg_historyenabled'] = 'Gesprächsverlauf';
 $string['reg_historyenabled_desc'] = 'Ob Lernende frühere Gespräche durchsuchen und fortsetzen können.';
 $string['reg_launcherstyle'] = 'Stil der Schaltfläche';
@@ -426,9 +432,11 @@ $string['reg_persona_tone_desc'] = 'Wie der Tutor klingen soll, z. B. „warm un
 $string['reg_promptstarters'] = 'Vorgeschlagene Fragen';
 $string['reg_promptstarters_desc'] = 'Vorgeschlagene Prompts, einer pro Zeile (bis zu sechs werden angezeigt). Formate: „action | fa-icon | Label | Prompt", „Label | Prompt" oder nur die Frage selbst. Ein führendes „action" lässt den Tutor seine Moodle-Werkzeuge nutzen, ohne die Kursmaterialien zu durchsuchen; „knowledge" erzwingt reine Material-Antworten.';
 $string['reg_promptstarters_manager'] = 'Vorschlagsfragen (Manager/innen)';
-$string['reg_promptstarters_manager_desc'] = 'Auf dem Dashboard für kursverwaltende Personen; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gilt die Trainer-Liste, dann die Basisliste, dann die eingebauten Vorgaben.';
+$string['reg_promptstarters_manager_desc'] = 'Auf dem Dashboard für kursverwaltende Personen; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gilt die Trainer-Liste, dann die eingebauten Vorgaben.';
 $string['reg_promptstarters_teacher'] = 'Vorschlagsfragen (Trainer/innen)';
-$string['reg_promptstarters_teacher_desc'] = 'Auf dem Dashboard für Trainer/innen; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gilt die Basisliste, dann die eingebauten Vorgaben.';
+$string['reg_promptstarters_student'] = 'Vorschlagsfragen (Lernende)';
+$string['reg_promptstarters_teacher_desc'] = 'Auf dem Dashboard für Trainer/innen; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gelten die eingebauten Vorgaben.';
+$string['reg_promptstarters_student_desc'] = 'Auf dem Dashboard für Lernende; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gelten die eingebauten Pills für Lernende. Die allgemeinen Vorschlagsfragen gelten auf dem Dashboard nicht.';
 $string['reg_tok_accentcontrast'] = 'Text auf Akzent';
 $string['reg_tok_accentcontrast_desc'] = 'Text-/Symbolfarbe auf der Akzentfarbe (z. B. Schaltflächenbeschriftungen).';
 $string['reg_tok_accentdark'] = 'Akzent (Hover/Gedrückt)';

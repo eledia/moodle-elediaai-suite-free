@@ -3,6 +3,72 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.9] – 2026-10-22
+
+### Behoben
+
+- „Allgemeinwissen-Modus“ trotz indexierter Wissensbasis (#171): Der Banner im
+  Tutor-Kopf und der Hinweis „Antwortquelle“ in beiden Instanzformularen fragten
+  nur, ob der eigene Kurs indexiert ist. Die Wissensbasis der Instanz pruefte
+  nur der Chat-Zug selbst, deshalb antwortete der Tutor aus dem Handbuch und
+  meldete gleichzeitig „nicht auf Ihren Kursmaterialien“. Banner, Hinweis und
+  Zug fragen jetzt dasselbe: eigener Kurs **oder** ein Kurs der Wissensbasis
+  indexiert.
+- Dashboard-Startkacheln je Zielgruppe (#172): Auf dem Dashboard gilt die
+  allgemeine Liste „Vorgeschlagene Fragen“ nicht mehr. Bisher bekamen
+  Lernende diese Liste. Auf der Testinstanz stand dort eine Admin-Liste, und
+  Studierende sahen „Kurs anlegen“, „Nutzer finden“, „Plattform-Report“.
+  Neu ist das Feld „Vorschlagsfragen (Lernende)“. Lernende lesen diese Liste,
+  Trainer/innen ihre eigene, Manager/innen ihre und dann die der
+  Trainer/innen. Ist eine Liste leer, gelten die eingebauten Pills der
+  Zielgruppe. Die allgemeine Liste bleibt fuer den Tutor im Kurs.
+  **Achtung beim Update:** Wer Lernenden auf dem Dashboard bisher ueber die
+  allgemeine Liste eigene Kacheln gezeigt hat, traegt sie jetzt unter
+  „Vorschlagsfragen (Lernende)“ ein.
+
+## [1.0.8] – 2026-10-20
+
+### Behoben
+
+- Setzt die LernHive-Token (`--lh-*`) nicht mehr auf `.lh-plugin-shell` (#132). Sie kamen auf jeder LernHive-Seite an und verdraengten dort LernHives eigene Farben. Die Rueckfallwerte liegen jetzt zentral in `local_elediaai_core`.
+
+## [1.0.7] – 2026-10-14
+
+### Geändert
+
+- Der Tutor reicht die Wahl „KI-Hinweis einmal je Gespräch“ an sein Panel
+  weiter (#42).
+
+## [1.0.6] – 2026-10-14
+
+### Geändert
+
+- Antworten tragen die maschinenlesbare KI-Kennzeichnung der Chat-Engine 1.5.0
+  (#52): `send_message` liefert `aigenerated`, der wiederhergestellte Verlauf
+  reicht es an die Sprechblase weiter.
+
+## [1.0.5] – 2026-10-14
+
+### Geändert
+
+- **Eine abgewiesene Oberfläche hinterlässt eine Spur** (#37). Prüft der Tutor
+  den Kontext, aus dem eine Nachricht kommt, und lehnt ab („Ungültiger
+  Kontext"), steht das jetzt mit Code, Ort und Zeit im Turn-Protokoll der Suite
+  – bisher war der Screenshot der Kundin der einzige Beleg. Protokolliert wird
+  am gepufferten Endpunkt; ein so abgelehnter Stream fällt auf ihn zurück und
+  wird damit nicht doppelt gezählt.
+- „Erneut versuchen" erscheint bei dieser Ablehnung nicht mehr (Chat-Engine
+  1.3.0): Sie lässt sich durch Wiederholen nicht beheben.
+
+## [1.0.4] – 2026-10-05
+
+### Geändert
+
+- **Die Nachricht gilt als Anfrage der Person.** Der Tutor nutzt den neuen
+  Anfrage-Rahmen der Chat-Engine (`user_request_framing`) und führt damit
+  Bitten wie „Lege eine Aufgabe an" wieder aus – im Rahmen der Moodle-Rechte
+  der Person. Setzt local_elediaai_chatengine 1.1.2 (2026100500) voraus.
+
 ## [1.0.2] – 2026-09-28
 
 ### Behoben

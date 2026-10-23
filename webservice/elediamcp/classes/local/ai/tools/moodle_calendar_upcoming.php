@@ -200,23 +200,9 @@ class moodle_calendar_upcoming implements ai_tool {
         $tstart = time();
         $tend = $tstart + ($days * DAYSECS);
 
-        $cache = cache::make('webservice_elediamcp', 'responses');
-        $cachekey = sprintf(
-            'calendar_%d_%d_%d_%d_%d',
-            $userid,
-            $days,
-            $courseidfilter,
-            $limit,
-            $includedesc ? 1 : 0
-        );
-        $cached = $cache->get($cachekey);
-        if (is_array($cached)) {
-            return $cached;
-        }
-
         require_once($CFG->dirroot . '/calendar/lib.php');
 
-        $usercourses = enrol_get_users_courses($userid, true, ['id', 'shortname', 'fullname']);
+        $usercourses = enrol_get_users_courses($userid, true, ['id', 'shortname', 'fullname', 'cacherev']);
         $courseids = array_map(static fn($c) => (int) $c->id, array_values($usercourses));
         if ($courseidfilter > 0) {
             if (!in_array($courseidfilter, $courseids, true) && !is_siteadmin($user)) {
@@ -239,6 +225,30 @@ class moodle_calendar_upcoming implements ai_tool {
                     }
                 }
             }
+        }
+
+        // Cache only after the access checks. The key also carries the current courses, their cache
+        // revision and the groups, so a lost enrolment, a changed group membership and changes to
+        // course modules (cacherev) take effect at once. Calendar-only events (course, group, user,
+        // site), changed rights and user-specific availability (for example completion or a date)
+        // are not part of the key and may show for up to the cache TTL.
+        $revisions = array_map(
+            static fn(int $cid): string => $cid . ':' . (int) ($usercourses[$cid]->cacherev ?? 0),
+            $courseids
+        );
+        $cache = cache::make('webservice_elediamcp', 'responses');
+        $cachekey = sprintf(
+            'calendar_%d_%d_%d_%d_%d_%s',
+            $userid,
+            $days,
+            $courseidfilter,
+            $limit,
+            $includedesc ? 1 : 0,
+            sha1(implode(',', $revisions) . '|' . implode(',', array_keys($groupids)))
+        );
+        $cached = $cache->get($cachekey);
+        if (is_array($cached)) {
+            return $cached;
         }
 
         $users = [$userid];
@@ -338,8 +348,15 @@ class moodle_calendar_upcoming implements ai_tool {
      * @return string
      */
     private static function event_url(string $module, int $instance, int $courseid, int $eventid): string {
+        // view.php wants the course module id, the event carries the instance
+        // id of the activity. Both are counters of their own tables and only
+        // coincide by chance; on the test instance the briefing linked assign instance
+        // 19 instead of course module 497 (#173).
         if ($module !== '' && $instance > 0) {
-            return (new moodle_url("/mod/{$module}/view.php", ['id' => $instance]))->out(false);
+            $cm = get_coursemodule_from_instance($module, $instance, $courseid ?: 0, false, IGNORE_MISSING);
+            if ($cm) {
+                return (new moodle_url("/mod/{$module}/view.php", ['id' => $cm->id]))->out(false);
+            }
         }
         if ($courseid > 0) {
             return (new moodle_url('/course/view.php', ['id' => $courseid]))->out(false);

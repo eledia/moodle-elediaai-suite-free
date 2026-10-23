@@ -23,6 +23,39 @@
     font-weight: 600;
 }
 
+/* Kompakt (#42): nur das Zeichen, der Satz bleibt unsichtbar im Baum. */
+.aitransparency-notice--compact {
+    background: transparent;
+    margin: var(--eai-space-1) 0 0;
+    padding: 0;
+}
+
+.aitransparency-notice a.aitransparency-notice__mark,
+.aitransparency-notice__mark {
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius-pill);
+    color: var(--eai-ai);
+    font-size: var(--font-size-caption);
+    font-weight: 600;
+    line-height: 1.4;
+    padding: 0 var(--eai-space-1);
+    text-decoration: none;
+}
+
+/* The way back sits above the card, on its left edge: the same quiet text
+   link the suite uses for "back to the course" (eai-waypoint), not a button
+   competing with the result. */
+.aitransparency-verify__nav {
+    margin: 0 auto var(--eai-space-3);
+    max-width: 52rem;
+}
+
+.aitransparency-verify__back {
+    align-items: center;
+    display: inline-flex;
+    gap: var(--eai-space-1);
+}
+
 .aitransparency-verify {
     background: var(--eai-surface);
     border: 1px solid var(--eai-line);

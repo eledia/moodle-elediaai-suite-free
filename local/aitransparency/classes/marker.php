@@ -54,6 +54,21 @@ final class marker {
     /** @var string CSS class the filter and the stylesheet look for. */
     public const CSS_CLASS = 'aitransparency-marked';
 
+    /** @var string The full sentence with its link, under every output. */
+    public const STYLE_FULL = 'full';
+
+    /** @var string A small "AI" mark with the link; the sentence stays for screen readers and copying. */
+    public const STYLE_COMPACT = 'compact';
+
+    /** @var string Chat only: the sentence once at the chat, each answer compact. */
+    public const STYLE_ONCE = 'once';
+
+    /** @var string Surface key for chat answers. */
+    public const SURFACE_CHAT = 'chat';
+
+    /** @var string Surface key for everything else (course content, generated activities). */
+    public const SURFACE_CONTENT = 'content';
+
     /**
      * Static-only.
      */
@@ -87,14 +102,27 @@ final class marker {
     /**
      * The visible hint that a reader is looking at AI output.
      *
+     * How it looks is the site's choice (#42), not the caller's: a chat with
+     * ten answers said the same sentence ten times. The compact style keeps
+     * the sentence for screen readers and for copying and shows a small mark;
+     * the machine-readable marking ({@see wrap_text()}) is the same in every
+     * style.
+     *
      * @param string|null $uuid Provenance UUID; when given, the notice links to it.
      * @param string|null $provider Optional provider label for the sentence.
+     * @param string|null $style One of the STYLE_* constants, or null for the
+     *        site's choice for content outside a chat.
      * @return string
      */
-    public static function notice(?string $uuid = null, ?string $provider = null): string {
+    public static function notice(?string $uuid = null, ?string $provider = null, ?string $style = null): string {
         $label = $provider !== null && trim($provider) !== ''
             ? get_string('notice_with_provider', 'local_aitransparency', s(trim($provider)))
             : get_string('notice', 'local_aitransparency');
+        $style ??= self::style(self::SURFACE_CONTENT);
+
+        if ($style !== self::STYLE_FULL) {
+            return self::compact_notice($label, $uuid);
+        }
 
         $body = html_writer::tag('span', $label, ['class' => 'aitransparency-notice__text']);
 
@@ -107,6 +135,68 @@ final class marker {
         }
 
         return html_writer::div($body, 'aitransparency-notice', ['role' => 'note']);
+    }
+
+    /**
+     * The small form of the notice.
+     *
+     * The mark is what the eye gets; the sentence is still there, visually
+     * hidden, so a screen reader reads it and copying an answer takes it along
+     * (the chat's copy action reads `.aitransparency-notice__text`).
+     *
+     * @param string $label The full sentence.
+     * @param string|null $uuid Provenance UUID, for the link.
+     * @return string
+     */
+    private static function compact_notice(string $label, ?string $uuid): string {
+        $mark = get_string('notice_mark', 'local_aitransparency');
+        $body = html_writer::tag('span', $label, ['class' => 'aitransparency-notice__text visually-hidden']);
+        if ($uuid !== null && trim($uuid) !== '') {
+            $body .= html_writer::link(
+                self::verify_url(trim($uuid)),
+                html_writer::tag('span', $mark, ['aria-hidden' => 'true'])
+                    . html_writer::tag('span', get_string('notice_verify', 'local_aitransparency'), ['class' => 'visually-hidden']),
+                ['class' => 'aitransparency-notice__link aitransparency-notice__mark', 'title' => $label]
+            );
+        } else {
+            $body .= html_writer::tag('span', $mark, [
+                'class' => 'aitransparency-notice__mark',
+                'aria-hidden' => 'true',
+                'title' => $label,
+            ]);
+        }
+
+        return html_writer::div($body, 'aitransparency-notice aitransparency-notice--compact', ['role' => 'note']);
+    }
+
+    /**
+     * The notice style the site chose for a surface.
+     *
+     * Full by default, so nothing changes until someone decides otherwise --
+     * whether once per chat satisfies Art. 50 Abs. 1 is still with legal
+     * (#42). "Once" exists for the chat only; anywhere else it means compact.
+     *
+     * @param string $surface One of the SURFACE_* constants.
+     * @return string One of the STYLE_* constants.
+     */
+    public static function style(string $surface): string {
+        $setting = $surface === self::SURFACE_CHAT ? 'noticestyle_chat' : 'noticestyle';
+        $value = (string) get_config('local_aitransparency', $setting);
+        $allowed = $surface === self::SURFACE_CHAT
+            ? [self::STYLE_FULL, self::STYLE_COMPACT, self::STYLE_ONCE]
+            : [self::STYLE_FULL, self::STYLE_COMPACT];
+        return in_array($value, $allowed, true) ? $value : self::STYLE_FULL;
+    }
+
+    /**
+     * The sentence a chat shows once, when the site chose that style.
+     *
+     * @return string|null The sentence, or null when every answer carries its own.
+     */
+    public static function chat_notice(): ?string {
+        return self::style(self::SURFACE_CHAT) === self::STYLE_ONCE
+            ? get_string('notice_chat', 'local_aitransparency')
+            : null;
     }
 
     /**

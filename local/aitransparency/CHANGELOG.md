@@ -4,6 +4,33 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.1.1] – 2026-10-23
+
+### Behoben
+
+- Die Pruefseite „Herkunft pruefen“ war eine Sackgasse. Ueber der Karte steht
+  jetzt ein Rueckweg im Stil der Suite (der leise Textlink wie „Zurueck zum
+  Kurs“ in den Kurs-Einblicken). Das Ziel ist zuerst die Seite, von der man
+  kam (meist der Chat), sonst der Ort, an dem der Inhalt entstand (Kurs oder
+  Aktivitaet, mit Namen), sonst das Dashboard. Kurs- und Aktivitaetsnamen
+  sieht nur, wer den Kurs sehen darf.
+
+## [1.1.0] – 2026-10-14
+### Hinzugefügt
+- **Darstellung des KI-Hinweises einstellbar** (#42). Zwei Einstellungen:
+  `noticestyle_chat` (voll · kompakt · einmal je Gespräch) und `noticestyle`
+  für alles außerhalb eines Chats (voll · kompakt). **Standard bleibt „voll“**,
+  es ändert sich also nichts, bis jemand umstellt.
+- Kompakt: ein kleines „KI“-Zeichen mit Link zum Herkunftsnachweis; der Satz
+  steht weiter unsichtbar im Baum, für Screenreader und beim Kopieren.
+- „Einmal je Gespräch“: Der Satz steht einmal am Chat (`marker::chat_notice()`),
+  jede Antwort trägt das kompakte Zeichen.
+- `marker::notice()` hat einen optionalen Stil-Parameter, `marker::style()`
+  liefert die Wahl je Oberfläche. Die maschinenlesbare Kennzeichnung
+  (`wrap_text()`, `data-ai-record`) ist in allen Stilen unverändert.
+- Ob „einmal je Gespräch“ Art. 50 Abs. 1 genügt, ist rechtlich noch zu
+  bestätigen; die Beschreibung der Einstellung sagt das.
+
 ## [1.0.3] – 2026-09-28
 ### Geändert
 - LICENSE beigelegt; `$plugin->supported = [405, 502]`.

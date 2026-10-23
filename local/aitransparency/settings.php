@@ -40,4 +40,30 @@ if ($hassiteconfig) {
         365,
         PARAM_INT
     ));
+
+    // How the visible notice looks (#42). The machine-readable marking is the
+    // same in every style; this only decides what a reader sees.
+    $full = get_string('noticestyle_full', 'local_aitransparency');
+    $compact = get_string('noticestyle_compact', 'local_aitransparency');
+    $settings->add(new admin_setting_configselect(
+        'local_aitransparency/noticestyle_chat',
+        get_string('setting_noticestyle_chat', 'local_aitransparency'),
+        get_string('setting_noticestyle_chat_desc', 'local_aitransparency'),
+        \local_aitransparency\marker::STYLE_FULL,
+        [
+            \local_aitransparency\marker::STYLE_FULL => $full,
+            \local_aitransparency\marker::STYLE_COMPACT => $compact,
+            \local_aitransparency\marker::STYLE_ONCE => get_string('noticestyle_once', 'local_aitransparency'),
+        ]
+    ));
+    $settings->add(new admin_setting_configselect(
+        'local_aitransparency/noticestyle',
+        get_string('setting_noticestyle', 'local_aitransparency'),
+        get_string('setting_noticestyle_desc', 'local_aitransparency'),
+        \local_aitransparency\marker::STYLE_FULL,
+        [
+            \local_aitransparency\marker::STYLE_FULL => $full,
+            \local_aitransparency\marker::STYLE_COMPACT => $compact,
+        ]
+    ));
 }

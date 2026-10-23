@@ -109,6 +109,13 @@ final class simulator_adapter_test extends \advanced_testcase {
 
         $confirm = $adapter->chat(new chat_request(usermessage: '/confirm'));
         $this->assertIsArray($confirm->confirmation);
+        // The panel renders a card only for a confirmation that says it is required.
+        $this->assertTrue($confirm->confirmation['required']);
+        $this->assertArrayNotHasKey('outline', $confirm->confirmation);
+
+        $outline = $adapter->chat(new chat_request(usermessage: '/gliederung'));
+        $this->assertTrue($outline->confirmation['required']);
+        $this->assertCount(8, $outline->confirmation['outline']['sections']);
 
         $tokens = $adapter->chat(new chat_request(usermessage: '/tokens'));
         $this->assertSame(1234, $tokens->prompttokens);

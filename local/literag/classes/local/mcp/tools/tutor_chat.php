@@ -351,6 +351,11 @@ class tutor_chat implements tool {
                 }
                 // A write previewed this turn awaits the learner's confirmation next turn.
                 if ($agentrunner->pendingaction !== null) {
+                    // The tool's title goes into the stored action, so the
+                    // confirmed turn can name what was done without asking a
+                    // model to phrase it (#40).
+                    $toolname = (string) ($agentrunner->pendingaction['tool'] ?? '');
+                    $agentrunner->pendingaction['tooltitle'] = $tooltitles[$toolname] ?? '';
                     $this->repo->set_pending_action($conversation, $agentrunner->pendingaction);
                     $confirmation = $this->confirmation_payload($agentrunner->pendingaction, $tooltitles);
                     $answerorigin = 'mcp';
@@ -509,9 +514,6 @@ class tutor_chat implements tool {
         ?string $systempromptid = null
     ): array {
         $mcp = $this->mcp ?? $this->moodle_client($systemurl, $moodletoken);
-        // This path answers a confirmation and bills its own completion, so it
-        // reports usage just like the main path does.
-        $turnusage = ['prompttokens' => null, 'completiontokens' => null];
 
         $args = is_array($pending['arguments'] ?? null) ? $pending['arguments'] : [];
         $args['confirm'] = true;
@@ -520,24 +522,27 @@ class tutor_chat implements tool {
         $summary = (is_array($result['structured']) && !empty($result['structured']['summary']))
             ? (string) $result['structured']['summary'] : '';
         $completed = !$result['iserror'] && $this->confirmed_action_completed($result['structured']);
-        if ($completed) {
-            $note = 'You have just completed the learner\'s confirmed request: '
-                . ($summary !== '' ? $summary : 'done') . '. Confirm this to the learner in one short sentence.';
-        } else {
-            $note = 'The action could not be completed' . ($summary !== '' ? ' (' . $summary . ')' : '')
-                . '. Apologise briefly and suggest trying again.';
-        }
 
-        try {
-            // A send/confirmation reply is a plain short sentence — never quizzed or turned into
-            // a hint — so the answer style is deliberately dropped (null) on this path only.
-            $confirmreply = $this->client()->chat_with_usage(
-                prompt_builder::build($note, [], $history, null, $userlang, $persona, $systempromptid, false)
-            );
-            $answer = $confirmreply['content'];
-            $turnusage = self::add_usage($turnusage, $confirmreply['usage']);
-        } catch (llm_exception $e) {
-            $answer = $completed ? get_string('confirm_sent', 'local_literag') : get_string('error_llm', 'local_literag');
+        // The reply is written here, not by the model (#40). It used to be
+        // handed a note "you have just completed ..." as a user message,
+        // without the tool result behind it; next to the system rule never to
+        // claim a write without a tool result showing it, a model took the
+        // note for an unproven claim and told the learner it could not create
+        // users -- after it had. The learner tried again and hit "username is
+        // already in use". What happened is known exactly, so it is said.
+        $what = self::learner_facing_result($summary);
+        if ($completed) {
+            $title = trim((string) ($pending['tooltitle'] ?? ''));
+            if ($what === '' && $title !== '') {
+                $what = $title . '.';
+            }
+            $answer = $what !== ''
+                ? self::string_in('confirm_done', $userlang, $what)
+                : self::string_in('confirm_done_generic', $userlang);
+        } else {
+            $answer = $what !== ''
+                ? self::string_in('confirm_failed', $userlang, $what)
+                : self::string_in('confirm_failed_generic', $userlang);
         }
         if ($completed) {
             $answer = $this->append_action_link($answer, $result['structured']);
@@ -549,18 +554,68 @@ class tutor_chat implements tool {
             'answer' => $answer,
             'conversation_id' => $conversation->convkey,
             'answer_origin' => 'mcp',
+            // No model was asked on this path, so nothing was consumed.
+            'usage' => ['prompt_tokens' => 0, 'completion_tokens' => 0],
         ];
-        if ($turnusage['prompttokens'] !== null || $turnusage['completiontokens'] !== null) {
-            $structured['usage'] = [
-                'prompt_tokens' => $turnusage['prompttokens'],
-                'completion_tokens' => $turnusage['completiontokens'],
-            ];
-        }
         return result::tool($answer, $structured, false);
     }
 
     /**
+     * A write tool's result summary, reduced to what a learner should read.
+     *
+     * The summaries are written for the model as much as for people: the
+     * course author's ends with "check moodle_course_generation_status with
+     * job_token=...". Clauses that address the model -- a tool name, a token,
+     * a confirm flag -- are dropped; what remains is the fact.
+     *
+     * @param string $summary The tool's `summary`.
+     * @return string Plain text, possibly empty.
+     */
+    private static function learner_facing_result(string $summary): string {
+        $summary = trim(clean_param($summary, PARAM_TEXT));
+        if ($summary === '') {
+            return '';
+        }
+        $kept = [];
+        foreach (preg_split('/(?<=[.!?;])\s+/', $summary) ?: [] as $clause) {
+            if (preg_match('/\bmoodle_[a-z_]+|job_token|confirm\s*=|call this tool|preview only/i', $clause)) {
+                continue;
+            }
+            $kept[] = trim($clause);
+        }
+        $text = trim(implode(' ', array_filter($kept)));
+        $text = rtrim($text, " ;,");
+        if ($text !== '' && !preg_match('/[.!?]$/', $text)) {
+            $text .= '.';
+        }
+        return $text;
+    }
+
+    /**
+     * A string of this plugin in the learner's language.
+     *
+     * The turn carries `user_lang`; the confirmation is answered in it like
+     * every other reply. An unknown or uninstalled language falls back to the
+     * current one.
+     *
+     * @param string $identifier String identifier in local_literag.
+     * @param string|null $lang The learner's language, as sent.
+     * @param mixed $a String parameter.
+     * @return string
+     */
+    private static function string_in(string $identifier, ?string $lang, $a = null): string {
+        $lang = $lang !== null ? clean_param(str_replace('-', '_', \core_text::strtolower($lang)), PARAM_LANG) : '';
+        if ($lang === '' || !get_string_manager()->translation_exists($lang)) {
+            $lang = null;
+        }
+        return get_string_manager()->get_string($identifier, 'local_literag', $a, $lang);
+    }
+
+    /**
      * Structured confirmation controls for chat UIs that can render buttons.
+     *
+     * The outline of a course the teacher is asked to create travels along
+     * when the tool previewed one (#79).
      *
      * @return array{required: bool, yeslabel: string, nolabel: string, yesmessage: string, nomessage: string}
      */
@@ -577,7 +632,7 @@ class tutor_chat implements tool {
             'summary' => self::user_facing_summary((string) ($pending['summary'] ?? '')),
             'destructive' => !empty($pending['destructive']),
             'tooltitle' => $tooltitles[$toolname] ?? $toolname,
-        ];
+        ] + (is_array($pending['outline'] ?? null) ? ['outline' => $pending['outline']] : []);
     }
 
     /**

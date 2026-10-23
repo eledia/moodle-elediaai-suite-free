@@ -49,4 +49,12 @@ $definitions = [
         'simpledata' => false,
         'ttl' => 60,
     ],
+    // Previews of write tools and the person's approvals, per user (#168).
+    // Losing an entry only costs a second preview, never lets a write through.
+    'confirmations' => [
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => false,
+        'ttl' => 3600,
+    ],
 ];

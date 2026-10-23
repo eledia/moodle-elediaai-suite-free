@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace webservice_elediamcp\form;
 
 use moodleform;
+use webservice_elediamcp\local\ai\response_budget;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -174,6 +175,22 @@ class configuration_form extends moodleform {
             get_string('setting_max_request_size_desc', 'webservice_elediamcp')
         );
 
+        $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-response_max_chars']));
+        $mform->addElement(
+            'text',
+            'response_max_chars',
+            get_string('setting_response_max_chars', 'webservice_elediamcp'),
+            ['size' => 8]
+        );
+        $mform->setType('response_max_chars', PARAM_INT);
+        $mform->addHelpButton('response_max_chars', 'setting_response_max_chars', 'webservice_elediamcp');
+        $mform->addElement(
+            'static',
+            'response_max_chars_desc',
+            '',
+            get_string('setting_response_max_chars_desc', 'webservice_elediamcp')
+        );
+
         $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-emergency_disable']));
         $mform->addElement(
             'advcheckbox',
@@ -322,6 +339,13 @@ class configuration_form extends moodleform {
             if ((int) ($data[$field] ?? 0) < 0) {
                 $errors[$field] = get_string('configuration_error_nonnegative', 'webservice_elediamcp');
             }
+        }
+        $maxchars = (int) ($data['response_max_chars'] ?? response_budget::DEFAULT_MAX_CHARS);
+        if ($maxchars < response_budget::MIN_MAX_CHARS || $maxchars > response_budget::MAX_MAX_CHARS) {
+            $errors['response_max_chars'] = get_string('configuration_error_range', 'webservice_elediamcp', (object) [
+                'min' => response_budget::MIN_MAX_CHARS,
+                'max' => response_budget::MAX_MAX_CHARS,
+            ]);
         }
         $origins = preg_split('/\R+/', (string) ($data['allowed_origins'] ?? '')) ?: [];
         foreach ($origins as $origin) {

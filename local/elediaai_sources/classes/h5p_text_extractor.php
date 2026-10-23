@@ -45,8 +45,9 @@ class h5p_text_extractor {
      *
      * Identifiers, configuration, behaviour, localisation and styling keys
      * that never carry educational text. NOTE: `action` is deliberately NOT
-     * skipped — Course Presentation, Interactive Video, Branching Scenario and
-     * Interactive Book all nest their sub-content libraries under `action`.
+     * skipped — Course Presentation, Interactive Video and Branching Scenario
+     * nest their sub-content libraries under `action`. Interactive Book keeps
+     * its chapters under `chapters` and has its own handler.
      */
     private const SKIP_KEYS = [
         'subcontentid',
@@ -385,6 +386,32 @@ class h5p_text_extractor {
             }
         }
 
+        // Interactive Book (#92): `chapters` is a list of H5P.Column entries,
+        // each with its title in `metadata.title` -- the one place the generic
+        // walk skips. Every chapter is emitted as "Chapter: <title>" followed by
+        // its content. The book's own top-level strings are interface labels
+        // ("Next page", "Display 'Table of contents'"), not course content, so
+        // of the root only the chapters and the cover are read.
+        if (isset($node['chapters']) && is_array($node['chapters']) && array_is_list($node['chapters'])) {
+            foreach ($node['chapters'] as $chapter) {
+                if (!is_array($chapter)) {
+                    continue;
+                }
+                $title = is_string($chapter['metadata']['title'] ?? null) ? self::clean($chapter['metadata']['title']) : '';
+                if ($title !== '') {
+                    $blocks[] = 'Chapter: ' . $title;
+                }
+                self::walk($chapter['params'] ?? $chapter, $blocks);
+            }
+            $consumed['chapters'] = true;
+            if (array_key_exists('showCoverPage', $node)) {
+                foreach (array_keys($node) as $key) {
+                    if ($key !== 'bookCover') {
+                        $consumed[(string) $key] = true;
+                    }
+                }
+            }
+        }
         return $consumed;
     }
 

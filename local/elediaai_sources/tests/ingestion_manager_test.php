@@ -430,11 +430,12 @@ final class ingestion_manager_test extends \advanced_testcase {
 
         $meta = $payload['qdrant_metadata'];
         $this->assertEqualsCanonicalizing(
-            ['title', 'tenant_id', 'site_url', 'course_id', 'cmid', 'module_url'],
+            ['title', 'tenant_id', 'site_url', 'course_id', 'cmid', 'module_url', 'module_type'],
             array_keys($meta),
-            'The metadata key set is fixed by docs/api-specification.md v1.3.'
+            'The metadata key set is fixed by docs/api-specification.md v1.4.'
         );
         $this->assertSame('Contract Page', $meta['title'], 'The document title travels with the payload.');
+        $this->assertSame('page', $meta['module_type'], 'The activity type travels with the payload.');
         $this->assertSame(tenant::id(), $meta['tenant_id']);
         $this->assertSame((string) $CFG->wwwroot, $meta['site_url']);
         $this->assertSame((string) $course->id, $meta['course_id']);
@@ -719,6 +720,66 @@ final class ingestion_manager_test extends \advanced_testcase {
         $this->assertSame('prefix', $sink->deletes[0]['scope']);
         $this->assertCount(0, $sink->payloads);
         $this->assertNull(cm_state::get((int) $page->cmid), 'Absence of a row means: not in the index.');
+    }
+
+    /**
+     * A module whose type has no extractor any more leaves the index (#14).
+     *
+     * The feedback extractor was withdrawn; what it sent must not stay behind.
+     * A forum stands in for it: no extractor reads forums.
+     */
+    public function test_module_without_extractor_but_with_state_is_removed(): void {
+        $course = $this->getDataGenerator()->create_course();
+        $forum = $this->getDataGenerator()->create_module('forum', ['course' => $course->id]);
+        set_config('enabledcategories', (string) $course->category, 'local_elediaai_sources');
+        cm_state::record_success((int) $course->id, (int) $forum->cmid, 'sid', 'h', 'recording');
+
+        $sink = $this->recording_sink();
+        $manager = new ingestion_manager($sink);
+
+        ob_start();
+        $result = $manager->ingest_module($course->id, $forum->cmid);
+        ob_end_clean();
+
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(1, $sink->deletes);
+        $this->assertSame('prefix', $sink->deletes[0]['scope']);
+        $this->assertNull(cm_state::get((int) $forum->cmid));
+    }
+
+    /**
+     * A module that now yields nothing loses its old document (#100).
+     *
+     * A wiki made only of personal pages used to be sent whole; since #100
+     * nothing of it is, and the document it once sent must not stay behind.
+     */
+    public function test_module_that_now_yields_nothing_is_removed(): void {
+        global $DB;
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $wiki = $this->getDataGenerator()->create_module('wiki', [
+            'course' => $course->id,
+            'wikimode' => 'individual',
+            'intro' => '',
+        ]);
+        $this->getDataGenerator()->get_plugin_generator('mod_wiki')->create_page($wiki, [
+            'title' => 'Privat',
+            'content' => 'Nur fuer mich',
+        ]);
+        // The generator gives every wiki an intro, which is shared content
+        // and would rightly be sent; without it nothing is left to send.
+        $DB->set_field('wiki', 'intro', '', ['id' => $wiki->id]);
+        set_config('enabledcategories', (string) $course->category, 'local_elediaai_sources');
+        cm_state::record_success((int) $course->id, (int) $wiki->cmid, 'sid', 'h', 'recording');
+
+        $sink = $this->recording_sink();
+        ob_start();
+        $result = (new ingestion_manager($sink))->ingest_module($course->id, $wiki->cmid);
+        ob_end_clean();
+
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(0, $sink->payloads, 'A personal page must never be sent.');
+        $this->assertCount(1, $sink->deletes);
     }
 
     /**

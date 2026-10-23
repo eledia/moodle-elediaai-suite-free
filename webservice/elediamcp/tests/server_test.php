@@ -137,6 +137,51 @@ final class server_test extends advanced_testcase {
     }
 
     /**
+     * Raw Web Service functions need webservice/elediamcp:use too: the check runs before the function is loaded.
+     */
+    public function test_raw_function_path_requires_the_endpoint_capability(): void {
+        global $DB;
+
+        $this->resetAfterTest(true);
+
+        $user = $this->getDataGenerator()->create_user();
+        $context = \core\context\system::instance();
+        $userroleid = (int) $DB->get_field('role', 'id', ['shortname' => 'user'], MUST_EXIST);
+
+        $server = new server(WEBSERVICE_AUTHMETHOD_PERMANENT_TOKEN);
+        $reflection = new ReflectionClass($server);
+        foreach (['userid' => $user->id, 'functionname' => 'core_webservice_get_site_info'] as $name => $value) {
+            $property = $reflection->getProperty($name);
+            $property->setAccessible(true);
+            $property->setValue($server, $value);
+        }
+        $method = $reflection->getMethod('load_function_info');
+        $method->setAccessible(true);
+
+        // Without the capability the call is refused with the capability error.
+        assign_capability('webservice/elediamcp:use', CAP_PROHIBIT, $userroleid, $context->id, true);
+        accesslib_clear_all_caches_for_unit_testing();
+        try {
+            $method->invoke($server);
+            $this->fail('Expected the capability error.');
+        } catch (\core\exception\required_capability_exception $ex) {
+            $this->assertSame('nopermissions', $ex->errorcode);
+        }
+
+        // With the capability the check passes; what follows is the normal loading of the function.
+        assign_capability('webservice/elediamcp:use', CAP_ALLOW, $userroleid, $context->id, true);
+        accesslib_clear_all_caches_for_unit_testing();
+        try {
+            $method->invoke($server);
+        } catch (\core\exception\required_capability_exception $ex) {
+            $this->fail('The capability was granted: ' . $ex->getMessage());
+        } catch (\Throwable $ex) {
+            // Any other error comes from loading the function, which needs a real service and token.
+            $this->assertNotInstanceOf(\core\exception\required_capability_exception::class, $ex);
+        }
+    }
+
+    /**
      * Test is_tool_call method with tools/call request.
      */
     public function test_is_tool_call_true(): void {

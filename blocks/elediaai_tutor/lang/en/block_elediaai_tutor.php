@@ -71,7 +71,9 @@ $string['config_promptstarters_help'] = 'Suggested prompts shown as tappable chi
 $string['config_promptstarters_manager'] = 'Prompt starters (managers)';
 $string['config_promptstarters_manager_help'] = 'Dashboard pills for users who manage courses, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent.';
 $string['config_promptstarters_teacher'] = 'Prompt starters (teachers)';
+$string['config_promptstarters_student'] = 'Prompt starters (students)';
 $string['config_promptstarters_teacher_help'] = 'Dashboard pills for teachers, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent.';
+$string['config_promptstarters_student_help'] = 'Dashboard pills for learners, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent. Leave empty for the built-in learner pills.';
 $string['config_ragmode'] = 'Answer source';
 $string['config_ragmode_help'] = 'Grounded: the tutor answers from this course\'s ingested materials (with citations). LLM-only: the tutor answers from the language model\'s general knowledge without searching the course knowledge base. If the course has no ingested content, the tutor uses LLM-only automatically.';
 $string['config_ragmode_nokb'] = 'General knowledge (LLM only) — this course has no ingested knowledge base, so grounded answers are not available. Mark the course for ingestion to enable them.';
@@ -349,6 +351,10 @@ $string['reg_coursescope_help'] = 'Decides which material this tutor may answer 
 
 The course the tutor sits in — **plus** the courses chosen here, but only those the person asking is enrolled in **and** that are indexed.
 
+**In a course: its own course first, the rest on request**
+
+When the tutor sits in a course, it searches only there first. If it finds nothing that fits, it offers to search the other courses of the knowledge base too — and does so only once the person agrees. The knowledge base therefore says where the tutor *may* turn; its own course comes first. Without a course, on the dashboard for instance, there is no such extra round: the whole set is always searched.
+
 The selection is a wish, **not a permission**: it narrows, it never widens. Choose a course somebody is not enrolled in and it stays silent for them. You cannot hand anybody access to material by accident.
 
 **Course categories**
@@ -361,7 +367,7 @@ A course is only searchable once it has been taken into the knowledge sources an
 
 **Without a course the selection decides on its own**
 
-A tutor with no course — on the dashboard, or with the course context switched off — searches every course the person asking is enrolled in. **As soon as something is chosen here, only that choice applies** (still intersected with the enrolments). That is exactly how a tutor for a named set of courses is built: course context off, knowledge base set.
+A tutor with no course — on the dashboard, or with the course context switched off — searches every course the person asking is enrolled in; if they are enrolled nowhere, the courses they opened most recently and may still read. **As soon as something is chosen here, only that choice applies** (still intersected with the enrolments). That is exactly how a tutor for a named set of courses is built: course context off, knowledge base set.
 
 The site front page is no exception: in Moodle it is a course and is treated as one. Only surfaces with no course at all — the dashboard above all — fall under the rule above.
 
@@ -377,7 +383,7 @@ An empty selection means "as the site has it". It inherits the knowledge base fr
 
 **Limit**
 
-Only a limited number of courses goes to the search per question; the number comes from the backend and is set in the chat engine settings. Because the enrolments are applied before anything is counted, a large category is harmless as long as the person asking is in few of its courses. If it does grow beyond the limit, the tutor falls back to the course it sits in.';
+Only a limited number of courses goes to the search per question; the number comes from the backend and is set in the chat engine settings. Because the enrolments are applied before anything is counted, a large category is harmless as long as the person asking is in few of its courses. If it does grow beyond the limit, the list is cut, not dropped: the course the tutor sits in always stays, the remaining room goes to the courses the person asking opened most recently. More individual courses than that number cannot be saved at all.';
 $string['reg_historyenabled'] = 'Conversation history';
 $string['reg_historyenabled_desc'] = 'Whether learners can browse and resume past conversations.';
 $string['reg_launcherstyle'] = 'Launcher style';
@@ -426,9 +432,11 @@ $string['reg_persona_tone_desc'] = 'How the tutor should sound, e.g. "warm and e
 $string['reg_promptstarters'] = 'Prompt starters';
 $string['reg_promptstarters_desc'] = 'Suggested prompts, one per line (up to six shown). Formats: "action | fa-icon | Label | Prompt", "Label | Prompt" or just the question itself. A leading "action" makes the tutor use its Moodle tools without searching the course materials; "knowledge" forces materials-only answers.';
 $string['reg_promptstarters_manager'] = 'Prompt starters (managers)';
-$string['reg_promptstarters_manager_desc'] = 'Shown on the Dashboard to users who manage courses; one per line ("fa-icon | Label | Prompt"). Empty: the teacher list applies, then the base list, then built-in defaults.';
+$string['reg_promptstarters_manager_desc'] = 'Shown on the Dashboard to users who manage courses; one per line ("fa-icon | Label | Prompt"). Empty: the teacher list applies, then the built-in defaults.';
 $string['reg_promptstarters_teacher'] = 'Prompt starters (teachers)';
-$string['reg_promptstarters_teacher_desc'] = 'Shown on the Dashboard to teachers; one per line ("fa-icon | Label | Prompt"). Empty: the base list applies, then built-in defaults.';
+$string['reg_promptstarters_student'] = 'Prompt starters (students)';
+$string['reg_promptstarters_teacher_desc'] = 'Shown on the Dashboard to teachers; one per line ("fa-icon | Label | Prompt"). Empty: the built-in defaults apply.';
+$string['reg_promptstarters_student_desc'] = 'On the dashboard for learners; one per line ("fa-icon | Label | Prompt"). Empty: the built-in learner pills apply. The general prompt starters are not used on the dashboard.';
 $string['reg_tok_accentcontrast'] = 'Text on accent';
 $string['reg_tok_accentcontrast_desc'] = 'Text/icon colour shown on top of the accent colour (e.g. button labels).';
 $string['reg_tok_accentdark'] = 'Accent (hover/pressed)';

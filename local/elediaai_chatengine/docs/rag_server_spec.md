@@ -31,20 +31,21 @@ Both directions use **MCP over Streamable HTTP** with **JSON-RPC 2.0**
 
 ## Part A — Tools your server MUST/​MAY provide
 
-The block calls your server with a single JSON-RPC `tools/call`. Tool names are
-**configurable** in the block (Site administration ▸ Plugins ▸ Blocks ▸ eLeDia.ai
-Tutor); the defaults are shown below.
+The block calls your server with a single JSON-RPC `tools/call`. The tool names
+below are **fixed** in the chat engine (`local_elediaai_chatengine\local\connection::TOOLS`);
+an administrator can only switch the optional ones on or off (Site administration ▸
+Plugins ▸ Local plugins ▸ AI Chat Engine).
 
-| Tool (default name) | Required? | Block setting | Purpose |
+| Tool | Required? | Engine switch | Purpose |
 |---|---|---|---|
-| `tutor_chat` | **Required** | Chat tool name | Answer a learner message. |
-| `tutor_get_history` | Optional | History tool name | Return earlier messages of a conversation. |
-| `tutor_delete_conversation` | Optional | Delete tool name | Delete a single conversation server-side. |
-| `tutor_delete_user_data` | Optional, **recommended** | Delete user data tool name | Erase ALL data held for the authenticated user (transcripts + memory). |
-| `tutor_set_memory_optin` | Optional (required for memory) | Memory opt-in tool name | Record the user's long-term memory consent; erase memories on opt-out. |
-| `tutor_recluster_questions` | Optional | Recluster tool name | Nightly batch re-labelling of logged questions (analytics topic convergence); authenticated by the maintenance account's token. |
+| `tutor_chat` | **Required** | — | Answer a learner message. |
+| `tutor_get_history` | Optional | `enabletool_history` (default on) | Return earlier messages of a conversation. |
+| `tutor_delete_conversation` | Optional | `enabletool_delete` (default on) | Delete a single conversation server-side. |
+| `tutor_delete_user_data` | Optional, **recommended** | `enabletool_deleteuser` (default on) | Erase ALL data held for the authenticated user (transcripts + memory). |
+| `tutor_set_memory_optin` | Optional (required for memory) | `enabletool_memoryoptin` (default off) | Record the user's long-term memory consent; erase memories on opt-out. |
+| `tutor_recluster_questions` | Optional | `enabletool_recluster` (default off) | Nightly batch re-labelling of logged questions (analytics topic convergence); authenticated by the maintenance account's token. |
 
-If an optional tool name is left blank in the block, that feature is simply not used.
+A switched-off tool is simply not called.
 
 ### A.1 `tutor_chat` (required)
 
@@ -141,12 +142,23 @@ Recognised fields (several aliases accepted, so you can keep your own naming):
 | Conversation id | `conversation_id`, `conversationId`, `session_id`, `sessionId`, `thread_id` |
 | Sources / citations | `sources`, `citations`, `documents`, `references` |
 | Topic label | `topic`, `subject` |
+| Confirmation card | `confirmation` (object, see below) |
 
 A **source** entry may be a plain string, or an object with any of:
 `title`/`name`/`source`, `url`/`link`/`uri`, `snippet`/`text`/`excerpt`.
 **Order sources by relevance: `sources[0]` is treated as the PRIMARY source**
 and is stored (title + resolved Moodle cmid) for the teacher analytics
 hotspots.
+
+**`confirmation` (when a write awaits approval):** an object that makes Moodle
+render a confirmation card with two buttons instead of leaving the question to
+free text. Fields: `required` (must be `true`), `yeslabel`, `nolabel`,
+`yesmessage`, `nomessage`, `summary` (what would happen), `tooltitle`,
+`destructive` (danger styling), and since chatengine 1.4.0 an optional
+`outline` for a course the person is asked to create:
+`{"title": "…", "sections": [{"title": "…", "summary": "…"}]}`. Take it from
+the `outline` of `moodle_generate_course`'s preview (`coursename` → `title`,
+section `title`/`summary`, nothing else). All text is shown as plain text.
 
 **`topic` (strongly recommended):** a short canonical label (≤ 100 chars) used
 to cluster questions in the teacher analytics dashboard. Without it, two
@@ -528,7 +540,7 @@ practice.
 
 ### B.3 Limits
 
-- **Timeout:** the block waits up to the configured request timeout (default 30 s).
+- **Timeout:** the block waits up to the configured request timeout (default 120 s).
   Long generations should stream (B.2/B.2.1) or stay within the timeout. With
   streaming the timeout applies to the final frame, not to the first delta.
 - **Message length:** user messages are capped (default 4000 chars) before they
@@ -620,6 +632,27 @@ usually `structuredContent`. Read `structuredContent` when present.
    token and returns the user, their enrolled courses, role per course, optional
    group memberships, and a short natural-language summary suitable for an LLM
    system prompt. Pass `course_id` to scope it to one course.
+
+   **Check the search scope in the same call** (`webservice_elediamcp` 1.9.0+):
+   pass `course_ids` — the `search_course_ids` of the request, `course_id`
+   included — and read `verified_course_ids` back: the subset this learner may
+   **read**, in the order you sent it. Search only those. `verified_courses`
+   carries a light entry per verified course (id, shortname, fullname,
+   visible, dates, url — no roles, no groups) so the prompt can name them.
+
+   Three states, and they mean different things:
+
+   | Response | Meaning | Do |
+   |---|---|---|
+   | `verified_course_ids` absent | this Moodle cannot check yet (older plugin) | proceed with the scope as sent, log it |
+   | present and empty | checked, nothing readable | no course retrieval this turn |
+   | present, non-empty | checked | retrieve from exactly these |
+
+   The check is "may read" (`can_access_course()`), not "would Moodle have
+   chosen this list". A teacher in their own course without an enrolment
+   passes; a hidden course without `viewhiddencourses` does not; an id that
+   does not exist does not. At most 200 ids are checked per call — the rest
+   do not come back.
 2. Use the returned `course_id` values for course-scoped tools
    (`moodle_course_contents`, `moodle_get_resource`, …).
 3. Cache within a turn; don't refetch the same data repeatedly.
@@ -698,7 +731,23 @@ differently trustworthy depending on where the facts came from.
   only — the block never exposes them to the browser, and neither should you.
 - **Errors:** distinguish *handled* tool errors (`"isError": true` in the result,
   for "I couldn't do that") from *protocol* errors (JSON-RPC `error` / non-2xx,
-  for "the service is broken"). The block shows a friendlier message for the former.
+  for "the service is broken"). What Moodle does with each (chatengine 1.3.0):
+  - A result with `isError` **and** `structuredContent.error.code` is a
+    *business error*, whatever the HTTP status and also as `event: error`
+    inside a stream. Moodle shows `structuredContent.answer` to the learner
+    (plain text, at most 500 characters) and decides on `error.code` and
+    `retryable`, never on the text: `retryable: false` ⇒ no retry button;
+    `retryable: true` ⇒ retry offered, `retry_after` / `Retry-After` read.
+    `conversation_not_found` ⇒ the turn is sent once more **without**
+    `conversation_id`; the history Moodle keeps travels with it and the new
+    id you return replaces the old one.
+  - A JSON-RPC `error` (or a non-2xx body without the block above) stays a
+    generic "not reachable" for the learner; your `error.message` goes to the
+    administrator's debug information, so keep it free of secrets.
+  - Only **401** makes Moodle renew the `moodle_token` and retry once — never
+    a 403 business error such as `tenant_not_found`.
+  - `isError` without `structuredContent.error` is shown as before: your text
+    in a bubble marked as failed.
 
 ---
 
@@ -773,7 +822,7 @@ differently trustworthy depending on where the facts came from.
 - [ ] Honour tool annotations; two-step confirm before any write
       (`moodle_send_message`).
 - [ ] Never log or leak the token; document your transcript retention.
-- [ ] Respect the block's timeout (default 30 s) — stream long answers.
+- [ ] Respect the block's timeout (default 120 s) — stream long answers.
 - [ ] Optional: report `usage` (prompt/completion tokens) summed over the whole
       turn, so Moodle's quota reflects real consumption.
 - [ ] Optional: stream (B.2.1) — when the request accepts `text/event-stream`,
@@ -803,6 +852,10 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.4.0 | **`confirmation.outline`** (A.1): an optional course outline on the confirmation card. Additive; a card without it looks as before. |
+| chatengine 1.3.0 | **Business errors reach the learner** (D, Errors). A result with `isError` and `structuredContent.error` is shown with its `answer` and steered by `code`/`retryable` instead of being reduced to "not reachable"; `conversation_not_found` is retried once without `conversation_id`; token renewal only on 401. Additive: a server without the error block behaves as before. |
+| chatengine 1.2.0 | **Tool names fixed** (A). The six names in the table are no longer configurable on the Moodle side; optional tools have an on/off switch. A server that registered other names must serve the contract names (aliases are fine). |
+| webservice_elediamcp 1.9.0 | **`moodle_verify_user_context` checks a whole search scope** (C.3). New optional argument `course_ids`; with it the response carries `verified_course_ids` (the readable subset, in the order sent) and `verified_courses` (light entries for the prompt). Additive: without `course_ids` the response is unchanged and neither field appears, so absence still tells you the plugin cannot check. Closes the gap that only the first id of a list went through the rights check. |
 | chatengine 1.1.0 | **`course_id` and `search_course_ids` are two fields now — this one is not backwards-compatible and needs a coordinated deployment** (A.1). `course_id` goes back to meaning exactly one course: the one the question is asked in. The search scope moves to the new `search_course_ids`. *Why:* for eight days both travelled in `course_id`, and a server that reads it as "the current course" — ours does, into the system prompt and from there into tool arguments — was handed `"5,26,34"`. For retrieval that is harmless, a filter is a set. For a tool that acts on one course it is not: an activity created or a grade written in whichever course sorted first. *What breaks if only one side ships:* Moodle first ⇒ the knowledge base stops widening the search until the server reads the new field, because `course_id` then names one course. Server first ⇒ nothing, the field is simply absent. **So deploy the server side first, or both together.** *Absent from now on:* no `course_id` means the surface has no course (the tutor's start page), not that the course is unknown; no `search_course_ids` means there is nothing to retrieve from. |
 | chatengine 0.7.0 | **`course_id` may name several courses, and retrieval is bounded by enrolment** (A.1). Two halves, and they are independent. *The field:* `course_id` is defined as one or more comma-separated ids and is the search scope for the knowledge base; servers that already parse it this way (ours does) need no change. Moodle sends more than one from this version on — on a site-wide surface it names the learner's enrolled courses, where it previously sent nothing at all. *The rule:* the new **Entitlement** paragraph under A.1 binds retrieval to the learner's enrolled courses. Until this revision the only scope this document required was the tenant, i.e. the entire site. *Who draws the line:* **Moodle** — it sends the configured scope already intersected with the learner's enrolments, and the server filters on exactly what it gets. The tenant is authenticated and the `moodle_token` is scoped to the one learner, so the list is not a foreign input; enforcing the rule where the fact lives beats enforcing it twice in two places that can disagree. The absent case is settled in the same paragraph: no `course_id` means the learner's own enrolled courses, resolved by the server **before** it calls its retrieval tool, and never the whole tenant. |
 | 0.28.0 | **`moodle_tools_enabled`** chat argument (A.1): a per-turn ban on the Part C callbacks. When `false`, no `moodle_*` tool may be called for that turn; absent ⇒ permitted. It closes a gap rather than adding a feature -- Moodle has always had surfaces that must not act on the learner's behalf (`mod_elli`), but the only way it could say so was to degrade the undocumented `intent` hint to `knowledge`, which a server was free to ignore and which also suppressed retrieval as a side effect. Servers MUST read the ban from this field and MUST NOT infer it from `intent`, `system_prompt_id` or `persona`. Moodle keeps sending the old `intent` degradation alongside it for one release so that servers which have not caught up keep behaving as before; do not rely on it staying. |

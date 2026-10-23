@@ -252,14 +252,23 @@ class security {
      * window counters.
      *
      * @param string $key Stable identifier (see rate_limit_key()).
+     * @param int|null $maxperminute Stricter per-minute limit for this bucket; never above the site setting.
+     * @param int|null $maxperhour Stricter per-hour limit for this bucket; never above the site setting.
      * @return array{allowed: bool, retry_after: int, remaining_minute: int, remaining_hour: int}
      */
-    public static function enforce_rate_limit(string $key): array {
+    public static function enforce_rate_limit(string $key, ?int $maxperminute = null, ?int $maxperhour = null): array {
         $perminute = max(0, (int) self::get_config('rate_limit_per_minute', 60));
         $perhour = max(0, (int) self::get_config('rate_limit_per_hour', 600));
 
         if ($perminute === 0 && $perhour === 0) {
             return ['allowed' => true, 'retry_after' => 0, 'remaining_minute' => -1, 'remaining_hour' => -1];
+        }
+        // A bucket may be stricter than the site setting (for example client registration), not looser.
+        if ($maxperminute !== null) {
+            $perminute = $perminute > 0 ? min($perminute, $maxperminute) : $maxperminute;
+        }
+        if ($maxperhour !== null) {
+            $perhour = $perhour > 0 ? min($perhour, $maxperhour) : $maxperhour;
         }
 
         $cache = cache::make('webservice_elediamcp', 'rate_limit');

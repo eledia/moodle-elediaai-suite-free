@@ -130,6 +130,9 @@ class server extends webservice_base_server {
         if (empty($this->functionname)) {
             $this->authenticate_user();
             $this->require_mcp_capability();
+            if (!scope_gate::is_soft_method((string) ($this->mcprequest->method ?? ''))) {
+                $this->require_token_scope((string) ($this->mcprequest->method ?? ''));
+            }
             $this->handle_mcp_method();
             $this->session_cleanup();
             die;
@@ -140,6 +143,7 @@ class server extends webservice_base_server {
         if ($aiclass !== null) {
             $this->authenticate_user();
             $this->require_mcp_capability();
+            $this->require_token_scope('tools/call', $this->is_write_tool((string) $this->functionname, true));
             $this->dispatch_ai_tool($aiclass);
             $this->session_cleanup();
             die;
@@ -191,6 +195,66 @@ class server extends webservice_base_server {
     }
 
     /**
+     * Refuse the request when the scopes of the token do not cover it.
+     *
+     * Only OAuth tokens carry scopes; a token without a scope is not limited. The refusal is an
+     * HTTP 403 with `WWW-Authenticate: Bearer error="insufficient_scope"` as the MCP authorization
+     * specification asks for, so a client can ask the person for the missing scope.
+     *
+     * @param string $method MCP method (tools/call for tool invocations).
+     * @param bool $writetool For tools/call: the tool changes data.
+     * @param bool $aitool For tools/call: the tool is an AI-native tool (false for raw functions).
+     * @return void
+     */
+    protected function require_token_scope(string $method, bool $writetool = false, bool $aitool = true): void {
+        if ($this->token_scope_allows($method, $writetool)) {
+            return;
+        }
+        $this->emit_insufficient_scope(scope_gate::required_scopes($method, $writetool), $aitool);
+        $this->session_cleanup();
+        die;
+    }
+
+    /**
+     * Whether the scopes of the presented token cover the request.
+     *
+     * @param string $method MCP method (tools/call for tool invocations).
+     * @param bool $writetool For tools/call: the tool changes data.
+     * @return bool
+     */
+    protected function token_scope_allows(string $method, bool $writetool = false): bool {
+        $needed = scope_gate::required_scopes($method, $writetool);
+        if ($needed === [] || !scope_gate::is_enforced() || empty($this->token)) {
+            return true;
+        }
+        return scope_gate::allows(token_manager::get_scope_for_token((string) $this->token), $needed);
+    }
+
+    /**
+     * Send the insufficient-scope refusal.
+     *
+     * @param string[] $needed Scopes of which one would have been enough.
+     * @param bool $aitool Whether the refused call was for an AI-native tool.
+     * @return void
+     */
+    protected function emit_insufficient_scope(array $needed, bool $aitool = true): void {
+        // PHP turns a WWW-Authenticate header into a 401, so the status is set after the header.
+        header('WWW-Authenticate: Bearer error="insufficient_scope", scope="' . implode(' ', $needed) . '"');
+        http_response_code(403);
+        echo $this->safe_json_encode([
+            'jsonrpc' => '2.0',
+            'error' => [
+                'code' => -32000,
+                'message' => get_string('err_insufficient_scope', 'webservice_elediamcp', implode(' ', $needed)),
+            ],
+            'id' => $this->mcprequest->id ?? null,
+        ]);
+        if (!empty($this->functionname)) {
+            $this->record_tool_invocation((string) $this->functionname, true, microtime(true), $aitool, [], 'insufficientscope');
+        }
+    }
+
+    /**
      * Enforce webservice/elediamcp:use before handling MCP requests.
      *
      * @return void
@@ -225,6 +289,14 @@ class server extends webservice_base_server {
      * @throws moodle_exception err_tool_unavailable
      */
     protected function load_function_info() {
+        // Runs after authentication in the parent flow. This path does not go through run()'s own
+        // capability check, so the endpoint capability is enforced here, as on the other paths.
+        $this->require_mcp_capability();
+        // A token limited to reading may not call raw
+        // functions that change data.
+        // Raw functions are sorted by a name heuristic that is meant for display hints, so for the scope
+        // check every raw function counts as one that changes data.
+        $this->require_token_scope('tools/call', true, false);
         try {
             parent::load_function_info();
         } catch (\webservice_access_exception | \dml_missing_record_exception $ex) {
@@ -805,6 +877,14 @@ class server extends webservice_base_server {
                 : null;
         }
         $alltools = tool_provider::get_tools((string) $this->token, $this->protocolversion);
+        if (!$this->token_scope_allows('tools/call', true)) {
+            // A token without mcp:tools.call is shown only the tools it may call: read-only AI tools. The
+            // annotations are not always part of the listing (protocol version), so ask the tool classes.
+            $alltools = array_values(array_filter($alltools, function ($tool): bool {
+                $name = is_array($tool) ? (string) ($tool['name'] ?? '') : '';
+                return tool_provider::find_ai_tool($name) !== null && !$this->is_write_tool($name, true);
+            }));
+        }
         $page = tool_provider::paginate($alltools, $cursor);
 
         $result = ['tools' => $page['tools']];
@@ -843,6 +923,11 @@ class server extends webservice_base_server {
         if (is_array($this->mcprequest->params ?? null)) {
             $cursor = isset($this->mcprequest->params['cursor'])
                 ? (string) $this->mcprequest->params['cursor'] : null;
+        }
+        if (!$this->token_scope_allows('prompts/list')) {
+            // No prompts scope: an empty list instead of a refusal (see scope_gate::is_soft_method()).
+            $this->send_catalog_response(['prompts' => []]);
+            return;
         }
         $page = prompt_registry::paginate(prompt_registry::get_prompts((string) $this->token), $cursor);
         $result = ['prompts' => $page['items']];
@@ -918,7 +1003,26 @@ class server extends webservice_base_server {
         $errorcode = null;
 
         try {
+            // Moodle decides whether the person agreed, not the agent's model
+            // (#168). Without an approval for exactly this call, confirm is
+            // withheld and the tool answers with its preview again.
+            // Only for the chat engine's agent: only there does Moodle see the
+            // person's answer. Other MCP clients ask the person themselves.
+            $gated = token_manager::get_component_for_token((string) $this->token)
+                === confirmation_gate::GATED_COMPONENT;
+            $withheld = false;
+            if ($gated) {
+                [$arguments, $withheld] = confirmation_gate::guard($name, $arguments, (int) $USER->id);
+            }
             $output = $class::execute($arguments, $USER);
+            if ($gated) {
+                confirmation_gate::observe($name, $arguments, $output, (int) $USER->id);
+            }
+            if ($withheld && is_array($output)) {
+                $output['confirmation_withheld'] = 'Moodle has not seen the user approve this exact action, so it '
+                    . 'returned the preview instead of carrying it out. Show the preview, ask for confirmation and '
+                    . 'end your turn; call again with confirm=true and the same arguments only after the user agreed.';
+            }
             $this->emit_tool_result($output, false);
         } catch (tool_exception $ex) {
             $iserror = true;

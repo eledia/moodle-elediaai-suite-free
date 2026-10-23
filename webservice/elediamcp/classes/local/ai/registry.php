@@ -43,7 +43,12 @@ use webservice_elediamcp\local\ai\tools\moodle_my_courses;
 use webservice_elediamcp\local\ai\tools\moodle_my_grades;
 use webservice_elediamcp\local\ai\tools\moodle_my_progress;
 use webservice_elediamcp\local\ai\tools\moodle_my_submission_files;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_finish;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_get_page;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_get_review;
 use webservice_elediamcp\local\ai\tools\moodle_quiz_info;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_save_answers;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_start_attempt;
 use webservice_elediamcp\local\ai\tools\moodle_read_submission;
 use webservice_elediamcp\local\ai\tools\moodle_search_content;
 use webservice_elediamcp\local\ai\tools\moodle_search_courses;
@@ -117,6 +122,12 @@ class registry {
             moodle_my_progress::class,
             moodle_quiz_info::class,
             moodle_my_submission_files::class,
+            // Taking normal quizzes (mod_quiz attempt API).
+            moodle_quiz_start_attempt::class,
+            moodle_quiz_get_page::class,
+            moodle_quiz_save_answers::class,
+            moodle_quiz_finish::class,
+            moodle_quiz_get_review::class,
             // Teacher workflows.
             moodle_grading_queue::class,
             moodle_unanswered_forum_posts::class,

@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace webservice_elediamcp\local\ai\tools;
 
 use context_course;
+use context_module;
 use core_message\api as message_api;
 use stdClass;
 use Throwable;
@@ -69,7 +70,7 @@ class moodle_message_course_students implements ai_tool {
         return 'Sends the same personal message to a targeted group of students in a course: all '
             . 'students, students who have not submitted a specific assignment (target=not_submitted '
             . 'with assign_cmid), or students inactive for N days (target=inactive). Requires '
-            . 'moodle/course:manageactivities. Two-step flow: the first call returns the resolved '
+            . 'moodle/course:bulkmessaging. Two-step flow: the first call returns the resolved '
             . 'recipient list as a preview — show it to the user before confirming. Hard cap of '
             . self::MAX_RECIPIENTS . ' recipients per call. Recipients whose preferences block the '
             . 'message are skipped and reported.';
@@ -192,10 +193,14 @@ class moodle_message_course_students implements ai_tool {
 
         $course = get_course($courseid);
         $context = context_course::instance($courseid);
-        require_capability('moodle/course:manageactivities', $context, $user->id);
+        // Course access as in require_login(): only an active enrolment (or course:view) counts.
+        if (!is_siteadmin($user) && !can_access_course($course, $user, '', true)) {
+            throw new tool_exception('You cannot access course ' . $courseid . '.', ['course_id' => $courseid]);
+        }
+        require_capability('moodle/course:bulkmessaging', $context, $user->id);
         require_capability('moodle/course:viewparticipants', $context, $user->id);
 
-        $recipients = self::resolve_recipients($course, $target, $arguments);
+        $recipients = self::resolve_recipients($course, $target, $arguments, $user);
         // Never message yourself.
         $recipients = array_values(array_filter(
             $recipients,
@@ -285,13 +290,26 @@ class moodle_message_course_students implements ai_tool {
      * @param stdClass $course Course record.
      * @param string $target Target group key.
      * @param array<string, mixed> $arguments Tool arguments.
+     * @param stdClass $user Acting user.
      * @return stdClass[]
      */
-    private static function resolve_recipients(stdClass $course, string $target, array $arguments): array {
+    private static function resolve_recipients(stdClass $course, string $target, array $arguments, stdClass $user): array {
         global $DB;
 
         $context = context_course::instance((int) $course->id);
-        $students = get_enrolled_users($context, 'mod/assign:submit', 0, 'u.*', null, 0, 0, true);
+        // Separate groups on course level without accessallgroups: only members of the own groups,
+        // as on the participants page (user/classes/table/participants_search.php).
+        $students = [];
+        $allowedgroupids = null;
+        if (
+            (int) groups_get_course_groupmode($course) === SEPARATEGROUPS
+                && !has_capability('moodle/site:accessallgroups', $context, $user->id)
+        ) {
+            $allowedgroupids = array_keys(groups_get_all_groups((int) $course->id, (int) $user->id));
+        }
+        if ($allowedgroupids === null || $allowedgroupids !== []) {
+            $students = get_enrolled_users($context, 'mod/assign:submit', $allowedgroupids ?? 0, 'u.*', null, 0, 0, true);
+        }
 
         if ($target === 'all') {
             return array_values($students);
@@ -303,12 +321,39 @@ class moodle_message_course_students implements ai_tool {
                 throw new tool_exception('assign_cmid is required for target=not_submitted.');
             }
             $cm = get_coursemodule_from_id('assign', $assigncmid, (int) $course->id, false, MUST_EXIST);
-            $submitted = $DB->get_records_sql_menu(
-                "SELECT s.userid, 1
-                   FROM {assign_submission} s
-                  WHERE s.assignment = :assignment AND s.latest = 1 AND s.status = 'submitted'",
-                ['assignment' => (int) $cm->instance]
+            // Separate groups on activity level narrow the list further, as in the grading table.
+            $modcontext = context_module::instance((int) $cm->id);
+            if (
+                (int) groups_get_activity_groupmode($cm, $course) === SEPARATEGROUPS
+                    && !has_capability('moodle/site:accessallgroups', $modcontext, $user->id)
+            ) {
+                // Only groups marked for participation, as groups_get_activity_allowed_groups() does.
+                $groupids = array_keys(
+                    groups_get_all_groups((int) $course->id, (int) $user->id, (int) $cm->groupingid, 'g.*', false, true)
+                );
+                $members = $groupids === [] ? [] : get_enrolled_users($modcontext, '', $groupids, 'u.id', null, 0, 0, true);
+                $students = array_intersect_key($students, $members);
+            }
+            $instance = $DB->get_record(
+                'assign',
+                ['id' => (int) $cm->instance],
+                'id, course, teamsubmission, teamsubmissiongroupingid',
+                MUST_EXIST
             );
+            if (!empty($instance->teamsubmission)) {
+                // Team submissions: members of a team that has submitted have submitted.
+                $submitted = array_fill_keys(
+                    self::team_submitted_userids($instance, array_map('intval', array_keys($students))),
+                    1
+                );
+            } else {
+                $submitted = $DB->get_records_sql_menu(
+                    "SELECT s.userid, 1
+                       FROM {assign_submission} s
+                      WHERE s.assignment = :assignment AND s.latest = 1 AND s.status = 'submitted'",
+                    ['assignment' => (int) $cm->instance]
+                );
+            }
             return array_values(array_filter(
                 $students,
                 static fn(stdClass $student): bool => !isset($submitted[$student->id])
@@ -328,5 +373,66 @@ class moodle_message_course_students implements ai_tool {
             $students,
             static fn(stdClass $student): bool => (int) ($lastaccess[$student->id] ?? 0) < $cutoff
         ));
+    }
+
+    /**
+     * Members of the given users whose team has submitted (team submissions).
+     *
+     * Same team rule as assign::get_submission_group(): the team is the only group with
+     * participation of the user (within the team grouping); with none or several groups the
+     * user belongs to the default team (groupid 0). The team status is the status of the
+     * team record (userid 0), as mod_assign stores it.
+     *
+     * @param stdClass $assign Assign record with id, course and teamsubmissiongroupingid.
+     * @param int[] $userids Users to check.
+     * @return int[] Users whose team has submitted.
+     */
+    private static function team_submitted_userids(stdClass $assign, array $userids): array {
+        global $DB;
+
+        if ($userids === []) {
+            return [];
+        }
+        $teams = $DB->get_fieldset_select(
+            'assign_submission',
+            'groupid',
+            'assignment = :assignment AND userid = 0 AND latest = 1 AND status = :submitted',
+            ['assignment' => (int) $assign->id, 'submitted' => 'submitted']
+        );
+        if ($teams === []) {
+            return [];
+        }
+        $submittedteams = array_flip(array_map('intval', $teams));
+
+        [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'member');
+        $params['courseid'] = (int) $assign->course;
+        $groupingjoin = '';
+        if (!empty($assign->teamsubmissiongroupingid)) {
+            $groupingjoin = 'JOIN {groupings_groups} gg ON gg.groupid = g.id AND gg.groupingid = :groupingid';
+            $params['groupingid'] = (int) $assign->teamsubmissiongroupingid;
+        }
+        $memberships = $DB->get_recordset_sql(
+            "SELECT gm.id, gm.userid, gm.groupid
+               FROM {groups_members} gm
+               JOIN {groups} g ON g.id = gm.groupid AND g.courseid = :courseid AND g.participation = 1
+                    $groupingjoin
+              WHERE gm.userid $insql",
+            $params
+        );
+        $groupsbyuser = [];
+        foreach ($memberships as $membership) {
+            $groupsbyuser[(int) $membership->userid][] = (int) $membership->groupid;
+        }
+        $memberships->close();
+
+        $result = [];
+        foreach ($userids as $userid) {
+            $groups = $groupsbyuser[$userid] ?? [];
+            $team = count($groups) === 1 ? $groups[0] : 0;
+            if (isset($submittedteams[$team])) {
+                $result[] = (int) $userid;
+            }
+        }
+        return $result;
     }
 }

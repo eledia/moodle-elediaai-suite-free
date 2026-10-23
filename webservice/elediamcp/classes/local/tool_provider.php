@@ -70,6 +70,11 @@ class tool_provider {
         'moodle_my_grades',
         'moodle_my_progress',
         'moodle_quiz_info',
+        'moodle_quiz_start_attempt',
+        'moodle_quiz_get_page',
+        'moodle_quiz_save_answers',
+        'moodle_quiz_finish',
+        'moodle_quiz_get_review',
     ];
 
     /**
@@ -101,7 +106,7 @@ class tool_provider {
         'moodle_grade_submission' => ['anywhere' => ['mod/assign:grade']],
         'moodle_course_health' => ['anywhere' => ['moodle/course:viewparticipants', 'moodle/grade:viewall']],
         'moodle_message_course_students' => [
-            'anywhere' => ['moodle/course:manageactivities', 'moodle/course:viewparticipants'],
+            'anywhere' => ['moodle/course:bulkmessaging', 'moodle/course:viewparticipants'],
         ],
         'moodle_generate_questions' => ['anywhere' => ['local/elediaai_questiongen:use', 'moodle/question:add']],
         'moodle_generate_h5p' => ['anywhere' => ['local/elediaai_h5pauthor:use']],

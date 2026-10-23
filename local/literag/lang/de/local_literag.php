@@ -26,6 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['confirm_declined'] = 'Alles klar, ich habe die Aktion verworfen. Es wurde nichts geändert.';
 $string['confirm_no'] = 'Nein, abbrechen';
+$string['confirm_done'] = 'Erledigt: {$a}';
+$string['confirm_done_generic'] = 'Erledigt.';
+$string['confirm_failed'] = 'Das hat nicht geklappt: {$a} Bitte versuchen Sie es noch einmal.';
+$string['confirm_failed_generic'] = 'Das hat nicht geklappt. Bitte versuchen Sie es noch einmal.';
 $string['confirm_yes'] = 'Ja, ausführen';
 $string['chattoolname'] = 'Name des Chat-Tools';
 $string['chattoolname_desc'] = 'Name des erforderlichen Chat-Tools.';
@@ -33,7 +37,6 @@ $string['chunk_overlap'] = 'Chunk-Überlappung (Zeichen)';
 $string['chunk_overlap_desc'] = 'Überlappung zwischen aufeinanderfolgenden Chunks, damit Kontext über Abschnittsgrenzen erhalten bleibt.';
 $string['chunk_size'] = 'Chunk-Größe (Zeichen)';
 $string['chunk_size_desc'] = 'Zielgröße jedes gespeicherten Text-Chunks.';
-$string['confirm_sent'] = 'Erledigt - Ihre Nachricht wurde gesendet.';
 $string['context_chunks'] = 'Kontext-Chunks';
 $string['context_chunks_desc'] = 'Wie viele Chunks dem LLM als fundierender Kontext übergeben werden (entspricht auch der Anzahl der Quellenhinweise).';
 $string['conversation_retention_days'] = 'Aufbewahrung von Gesprächen (Tage)';

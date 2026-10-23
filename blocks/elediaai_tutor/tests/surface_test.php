@@ -254,6 +254,36 @@ final class surface_test extends \advanced_testcase {
     }
 
     /**
+     * A refused surface leaves a trace in the turn log (#37).
+     *
+     * The refusal happens before the engine sees the turn, which is why it used
+     * to leave none: the only evidence was the customer's screenshot.
+     *
+     * @return void
+     */
+    public function test_a_refused_surface_is_logged(): void {
+        global $DB;
+
+        if (!class_exists('\\local_elediaai_core\\local\\turn_recorder')) {
+            $this->markTestSkipped('Der Kern ist in diesem Lauf nicht installiert.');
+        }
+
+        $scope = $this->setup_instance();
+        $other = $this->getDataGenerator()->create_course();
+        $this->getDataGenerator()->enrol_user($scope['userid'], (int) $other->id, 'student');
+
+        try {
+            send_message::execute($scope['contextid'], 'Frage', (int) $other->id);
+            $this->fail('The surface should have been refused.');
+        } catch (\moodle_exception $e) {
+            $turn = $DB->get_record('local_elediaai_core_turn', ['component' => 'block_elediaai_tutor'], '*', MUST_EXIST);
+            $this->assertSame(0, (int) $turn->success);
+            $this->assertSame('block_elediaai_tutor:error_invalid_context', $turn->errorcode);
+            $this->assertSame((int) \core\context\course::instance((int) $other->id)->id, (int) $turn->contextid);
+        }
+    }
+
+    /**
      * The engine's shared endpoint no longer answers for the tutor.
      *
      * It names no block, so a turn through it ran with the site defaults and

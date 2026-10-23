@@ -20,6 +20,7 @@ namespace local_elediaai_chatengine;
 
 use local_elediaai_chatengine\adapter\adapter;
 use local_elediaai_chatengine\adapter\adapter_exception;
+use local_elediaai_chatengine\adapter\backend_refusal;
 use local_elediaai_chatengine\adapter\capabilities;
 use local_elediaai_chatengine\adapter\chat_request;
 use local_elediaai_chatengine\adapter\chat_response;
@@ -37,6 +38,7 @@ use local_elediaai_chatengine\local\token_provider;
 use local_elediaai_chatengine\local\usage;
 use local_elediaai_chatengine\placement\placement;
 use local_elediaai_chatengine\placement\registry;
+use local_elediaai_chatengine\placement\user_request_framing;
 
 /**
  * Runs one chat turn, from the placement's request to a render-ready answer.
@@ -51,6 +53,9 @@ use local_elediaai_chatengine\placement\registry;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class chat_service {
+    /** @var string The MCP server's confirmation gate, present when webservice_elediamcp is installed (#168). */
+    private const CONFIRMATION_GATE = '\\webservice_elediamcp\\local\\confirmation_gate';
+
     /**
      * Process one turn.
      *
@@ -93,6 +98,137 @@ class chat_service {
         ?int $backenduserid = null,
         array $clienthints = [],
         bool $newthread = false
+    ): array {
+        $logged = false;
+        try {
+            return self::run_turn(
+                $component,
+                $instanceid,
+                $userid,
+                $rawmessage,
+                $threadid,
+                $guestkey,
+                $options,
+                $ondelta,
+                $backenduserid,
+                $clienthints,
+                $newthread,
+                $logged
+            );
+        } catch (\moodle_exception $e) {
+            // A turn that never got an answer left no trace at all: no row
+            // in the turn log, no error code, and the only evidence of a
+            // customer's "Ungueltiger Kontext" was her screenshot (#37). It
+            // is recorded now -- once, and not when the failure came after
+            // the turn was already logged.
+            if (!$logged) {
+                self::record_rejection($component, $instanceid, $userid, $e);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Record a turn that was refused, in the suite's turn log.
+     *
+     * For the engine's own refusals and for a placement endpoint that refuses
+     * before it hands the turn to the engine -- the tutor proves the surface
+     * it was sent from first, and that is where #37 failed. The same fields as
+     * an answered turn, with `success` off and the error code; neither the
+     * question nor an answer is kept.
+     *
+     * Never allowed to mask the refusal it records: a failure to write the
+     * log is reported to developers and swallowed.
+     *
+     * @param string $component The placement's frankenstyle component.
+     * @param int $instanceid The placement instance, 0 for a site-wide surface.
+     * @param int $userid Who asked; stored only as a pseudonym.
+     * @param \moodle_exception $e Why it was refused.
+     * @param \context|null $context Where it happened, when the caller knows; else
+     *        the placement is asked, and failing that the system context is used.
+     * @return void
+     */
+    public static function record_rejection(
+        string $component,
+        int $instanceid,
+        int $userid,
+        \moodle_exception $e,
+        ?\context $context = null
+    ): void {
+        $recorder = '\\local_elediaai_core\\local\\turn_recorder';
+        if (!class_exists($recorder)) {
+            return;
+        }
+
+        try {
+            if ($context === null) {
+                try {
+                    $context = registry::require_placement($component)->context($instanceid);
+                } catch (\Throwable $ignored) {
+                    $context = \context_system::instance();
+                }
+            }
+
+            // The backend's own code says more than the engine's wrapper
+            // around it: "tenant_not_found", not "error_backend_refused".
+            $errorcode = $e instanceof backend_refusal
+                ? 'backend:' . $e->backend_code()
+                : $e->module . ':' . $e->errorcode;
+
+            call_user_func([$recorder, 'record'], ...[
+                'component' => $component,
+                'actionname' => 'chat_turn',
+                'contextid' => (int) $context->id,
+                'userid' => $userid,
+                // Not the question. A refused turn may have been refused
+                // precisely because it must not be processed -- no consent,
+                // no access -- and the code, place and time are what a
+                // diagnosis needs.
+                'prompt' => '',
+                'response' => '',
+                'success' => false,
+                'errorcode' => $errorcode,
+                'instanceid' => $instanceid,
+            ]);
+        } catch (\Throwable $failure) {
+            debugging(
+                'local_elediaai_chatengine: refused turn could not be logged: ' . $failure->getMessage(),
+                DEBUG_DEVELOPER
+            );
+        }
+    }
+
+    /**
+     * Run one turn; {@see send()} without the record of a refusal.
+     *
+     * @param string $component See {@see send()}.
+     * @param int $instanceid See {@see send()}.
+     * @param int $userid See {@see send()}.
+     * @param string $rawmessage See {@see send()}.
+     * @param int|null $threadid See {@see send()}.
+     * @param string|null $guestkey See {@see send()}.
+     * @param array $options See {@see send()}.
+     * @param callable|null $ondelta See {@see send()}.
+     * @param int|null $backenduserid See {@see send()}.
+     * @param array $clienthints See {@see send()}.
+     * @param bool $newthread See {@see send()}.
+     * @param bool $logged Set once the turn is in the turn log.
+     * @return array See {@see send()}.
+     * @throws \moodle_exception On access, validation, quota or backend failure.
+     */
+    private static function run_turn(
+        string $component,
+        int $instanceid,
+        int $userid,
+        string $rawmessage,
+        ?int $threadid,
+        ?string $guestkey,
+        array $options,
+        ?callable $ondelta,
+        ?int $backenduserid,
+        array $clienthints,
+        bool $newthread,
+        bool &$logged
     ): array {
         // Who holds the conversation and who the backend acts for are two
         // different questions. They coincide for a logged-in learner and come
@@ -153,9 +289,29 @@ class chat_service {
         );
 
         $history = thread_store::messages((int) $thread->id, connection::history_limit());
+        $hints = self::resolve_hints($placement, $instanceid, $userid, $clienthints, $options);
+
+        // Whether this message agrees to what the last answer previewed is
+        // decided here, from what the person actually sent -- a click on the
+        // confirmation card or a message that is nothing but an agreement --
+        // and not by the agent's model (#168). The MCP server then lets a
+        // write through only with that approval. Keyed by the account the
+        // backend acts for, because that is who the tool calls run as.
+        if (class_exists(self::CONFIRMATION_GATE)) {
+            call_user_func(
+                [self::CONFIRMATION_GATE, 'user_turn'],
+                $backenduserid,
+                $message,
+                (string) ($hints['pendingdecision'] ?? '')
+            );
+        }
 
         $request = new chat_request(
-            usermessage: prompt_safety::frame_user_input($message),
+            // Only placements that opt in frame the message as the person's request;
+            // every other placement keeps the default frame word for word.
+            usermessage: $placement instanceof user_request_framing
+                ? prompt_safety::frame_user_request($message)
+                : prompt_safety::frame_user_input($message),
             question: $message,
             history: $history,
             persona: $persona,
@@ -172,7 +328,7 @@ class chat_service {
             convkey: $thread->convkey !== null ? (string) $thread->convkey : null,
             allowtools: $placement->allow_tools($instanceid) && $capabilities->supportstools,
             language: current_language(),
-            options: self::resolve_hints($placement, $instanceid, $userid, $clienthints, $options),
+            options: $hints,
             ondelta: $capabilities->supportsstreaming ? $ondelta : null,
         );
 
@@ -213,6 +369,7 @@ class chat_service {
             $turnstarted,
             $booked
         );
+        $logged = true;
         // Der Simulator erzeugt keinen Text mit einem Modell; seine Antworten
         // tragen schon den Hinweis "Simulation" und sind keine KI-Ausgabe.
         $generated = !$response->iserror && $adapter::id() !== 'simulator';
@@ -226,14 +383,32 @@ class chat_service {
         );
         usage::increment($backenduserid);
 
+        // Which preview the card stands for (#168): a click on it later must
+        // approve that one and not a second write the model previewed alongside.
+        $confirmation = $response->confirmation;
+        if (class_exists(self::CONFIRMATION_GATE)) {
+            call_user_func([self::CONFIRMATION_GATE, 'answer_shown'], $backenduserid, $confirmation);
+            // The card names the tool by its English catalogue title; the
+            // person reads it in their own language. After answer_shown(),
+            // which matches on the original.
+            $label = is_array($confirmation) ? (string) ($confirmation['tooltitle'] ?? '') : '';
+            $translated = $label !== '' ? call_user_func([self::CONFIRMATION_GATE, 'display_title'], $label) : null;
+            if ($translated !== null) {
+                $confirmation['tooltitle'] = $translated;
+            }
+        }
+
         return [
             'threadid' => (int) $thread->id,
             'answerhtml' => self::render_marked($response->answer, $context, $provenanceuuid),
             'answermarkdown' => $response->answer,
             'sources' => $response->sources,
             'origin' => $response->origin,
-            'confirmation' => $response->confirmation,
+            'confirmation' => $confirmation,
             'iserror' => $response->iserror,
+            // Art. 50 Abs. 2: the panel marks the turn for machines as well as
+            // for readers (#52). The same rule as the provenance record above.
+            'aigenerated' => $generated,
         ];
     }
 
@@ -274,7 +449,16 @@ class chat_service {
         // reicht die Frage weiter, erzeugt den Text aber nicht. Welches Modell
         // ihn geschrieben hat, erfaehrt die Suite nicht. Einen Dienst zu
         // nennen, der es nicht war, ist schlechter als keinen zu nennen.
-        return $wrapped . call_user_func([$markerclass, 'notice'], $uuid);
+        // How it looks is the site's choice for chats (#42); "once" shows the
+        // sentence at the panel and the compact mark under each answer.
+        $style = null;
+        if (method_exists($markerclass, 'style')) {
+            $style = call_user_func([$markerclass, 'style'], 'chat');
+            if ($style === 'once') {
+                $style = 'compact';
+            }
+        }
+        return $wrapped . call_user_func([$markerclass, 'notice'], $uuid, null, $style);
     }
 
     /**
@@ -407,6 +591,9 @@ class chat_service {
     /**
      * Ask the backend, once, with a single retry for a rejected credential.
      *
+     * The other single retry: a backend that answers `conversation_not_found`
+     * is asked again without the conversation id, as its spec prescribes.
+     *
      * The retry exists only for 401/403: a cached callback token may have been
      * revoked, and a fresh one cures it. Every other failure — a timeout, a
      * 5xx, an unreadable answer — is not cured by retrying, and retrying would
@@ -441,6 +628,19 @@ class chat_service {
         $call = static function () use ($adapter, $request, $userid, $ondelta): chat_response {
             try {
                 return $adapter->chat($request);
+            } catch (backend_refusal $e) {
+                // The backend has forgotten the conversation (expired, or
+                // deleted on its side). Its spec asks for a new one; the
+                // history kept here still travels with the turn, so the learner
+                // loses nothing and does not have to start over by hand. The
+                // new conversation id replaces the old one with the answer.
+                if ($e->backend_code() !== backend_refusal::CONVERSATION_NOT_FOUND || $request->convkey === null) {
+                    throw $e;
+                }
+                if ($ondelta !== null) {
+                    $ondelta('', true);
+                }
+                return $adapter->chat($request->without_convkey());
             } catch (adapter_exception $e) {
                 if (!$e->is_auth_failure() || $userid <= 0) {
                     throw $e;

@@ -296,6 +296,112 @@ final class agent_test extends \advanced_testcase {
     }
 
     /**
+     * The token a two-step tool hands out with its preview is kept for the confirmed call (#43).
+     *
+     * @dataProvider preview_token_provider
+     * @param string $tool Tool name.
+     * @param array $structured The tool's preview result.
+     * @param array $expected Token argument expected on the pending action.
+     */
+    public function test_preview_token_is_kept_with_the_pending_action(string $tool, array $structured, array $expected): void {
+        $this->resetAfterTest();
+        set_config('llm_api_key', 'test-key', 'local_literag');
+
+        $toolcall = $this->llm_toolcall_with_args($tool, ['topic' => 'Barcelona']);
+        $preview = ['status' => 200, 'error' => '', 'body' => json_encode(['jsonrpc' => '2.0', 'id' => 1, 'result' => [
+            'content' => [['type' => 'text', 'text' => 'preview']],
+            'structuredContent' => $structured + ['created' => false, 'requires_confirmation' => true, 'summary' => 'Draft.'],
+            'isError' => false,
+        ]])];
+
+        $mcpt = $this->queue_transport([$preview]);
+        $llmt = $this->queue_transport([$toolcall, $this->llm_answer('Soll ich veroeffentlichen?')]);
+        $agent = new agent(new client($llmt), new moodle_client('https://x', 'tok', $mcpt), null, null, [$tool]);
+
+        $agent->run(
+            [['role' => 'user', 'content' => 'Mach etwas']],
+            [['type' => 'function', 'function' => ['name' => $tool, 'parameters' => ['type' => 'object']]]]
+        );
+
+        $this->assertNotNull($agent->pendingaction);
+        $this->assertSame('Barcelona', $agent->pendingaction['arguments']['topic']);
+        foreach ($expected as $name => $value) {
+            $this->assertSame($value, $agent->pendingaction['arguments'][$name] ?? null);
+        }
+        $this->assertArrayNotHasKey('confirm', $agent->pendingaction['arguments']);
+    }
+
+    /**
+     * Preview shapes of the tools with a two-step contract.
+     *
+     * @return array
+     */
+    public static function preview_token_provider(): array {
+        return [
+            'h5p draft token under preview' => [
+                'moodle_generate_h5p',
+                ['preview' => ['draft_token' => 'draft123']],
+                ['draft_token' => 'draft123'],
+            ],
+            'course job token at top level' => [
+                'moodle_generate_course',
+                ['job_token' => 'job456'],
+                ['job_token' => 'job456'],
+            ],
+        ];
+    }
+
+    /**
+     * A previewed course outline travels with the pending action, reduced to what a card shows (#79).
+     */
+    public function test_outline_preview_is_kept_with_the_pending_action(): void {
+        $this->resetAfterTest();
+        set_config('llm_api_key', 'test-key', 'local_literag');
+
+        $toolcall = $this->llm_toolcall_with_args('moodle_generate_course', ['job_token' => 'abc']);
+        $preview = ['status' => 200, 'error' => '', 'body' => json_encode(['jsonrpc' => '2.0', 'id' => 1, 'result' => [
+            'content' => [['type' => 'text', 'text' => 'preview']],
+            'structuredContent' => [
+                'created' => false,
+                'requires_confirmation' => true,
+                'summary' => 'The outline is ready.',
+                'outline' => [
+                    'coursename' => 'Statistik',
+                    'coursesummary' => 'Ein Einstieg.',
+                    'sections' => [
+                        ['title' => 'Daten beschreiben', 'summary' => 'Lage und Streuung', 'plan' => [['kind' => 'page']]],
+                        ['title' => 'Wahrscheinlichkeit', 'plan' => []],
+                    ],
+                ],
+            ],
+            'isError' => false,
+        ]])];
+
+        $mcpt = $this->queue_transport([$preview]);
+        $llmt = $this->queue_transport([$toolcall, $this->llm_answer('Passt die Gliederung?')]);
+        $agent = new agent(
+            new client($llmt),
+            new moodle_client('https://x', 'tok', $mcpt),
+            null,
+            null,
+            ['moodle_generate_course']
+        );
+
+        $agent->run(
+            [['role' => 'user', 'content' => 'Erstelle einen Statistikkurs']],
+            [['type' => 'function', 'function' => ['name' => 'moodle_generate_course', 'parameters' => ['type' => 'object']]]]
+        );
+
+        $this->assertSame([
+            'title' => 'Statistik',
+            'sections' => [
+                ['title' => 'Daten beschreiben', 'summary' => 'Lage und Streuung'],
+                ['title' => 'Wahrscheinlichkeit', 'summary' => ''],
+            ],
+        ], $agent->pendingaction['outline']);
+    }
+
+    /**
      * When the endpoint rejects the tools payload, the agent retries without tools.
      */
     public function test_degrades_when_tools_unsupported(): void {

@@ -291,7 +291,7 @@ $string['privacy:metadata:rag_service:course_id'] = 'Die Moodle-Kurs-ID wird üb
 $string['privacy:metadata:rag_service:cmid'] = 'Die Moodle-Kursmodul-ID wird übertragen, um die Aktivität zu identifizieren.';
 $string['privacy:metadata:rag_service:module_url'] = 'Die Moodle-Modul-URL wird für spätere Quellenangaben und Links übertragen.';
 $string['privacy:metadata:rag_service:content'] = 'Extrahierte Inhalte aus Kursaktivitäten werden zur Verarbeitung, Segmentierung und Indexierung übertragen.';
-$string['privacy:metadata:rag_service:usercontent'] = 'Extrahierte Inhalte können Beiträge von Teilnehmenden enthalten: freigegebene Einträge aus Datenbank-Aktivitäten, freigegebene Glossareinträge und Wiki-Seiten. Übertragen wird der Text dieser Beiträge, nicht die Namen der Verfassenden.';
+$string['privacy:metadata:rag_service:usercontent'] = 'Extrahierte Inhalte können Beiträge von Teilnehmenden enthalten: freigegebene Einträge aus Datenbank-Aktivitäten, freigegebene Glossareinträge und Seiten gemeinsamer Wikis. Übertragen wird nur, was alle Teilnehmenden des Kurses lesen dürfen: nie persönliche Wikis und nie Gruppeninhalte bei getrennten Gruppen. Übertragen wird der Text dieser Beiträge, nicht die Namen der Verfassenden.';
 
 // Subplugin types.
 $string['subplugintype_aisourcesextractor'] = 'Content-Extractor';

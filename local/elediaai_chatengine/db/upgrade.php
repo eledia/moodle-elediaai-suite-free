@@ -94,5 +94,36 @@ function xmldb_local_elediaai_chatengine_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026083102, 'local', 'elediaai_chatengine');
     }
 
+    if ($oldversion < 2026101400) {
+        // The default request timeout went from 30 to 120 seconds (#38). A
+        // site still on the old default never chose 30 -- it inherited it --
+        // so it follows the new default. A value an administrator entered on
+        // purpose stays as it is, even when it is shorter.
+        if ((string) get_config('local_elediaai_chatengine', 'requesttimeout') === '30') {
+            set_config('requesttimeout', 120, 'local_elediaai_chatengine');
+        }
+
+        upgrade_plugin_savepoint(true, 2026101400, 'local', 'elediaai_chatengine');
+    }
+
+    if ($oldversion < 2026101401) {
+        // The tool names are fixed in code now (#54). What the old name settings
+        // still say is whether a site used an optional tool at all: a name
+        // meant yes, an empty field meant no. That answer is carried over, so
+        // the upgrade switches nothing on or off by itself. Where no old value
+        // exists, the defaults of the new switches apply.
+        foreach (array_keys(\local_elediaai_chatengine\local\connection::OPTIONAL_TOOL_DEFAULTS) as $key) {
+            $legacy = get_config('local_elediaai_chatengine', 'tool_' . $key);
+            if ($legacy !== false && get_config('local_elediaai_chatengine', 'enabletool_' . $key) === false) {
+                set_config('enabletool_' . $key, trim((string) $legacy) !== '' ? 1 : 0, 'local_elediaai_chatengine');
+            }
+        }
+        foreach (array_keys(\local_elediaai_chatengine\local\connection::TOOLS) as $key) {
+            unset_config('tool_' . $key, 'local_elediaai_chatengine');
+        }
+
+        upgrade_plugin_savepoint(true, 2026101401, 'local', 'elediaai_chatengine');
+    }
+
     return true;
 }

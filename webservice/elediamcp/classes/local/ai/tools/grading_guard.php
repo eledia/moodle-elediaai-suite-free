@@ -75,9 +75,14 @@ final class grading_guard {
             ) {
                 $groupingid = (int) ($cm->groupingid ?? 0);
                 $studentgroups = groups_get_all_groups((int) $course->id, $studentid, $groupingid);
-                $gradergroups = groups_get_all_groups((int) $course->id, (int) $user->id, $groupingid);
+                // Only groups marked for participation, as groups_get_activity_allowed_groups() does.
+                $gradergroups = groups_get_all_groups((int) $course->id, (int) $user->id, $groupingid, 'g.*', false, true);
                 $reachable = (bool) array_intersect_key($studentgroups, $gradergroups);
             }
+        }
+
+        if ($reachable) {
+            $reachable = self::is_allocated_to_grader($assign, $context, $user, $studentid);
         }
 
         if (!$reachable) {
@@ -86,5 +91,76 @@ final class grading_guard {
                 ['cmid' => $cmid, 'user_id' => $studentid]
             );
         }
+    }
+
+    /**
+     * With marking allocation, a grader without mod/assign:manageallocations reaches only allocated students.
+     *
+     * Same rule as the grading app: its panel and mod_assign_get_participant only load students from
+     * the grading table, which is built from list_participants(); that list keeps only the students
+     * allocated to the current grader (mod/assign/locallib.php list_participants()). The allocation
+     * is stored differently in 4.5 and 5.x, so the core list is used instead of the tables.
+     * The list also applies the availability of the assignment (and in 4.5 excludes suspended
+     * accounts), so with allocation this check is stricter than get_participant(), exactly like
+     * the grading table.
+     *
+     * @param assign $assign Assignment instance.
+     * @param context_module $context Module context.
+     * @param stdClass $user Acting (grading) user.
+     * @param int $studentid Target student id.
+     * @return bool
+     */
+    private static function is_allocated_to_grader(
+        assign $assign,
+        context_module $context,
+        stdClass $user,
+        int $studentid
+    ): bool {
+        $allocated = self::allocated_ids($assign, $context, $user);
+        return $allocated === null || in_array($studentid, $allocated, true);
+    }
+
+    /**
+     * Students a grader reaches through the marking allocation of an assignment, for counters.
+     *
+     * Same rule as the grading table: with marking allocation, a grader without
+     * mod/assign:manageallocations sees only the students allocated to them. Returns null when
+     * nothing is restricted (no marking allocation, or the user manages allocations).
+     *
+     * @param int $cmid Course module id of the assignment.
+     * @param stdClass $user Acting (grading) user.
+     * @return int[]|null Allocated student ids, or null for no restriction.
+     */
+    public static function allocated_student_ids(int $cmid, stdClass $user): ?array {
+        $cm = get_coursemodule_from_id('assign', $cmid, 0, false, MUST_EXIST);
+        $context = context_module::instance($cmid);
+        $assign = new assign($context, $cm, get_course((int) $cm->course));
+        return self::allocated_ids($assign, $context, $user);
+    }
+
+    /**
+     * Allocated student ids of the grader, or null when the allocation does not restrict them.
+     *
+     * @param assign $assign Assignment instance.
+     * @param context_module $context Module context.
+     * @param stdClass $user Acting (grading) user.
+     * @return int[]|null
+     */
+    private static function allocated_ids(assign $assign, context_module $context, stdClass $user): ?array {
+        global $USER;
+
+        $instance = $assign->get_instance();
+        if (
+            empty($instance->markingworkflow)
+                || empty($instance->markingallocation)
+                || has_capability('mod/assign:manageallocations', $context, $user->id)
+        ) {
+            return null;
+        }
+        // The core list_participants() filters for the global $USER; the tools run as that user. Fail closed otherwise.
+        if ((int) $USER->id !== (int) $user->id) {
+            return [];
+        }
+        return array_map('intval', array_keys($assign->list_participants(0, true)));
     }
 }

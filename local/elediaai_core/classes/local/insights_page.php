@@ -102,9 +102,11 @@ final class insights_page {
      *
      * @param array $gaps Result of {@see insights::gaps()}.
      * @param \context $context Course context, for the tool links.
+     * @param \stdClass|null $summary Result of {@see insights::summary()}, to tell
+     *        "nothing open" from "open, but without a topic".
      * @return string
      */
-    public static function gaps(array $gaps, \context $context): string {
+    public static function gaps(array $gaps, \context $context, ?\stdClass $summary = null): string {
         $body = audit_page::section_heading(
             'insights_gaps_eyebrow',
             'insights_gaps_title',
@@ -112,7 +114,12 @@ final class insights_page {
         );
 
         if ($gaps === []) {
-            $body .= self::empty_state('insights_gaps_empty');
+            // No gap rows only means no *topic* was left open. Questions the
+            // backend gave no topic do not form a row at all; at 0 % covered
+            // the page said "every topic was answered from your material"
+            // (#170). The success message needs every question covered.
+            $allcovered = $summary === null || (int) $summary->grounded >= (int) $summary->total;
+            $body .= self::empty_state($allcovered ? 'insights_gaps_empty' : 'insights_gaps_untopiced');
             return html_writer::div($body, 'eai-audit-panel');
         }
 

@@ -91,9 +91,15 @@ $string['simulator_help'] = 'These keywords change what comes back. Put one anyw
 - `/slow` — streamed with a pause between fragments, for the typing behaviour
 - `/long` — a long answer, for scrolling and layout
 - `/confirm` — an answer with a confirmation card (nothing is ever carried out)
+- `/outline` — the same card with a course outline, as the course author presents it
 - `/tokens` — an answer that reports token usage, for the quota ledger
 
-The German words work too: `/hilfe`, `/quellen`, `/fehler`, `/langsam`, `/lang`, `/bestaetigen`.';
+The German words work too: `/hilfe`, `/quellen`, `/fehler`, `/langsam`, `/lang`, `/bestaetigen`, `/gliederung`.';
+$string['simulator_outline_body'] = 'This answer carries a confirmation card with a course outline, as the course author presents it. Confirming creates nothing.';
+$string['simulator_outline_summary'] = 'Create the course "Simulated course" with 8 sections (simulated — nothing is created).';
+$string['simulator_outline_title'] = 'Simulated course';
+$string['simulator_outline_section'] = 'Section {$a}: an invented title';
+$string['simulator_outline_section_summary'] = 'An invented summary, long enough to see how it wraps.';
 $string['simulator_error_body'] = 'The simulated backend was asked to fail, and did. This is what the panel shows when a backend cannot answer.';
 $string['simulator_sources_body'] = 'This answer claims to rest on course material [S1], and on two further documents [S2] [S3]. The cards below are invented — they exist so the citation markers have somewhere to point.';
 $string['simulator_source_one'] = 'Simulated document: introduction';
@@ -142,18 +148,16 @@ $string['setting_backend_ingestionapi_allowinsecure'] = 'Allow plain HTTP';
 $string['setting_backend_ingestionapi_allowinsecure_desc'] = 'Permit an http:// endpoint. Intended for development only; a token sent over plain HTTP is readable in transit.';
 $string['setting_backend_ingestionapi_allowprivate'] = 'Allow private network addresses';
 $string['setting_backend_ingestionapi_allowprivate_desc'] = 'Bypass the site\'s blocked-hosts policy for the agent host. Needed only when the agent lives on an internal network or a development host.';
-$string['setting_tool_chat'] = 'Chat tool name';
-$string['setting_tool_chat_desc'] = 'Name of the agent\'s chat tool. Only applies to the RAG agent; LiteRAG resolves tool names from its own settings.';
-$string['setting_tool_history'] = 'History tool name';
-$string['setting_tool_history_desc'] = 'Optional. Leave empty when the agent does not serve a transcript.';
-$string['setting_tool_delete'] = 'Delete-conversation tool name';
-$string['setting_tool_delete_desc'] = 'Optional. Leave empty when the agent does not support deleting a single conversation.';
-$string['setting_tool_deleteuser'] = 'Delete-user-data tool name';
-$string['setting_tool_deleteuser_desc'] = 'Optional, but recommended: without it, a deleted user\'s data is removed from this site only.';
-$string['setting_tool_memoryoptin'] = 'Memory opt-in tool name';
-$string['setting_tool_memoryoptin_desc'] = 'Optional. Leave empty when the agent has no long-term memory.';
-$string['setting_tool_recluster'] = 'Question reclustering tool name';
-$string['setting_tool_recluster_desc'] = 'Optional. Used by the tutor placement\'s nightly question analytics.';
+$string['setting_enabletool_history'] = 'Load transcripts from the agent';
+$string['setting_enabletool_history_desc'] = 'Asks the agent for the transcript of a conversation (tool <code>{$a}</code>).';
+$string['setting_enabletool_delete'] = 'Delete conversations at the agent as well';
+$string['setting_enabletool_delete_desc'] = 'A conversation deleted in Moodle is also deleted at the agent (tool <code>{$a}</code>). When off, only the pointer in Moodle is removed.';
+$string['setting_enabletool_deleteuser'] = 'Delete all of a person\'s data at the agent as well';
+$string['setting_enabletool_deleteuser_desc'] = 'Recommended. A privacy deletion also removes every transcript and the memory of that person at the agent (tool <code>{$a}</code>). When off, the data is deleted on this site only.';
+$string['setting_enabletool_memoryoptin'] = 'Offer long-term memory';
+$string['setting_enabletool_memoryoptin_desc'] = 'Learners can consent to the agent\'s long-term memory; the consent is passed to it (tool <code>{$a}</code>). Only switch on when the agent has a memory.';
+$string['setting_enabletool_recluster'] = 'Regroup questions nightly';
+$string['setting_enabletool_recluster_desc'] = 'The tutor\'s nightly question analytics has the agent reorder the topics of logged questions (tool <code>{$a}</code>).';
 $string['setting_requesttimeout'] = 'Request timeout';
 $string['setting_requesttimeout_desc'] = 'Seconds to wait for an answer before giving up.';
 $string['setting_maxmessagelength'] = 'Maximum message length';
@@ -183,6 +187,13 @@ $string['status_nobackend_admin'] = 'Configure a destination in AI Sources, then
 
 // Errors.
 $string['error_no_backend'] = 'No AI backend is configured. Chat is unavailable.';
+$string['aigenerated_sr'] = 'AI-generated answer.';
+$string['confirmation_eyebrow'] = 'Your confirmation is needed';
+$string['confirmation_hint'] = 'Nothing changes in Moodle until you click.';
+$string['confirmation_outline'] = 'Outline ({$a} sections)';
+$string['error_backend_refused'] = '{$a}';
+$string['error_backend_busy'] = '{$a}';
+$string['error_backend_timeout'] = 'The answer took longer than {$a} seconds and was cut off. Please ask a shorter question or try again. The time limit can be raised in the chat engine\'s administration.';
 $string['error_backend_unavailable'] = 'The AI backend could not be reached. Please try again later.';
 $string['error_backend_bad_response'] = 'The AI backend returned an answer that could not be read.';
 $string['error_tool_error'] = 'The assistant could not complete that request.';
@@ -221,6 +232,7 @@ $string['groundedbadge'] = 'Source based';
 $string['groundedbadge_title'] = 'This answer cites sources from the knowledge base.';
 $string['ungroundedbadge'] = 'General answer';
 $string['ungroundedbadge_title'] = 'This answer is not based on the knowledge base — double-check important facts.';
+$string['mcpbadge'] = 'eLeDiaMCP';
 $string['mcpbadge_title'] = 'This answer used Moodle tools.';
 $string['senderyou'] = 'You';
 $string['copy'] = 'Copy answer';

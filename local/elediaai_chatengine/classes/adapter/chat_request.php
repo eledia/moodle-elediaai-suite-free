@@ -157,4 +157,32 @@ class chat_request {
         $value = $this->options[$name] ?? null;
         return ($value === null || $value === '') ? $default : $value;
     }
+
+    /**
+     * The same request, without the backend conversation to resume.
+     *
+     * For a backend that no longer knows the conversation: the turn starts a
+     * new one there, while the history this site keeps still travels along.
+     *
+     * @return self
+     */
+    public function without_convkey(): self {
+        return new self(
+            usermessage: $this->usermessage,
+            history: $this->history,
+            persona: $this->persona,
+            systempromptid: $this->systempromptid,
+            mode: $this->mode,
+            userid: $this->userid,
+            contextid: $this->contextid,
+            courseid: $this->courseid,
+            coursescope: $this->coursescope,
+            convkey: null,
+            allowtools: $this->allowtools,
+            language: $this->language,
+            options: $this->options,
+            ondelta: $this->ondelta,
+            question: $this->question,
+        );
+    }
 }

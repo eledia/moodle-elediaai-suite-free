@@ -5,6 +5,49 @@ All notable changes to the **local_literag** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] – 2026-10-20
+
+### Behoben
+
+- Setzt die LernHive-Token (`--lh-*`) nicht mehr auf `.lh-plugin-shell` (#132). Die Rueckfallwerte liegen jetzt zentral in `local_elediaai_core`.
+
+## [1.1.2] – 2026-10-14
+
+### Fixed
+
+- **A confirmed write keeps the token of its preview** (#43). The pending action
+  now carries the `draft_token` (H5P author, top level or under `preview`) and
+  the `job_token` (course author) the tool handed out, so the confirmed call
+  publishes the reviewed draft instead of generating a new one that was then
+  reported as failed. The tool's value wins over one the model supplied.
+
+## [1.1.1] – 2026-10-14
+
+### Fixed
+
+- **A confirmed write is reported as done** (#40). After "Yes, proceed" the
+  reply used to be phrased by the model from a note sent as a user message,
+  without the tool result behind it. Next to the system rule never to claim a
+  write without a tool result, a model (gpt-oss on demo.eledia.ai) took the
+  note for an unproven claim and answered that it could not create users —
+  after the user had been created; a second try then failed with "username is
+  already in use". The reply is now built from the tool's result summary
+  ("Done: Created Moodle user …", in the learner's language, plus the course
+  link where there is one); clauses meant for the model (tool names,
+  `job_token`, `confirm=`) are dropped. The failure path is deterministic too.
+  No completion is spent on this path, and none is reported.
+
+## [1.1.0] – 2026-10-14
+
+### Added
+
+- **Course outline on the confirmation card** (#79). When a write tool previews
+  a course outline (`moodle_generate_course`, `outline` in its result), the
+  pending action keeps its course name and section titles/summaries, and the
+  `confirmation` payload of `tutor_chat` carries them as `outline`. The plan per
+  section is left out: the card shows what the teacher agrees to, not how it is
+  built.
+
 ## [1.0.1] – 2026-09-28
 
 ### Fixed

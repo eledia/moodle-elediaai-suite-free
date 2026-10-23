@@ -232,4 +232,45 @@ final class marker_test extends advanced_testcase {
         $this->assertSame('litellm', marker::provider_label('litellm'));
         $this->assertSame('', marker::provider_label(''));
     }
+
+    /**
+     * Without a choice the notice stays as it was: the full sentence (#42).
+     */
+    public function test_style_defaults_to_full(): void {
+        $this->resetAfterTest();
+        $this->assertSame(marker::STYLE_FULL, marker::style(marker::SURFACE_CHAT));
+        $this->assertSame(marker::STYLE_FULL, marker::style(marker::SURFACE_CONTENT));
+        $this->assertNull(marker::chat_notice());
+        $this->assertStringNotContainsString('aitransparency-notice--compact', marker::notice('abc'));
+    }
+
+    /**
+     * The compact notice shows a mark and keeps the sentence and the link.
+     */
+    public function test_compact_keeps_sentence_and_link(): void {
+        $this->resetAfterTest();
+        set_config('noticestyle', marker::STYLE_COMPACT, 'local_aitransparency');
+
+        $html = marker::notice('abc');
+        $this->assertStringContainsString('aitransparency-notice--compact', $html);
+        $this->assertMatchesRegularExpression(
+            '~class="aitransparency-notice__text visually-hidden">' . preg_quote(get_string('notice', 'local_aitransparency'), '~') . '<~',
+            $html
+        );
+        $this->assertStringContainsString(marker::verify_url('abc')->out(), $html);
+        $this->assertStringContainsString(get_string('notice_mark', 'local_aitransparency'), $html);
+    }
+
+    /**
+     * "Once" belongs to the chat; elsewhere an unknown value falls back to full.
+     */
+    public function test_once_is_for_the_chat_only(): void {
+        $this->resetAfterTest();
+        set_config('noticestyle_chat', marker::STYLE_ONCE, 'local_aitransparency');
+        set_config('noticestyle', marker::STYLE_ONCE, 'local_aitransparency');
+
+        $this->assertSame(marker::STYLE_ONCE, marker::style(marker::SURFACE_CHAT));
+        $this->assertSame(get_string('notice_chat', 'local_aitransparency'), marker::chat_notice());
+        $this->assertSame(marker::STYLE_FULL, marker::style(marker::SURFACE_CONTENT));
+    }
 }

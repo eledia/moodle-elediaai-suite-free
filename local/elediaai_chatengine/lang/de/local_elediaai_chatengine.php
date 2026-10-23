@@ -91,9 +91,15 @@ $string['simulator_help'] = 'Diese Schlüsselwörter ändern, was zurückkommt. 
 - `/langsam` — gestreamt mit Pause zwischen den Fragmenten, für das Tippverhalten
 - `/lang` — eine lange Antwort, für Scrollen und Layout
 - `/bestaetigen` — eine Antwort mit Bestätigungskarte (es wird nie etwas ausgeführt)
+- `/gliederung` — dieselbe Karte mit einer Kursgliederung, wie der Kursautor sie vorlegt
 - `/tokens` — eine Antwort, die Token-Verbrauch meldet, für das Kontingent
 
-Die englischen Wörter funktionieren ebenso: `/help`, `/sources`, `/error`, `/slow`, `/long`, `/confirm`.';
+Die englischen Wörter funktionieren ebenso: `/help`, `/sources`, `/error`, `/slow`, `/long`, `/confirm`, `/outline`.';
+$string['simulator_outline_body'] = 'Diese Antwort trägt eine Bestätigungskarte mit einer Kursgliederung, wie sie der Kursautor vorlegt. Bestätigen legt nichts an.';
+$string['simulator_outline_summary'] = 'Kurs „Simulierter Kurs“ mit 8 Abschnitten anlegen (simuliert — es wird nichts angelegt).';
+$string['simulator_outline_title'] = 'Simulierter Kurs';
+$string['simulator_outline_section'] = 'Abschnitt {$a}: ein erfundener Titel';
+$string['simulator_outline_section_summary'] = 'Eine erfundene Kurzbeschreibung, lang genug, um den Umbruch zu sehen.';
 $string['simulator_error_body'] = 'Der simulierte Backend wurde gebeten zu scheitern, und hat es getan. So sieht das Panel aus, wenn ein Backend nicht antworten kann.';
 $string['simulator_sources_body'] = 'Diese Antwort beruft sich auf Kursmaterial [S1] und auf zwei weitere Dokumente [S2] [S3]. Die Karten unten sind erfunden — sie existieren, damit die Belegmarker irgendwohin zeigen.';
 $string['simulator_source_one'] = 'Simuliertes Dokument: Einführung';
@@ -142,18 +148,16 @@ $string['setting_backend_ingestionapi_allowinsecure'] = 'Einfaches HTTP erlauben
 $string['setting_backend_ingestionapi_allowinsecure_desc'] = 'Erlaubt einen http://-Endpunkt. Nur für die Entwicklung gedacht; ein über einfaches HTTP gesendetes Token ist unterwegs mitlesbar.';
 $string['setting_backend_ingestionapi_allowprivate'] = 'Adressen im privaten Netz erlauben';
 $string['setting_backend_ingestionapi_allowprivate_desc'] = 'Umgeht die Sperrliste der Instanz für den Host des Agenten. Nur nötig, wenn der Agent im internen Netz oder auf einem Entwicklungsrechner läuft.';
-$string['setting_tool_chat'] = 'Name des Chat-Werkzeugs';
-$string['setting_tool_chat_desc'] = 'Name des Chat-Werkzeugs des Agenten. Gilt nur für den RAG-Agenten; LiteRAG löst Werkzeugnamen über seine eigenen Einstellungen auf.';
-$string['setting_tool_history'] = 'Name des Verlaufs-Werkzeugs';
-$string['setting_tool_history_desc'] = 'Optional. Leer lassen, wenn der Agent keinen Gesprächsverlauf ausliefert.';
-$string['setting_tool_delete'] = 'Name des Werkzeugs zum Löschen einer Unterhaltung';
-$string['setting_tool_delete_desc'] = 'Optional. Leer lassen, wenn der Agent das Löschen einzelner Unterhaltungen nicht unterstützt.';
-$string['setting_tool_deleteuser'] = 'Name des Werkzeugs zum Löschen aller Daten einer Person';
-$string['setting_tool_deleteuser_desc'] = 'Optional, aber empfohlen: ohne es werden die Daten einer gelöschten Person nur in dieser Instanz entfernt.';
-$string['setting_tool_memoryoptin'] = 'Name des Werkzeugs für die Gedächtnis-Einwilligung';
-$string['setting_tool_memoryoptin_desc'] = 'Optional. Leer lassen, wenn der Agent kein Langzeitgedächtnis hat.';
-$string['setting_tool_recluster'] = 'Name des Werkzeugs für die Fragen-Gruppierung';
-$string['setting_tool_recluster_desc'] = 'Optional. Wird von der nächtlichen Fragenauswertung des Tutor-Placements genutzt.';
+$string['setting_enabletool_history'] = 'Verlauf vom Agenten laden';
+$string['setting_enabletool_history_desc'] = 'Fragt den Agenten nach dem Verlauf einer Unterhaltung (Werkzeug <code>{$a}</code>).';
+$string['setting_enabletool_delete'] = 'Unterhaltungen auch beim Agenten löschen';
+$string['setting_enabletool_delete_desc'] = 'Löscht eine Unterhaltung, die in Moodle gelöscht wird, auch beim Agenten (Werkzeug <code>{$a}</code>). Ausgeschaltet wird nur der Verweis in Moodle entfernt.';
+$string['setting_enabletool_deleteuser'] = 'Alle Daten einer Person auch beim Agenten löschen';
+$string['setting_enabletool_deleteuser_desc'] = 'Empfohlen. Entfernt bei einer Datenschutz-Löschung alle Transkripte und das Gedächtnis der Person auch beim Agenten (Werkzeug <code>{$a}</code>). Ausgeschaltet werden die Daten nur in dieser Instanz gelöscht.';
+$string['setting_enabletool_memoryoptin'] = 'Langzeitgedächtnis anbieten';
+$string['setting_enabletool_memoryoptin_desc'] = 'Lernende können dem Langzeitgedächtnis des Agenten zustimmen; die Einwilligung wird ihm übermittelt (Werkzeug <code>{$a}</code>). Nur einschalten, wenn der Agent ein Gedächtnis hat.';
+$string['setting_enabletool_recluster'] = 'Fragen nachts neu gruppieren';
+$string['setting_enabletool_recluster_desc'] = 'Die nächtliche Fragenauswertung des Tutors lässt die Themen der Fragen vom Agenten neu ordnen (Werkzeug <code>{$a}</code>).';
 $string['setting_requesttimeout'] = 'Zeitgrenze je Anfrage';
 $string['setting_requesttimeout_desc'] = 'Sekunden, die auf eine Antwort gewartet wird.';
 $string['setting_maxmessagelength'] = 'Maximale Nachrichtenlänge';
@@ -183,6 +187,13 @@ $string['status_nobackend_admin'] = 'Richten Sie ein Ziel in KI-Quellen ein und 
 
 // Fehler.
 $string['error_no_backend'] = 'Es ist kein KI-Backend eingerichtet. Der Chat steht nicht zur Verfügung.';
+$string['aigenerated_sr'] = 'KI-generierte Antwort.';
+$string['confirmation_eyebrow'] = 'Ihre Bestätigung ist nötig';
+$string['confirmation_hint'] = 'Erst nach Ihrem Klick wird etwas in Moodle geändert.';
+$string['confirmation_outline'] = 'Gliederung ({$a} Abschnitte)';
+$string['error_backend_refused'] = '{$a}';
+$string['error_backend_busy'] = '{$a}';
+$string['error_backend_timeout'] = 'Die Antwort hat länger als {$a} Sekunden gedauert und wurde abgebrochen. Bitte stellen Sie die Frage kürzer oder versuchen Sie es erneut. Die Zeitgrenze lässt sich in der Administration der Chat-Engine erhöhen.';
 $string['error_backend_unavailable'] = 'Das KI-Backend war nicht erreichbar. Bitte später erneut versuchen.';
 $string['error_backend_bad_response'] = 'Das KI-Backend hat eine Antwort geliefert, die nicht gelesen werden konnte.';
 $string['error_tool_error'] = 'Die Assistenz konnte diese Anfrage nicht ausführen.';
@@ -221,6 +232,7 @@ $string['groundedbadge'] = 'Quellenbasiert';
 $string['groundedbadge_title'] = 'Diese Antwort zitiert Quellen aus der Wissensbasis.';
 $string['ungroundedbadge'] = 'Allgemeine Antwort';
 $string['ungroundedbadge_title'] = 'Diese Antwort basiert nicht auf der Wissensbasis — prüfen Sie wichtige Fakten nach.';
+$string['mcpbadge'] = 'eLeDiaMCP';
 $string['mcpbadge_title'] = 'Diese Antwort hat Moodle-Werkzeuge genutzt.';
 $string['senderyou'] = 'Sie';
 $string['copy'] = 'Antwort kopieren';

@@ -147,6 +147,53 @@ final class oauth_service_test extends advanced_testcase {
         $this->assertNotFalse($meta);
         $this->assertEquals($user->id, $meta->userid);
         $this->assertNull($meta->component);
+        // The consented scope is kept on the token, so it can be enforced on every request.
+        $this->assertSame('mcp:tools.read mcp:tools.call', $meta->scope);
+        $this->assertSame('mcp:tools.read mcp:tools.call', token_manager::get_scope_for_token($response['access_token']));
+    }
+
+    /**
+     * A token for a request without scope is not limited; one with a narrower scope keeps it.
+     */
+    public function test_issued_token_keeps_requested_scope(): void {
+        $user = $this->mcp_user();
+        $client = $this->register();
+
+        $tokens = [];
+        foreach (['mcp:tools.read', 'mcp:tools.read bogus:scope', null] as $scope) {
+            [$verifier, $challenge] = $this->pkce_pair();
+            $overrides = $scope === null ? ['scope' => ''] : ['scope' => $scope];
+            $ctx = service::validate_authorization_request($this->auth_params($client['client_id'], $challenge, $overrides));
+            $code = service::issue_code($ctx, (int) $user->id);
+            $response = service::exchange_code([
+                'grant_type' => 'authorization_code',
+                'code' => $code,
+                'redirect_uri' => self::REDIRECT,
+                'client_id' => $client['client_id'],
+                'code_verifier' => $verifier,
+            ]);
+            $tokens[] = token_manager::get_scope_for_token($response['access_token']);
+        }
+        $this->assertSame('mcp:tools.read', $tokens[0]);
+        $this->assertSame('mcp:tools.read', $tokens[1], 'Unknown scopes are dropped.');
+        $this->assertNull($tokens[2], 'Without a requested scope the token is not limited.');
+    }
+
+    /**
+     * Asking only for scopes that do not exist is refused, not answered with an unlimited token.
+     */
+    public function test_authorize_only_unknown_scope_is_invalid_scope(): void {
+        $client = $this->register();
+        [, $challenge] = $this->pkce_pair();
+        try {
+            service::validate_authorization_request(
+                $this->auth_params($client['client_id'], $challenge, ['scope' => 'bogus:scope other'])
+            );
+            $this->fail('Expected oauth_exception invalid_scope.');
+        } catch (oauth_exception $ex) {
+            $this->assertSame('invalid_scope', $ex->get_error_code());
+            $this->assertTrue($ex->is_redirectable());
+        }
     }
 
     /**
@@ -450,6 +497,20 @@ final class oauth_service_test extends advanced_testcase {
         $this->assertFalse(service::is_valid_redirect_uri('https://app.example/cb#frag'));
         $this->assertFalse(service::is_valid_redirect_uri('not-a-uri'));
         $this->assertFalse(service::is_valid_redirect_uri(''));
+    }
+
+    /**
+     * Native redirect URIs must not go through moodle_url, which would make them relative.
+     */
+    public function test_is_web_redirect_uri(): void {
+        $this->assertTrue(service::is_web_redirect_uri('https://app.example/cb?code=abc'));
+        $this->assertTrue(service::is_web_redirect_uri('http://localhost:8081/oauth?code=abc'));
+        $this->assertFalse(service::is_web_redirect_uri('de.eledia.lernhive://oauth?code=abc&state=xyz'));
+        $this->assertFalse(service::is_web_redirect_uri('com.example.app:/callback?error=access_denied'));
+
+        // The success redirect keeps the private-use scheme intact.
+        $url = service::build_success_redirect('de.eledia.lernhive://oauth', 'abc', 'xyz');
+        $this->assertSame('de.eledia.lernhive://oauth?code=abc&state=xyz', $url);
     }
 
     /**

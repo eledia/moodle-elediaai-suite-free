@@ -96,24 +96,19 @@ if ($hassiteconfig) {
         0
     ));
 
-    // The six tool names of the documented backend contract. They belong to the
-    // backend, not to any one placement, which is why they moved out of the
-    // tutor block along with the transport.
-    $tooldefaults = [
-        'chat' => 'tutor_chat',
-        'history' => '',
-        'delete' => '',
-        'deleteuser' => '',
-        'memoryoptin' => '',
-        'recluster' => '',
-    ];
-    foreach ($tooldefaults as $key => $default) {
-        $settings->add(new admin_setting_configtext(
-            'local_elediaai_chatengine/tool_' . $key,
-            get_string('setting_tool_' . $key, 'local_elediaai_chatengine'),
-            get_string('setting_tool_' . $key . '_desc', 'local_elediaai_chatengine'),
-            $default,
-            PARAM_ALPHANUMEXT
+    // The tool names are part of the backend contract and fixed in code (#54).
+    // What is left to decide here is which of the optional tools the agent
+    // should be asked for at all.
+    foreach (\local_elediaai_chatengine\local\connection::OPTIONAL_TOOL_DEFAULTS as $key => $default) {
+        $settings->add(new admin_setting_configcheckbox(
+            'local_elediaai_chatengine/enabletool_' . $key,
+            get_string('setting_enabletool_' . $key, 'local_elediaai_chatengine'),
+            get_string(
+                'setting_enabletool_' . $key . '_desc',
+                'local_elediaai_chatengine',
+                \local_elediaai_chatengine\local\connection::TOOLS[$key]
+            ),
+            $default
         ));
     }
 
@@ -176,7 +171,7 @@ if ($hassiteconfig) {
 
     $integers = [
         'tokenlifetime' => 3600,
-        'requesttimeout' => 30,
+        'requesttimeout' => \local_elediaai_chatengine\local\connection::DEFAULT_REQUEST_TIMEOUT,
         'maxmessagelength' => 4000,
         'historylimit' => 20,
         'maxscopecourses' => 20,

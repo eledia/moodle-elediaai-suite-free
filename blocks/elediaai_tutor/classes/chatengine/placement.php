@@ -30,6 +30,7 @@ use local_elediaai_chatengine\local\mode;
 use local_elediaai_chatengine\local\persona;
 use local_elediaai_chatengine\local\system_prompt;
 use local_elediaai_chatengine\placement\placement as placement_contract;
+use local_elediaai_chatengine\placement\user_request_framing;
 
 /**
  * The tutor block as a chat engine placement.
@@ -45,13 +46,17 @@ use local_elediaai_chatengine\placement\placement as placement_contract;
  * configured, and whether the course has material to ground an answer in. The
  * conversation, the backend and the safety framing belong to the engine.
  *
+ * It opts into the request frame ({@see user_request_framing}): the tutor acts
+ * on requests with tools — create an activity, list what is due — so a
+ * person's message has to count as their request, within their Moodle rights.
+ *
  * @package     block_elediaai_tutor
  * @author      Christopher Reimann <christopher.reimann@eledia.de>
  * @copyright   2026 eLeDia GmbH, Berlin
  * @link        https://eledia.de
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class placement implements placement_contract {
+class placement implements placement_contract, user_request_framing {
     /** @var \context|null The surface this request's turn was sent from. */
     private static ?\context $surface = null;
 

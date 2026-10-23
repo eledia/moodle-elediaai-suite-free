@@ -110,6 +110,10 @@ class load_history extends external_api {
                         array_values($item->sources)
                     ),
                     'origin' => $item->origin,
+                    // Machine-readable like a live answer (#52, Art. 50 Abs. 2).
+                    // A restored turn has no provenance marker in its HTML, so
+                    // this flag is what says it.
+                    'aigenerated' => message::is_ai_generated($item->role, (string) $thread->backend),
                 ],
                 $messages
             )),
@@ -141,6 +145,7 @@ class load_history extends external_api {
                         PARAM_ALPHA,
                         'grounded, mcp or general; empty for a user turn and for turns recorded before this was stored'
                     ),
+                    'aigenerated' => new external_value(PARAM_BOOL, 'Whether the turn is the output of a generative model', VALUE_DEFAULT, false),
                 ]),
                 'Turns, oldest first'
             ),

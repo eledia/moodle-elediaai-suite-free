@@ -67,7 +67,7 @@ final class negative_cases_test extends advanced_testcase {
             moodle_course_contents::execute(['course_id' => (int) $course->id], $stranger);
             $this->fail('Expected tool_exception for an unenrolled user on a hidden course.');
         } catch (tool_exception $e) {
-            $this->assertStringContainsString('not enrolled', $e->getMessage());
+            $this->assertStringContainsString('is not available to you', $e->getMessage());
         }
     }
 
@@ -211,7 +211,7 @@ final class negative_cases_test extends advanced_testcase {
             moodle_my_assignments::execute(['course_id' => (int) $course->id], $stranger);
             $this->fail('Expected tool_exception for an unenrolled course filter.');
         } catch (tool_exception $e) {
-            $this->assertStringContainsString('not enrolled', $e->getMessage());
+            $this->assertSame("Course {$course->id} is not available to you.", $e->getMessage());
         }
     }
 
@@ -257,7 +257,7 @@ final class negative_cases_test extends advanced_testcase {
             moodle_my_grades::execute(['course_id' => (int) $course->id], $stranger);
             $this->fail('Expected tool_exception for an unenrolled course filter.');
         } catch (tool_exception $e) {
-            $this->assertStringContainsString('not enrolled', $e->getMessage());
+            $this->assertStringContainsString('is not available to you', $e->getMessage());
         }
     }
 

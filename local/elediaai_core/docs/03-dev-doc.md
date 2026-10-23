@@ -556,6 +556,31 @@ A.1 und „Entitlement".
 Wer eine eigene Placement mitbringt, muss die Methode implementieren — das
 Interface verlangt sie, ein Plugin ohne sie laedt nicht mehr.
 
+**Fehler sieht die Person so, wie das Backend sie meint (seit 14.10.2026,
+#39).** Eine fachliche Abweisung des Agenten (Fehlerkatalog, Teil D der
+Spezifikation) kommt als `adapter\backend_refusal` mit der Nutzermeldung des
+Agenten: `error_backend_refused` (Wiederholen hilft nicht) oder
+`error_backend_busy` (hilft spaeter). Ob das Panel „Erneut versuchen" anbietet,
+entscheidet es am Fehlercode (`NO_RETRY` in `amd/src/chat_panel.js`), beim
+Stream wie beim gepufferten Aufruf. Eine Placement, die selbst ablehnt, wirft
+dafuer einen eigenen Code; soll dort kein Wiederholen-Knopf erscheinen, gehoert
+der Code in diese Liste (heute: Einwilligung fehlt, Kurs- bzw. globaler Chat aus,
+ungueltiger Kontext).
+
+**KI-Kennzeichnung (#52).** `chat_service::send()` liefert `aigenerated`; das
+Panel setzt daraus `data-ai-generated`/`data-ai-system` am Nachrichten-Element
+und einen Screenreader-Satz. Eine Placement mit eigenem Sende-Endpunkt muss das
+Feld durchreichen und in `execute_returns()` erklaeren, sonst fehlt die
+Kennzeichnung im gepufferten Pfad (Stand 14.10.: offen bei `mod_elli`).
+
+**Abgewiesene Durchgaenge werden protokolliert (#37).** `chat_service::send()`
+schreibt bei jeder Ablehnung eine Zeile ins Turn-Protokoll (`success = 0`,
+`errorcode` als `<Komponente>:<Code>` bzw. `backend:<Code>`, ohne Frage und
+Antwort). Lehnt eine Placement ab, **bevor** sie die Engine ruft — der Tutor
+prueft die Oberflaeche in seinem eigenen Endpunkt —, ruft sie dafuer
+`chat_service::record_rejection()` selbst auf, und zwar nur am gepufferten
+Endpunkt: Ein so abgelehnter Stream faellt auf ihn zurueck.
+
 Die Engine bucht ueber `quota_aware_ai_manager::process_callback()` und
 schreibt ihr Audit ueber
 `local_elediaai_core\local\audit_recorder::record_without_user()` — **ohne
@@ -1006,14 +1031,38 @@ local_elediaai_core/
 Design-Schicht der Suite (adr05): **hier** entstehen die Werte, überall sonst
 werden sie gelesen. Jedes Suite-Plugin hängt per `$plugin->dependencies` an
 Core, es gibt also keine Installation, in der die Token fehlen könnten —
-Rückfallwerte in `var(--x, #abc)` sind deshalb weder nötig noch erwünscht.
+Rückfallwerte in `var(--eai-x, #abc)` sind in Plugins deshalb weder nötig noch
+erwünscht.
+
+**Die Farben folgen dem aktiven Theme** (Betreiberentscheidung 16.10.2026,
+vorher galt das Gegenteil). Core liest für Akzent, Marke, Linkton,
+Seitengrund, Schrift, Linien und Zustände die Bootstrap-Variablen, die jedes
+Moodle-Theme veröffentlicht (`--bs-primary`, `--bs-link-color`,
+`--bs-body-bg`, `--bs-body-color`, `--bs-border-color`, `--bs-secondary-color`,
+`--bs-tertiary-color`, `--bs-success`, `--bs-warning-text-emphasis`,
+`--bs-danger`, `--bs-*-bg-subtle`; unter 4.5 die Bootstrap-4-Namen
+`--primary` usw.). Die eLeDia-Werte stehen nur noch als letzter Rückfall
+dahinter. Abstufungen (`-hover`, `-strong`, `-wash`, `--eai-fg-dim`,
+`--eai-line-soft`) werden per `color-mix()` aus dem Grundton gerechnet. Ein
+Kunde mit eigenem Theme oder Boost mit eigener Markenfarbe sieht die Suite
+also in seinen Farben.
+
+Bewusst **nicht** aus dem Theme: die weiße Kartenfläche (`--eai-surface`,
+`--eai-raised` — `--bs-body-bg` ist unter `theme_elediaai` der getönte
+Seitengrund), das Lavendel der KI-Herkunft (`--eai-ai`, `--eai-ai-wash`),
+sowie Schrift, Skala, Abstände, Radien und Schatten. Die Tutor-Farben folgen
+ihren eigenen, je Instanz einstellbaren Designs.
+
+Grenze: Ob Weiß auf dem Akzent eines fremden Themes noch 4,5:1 trägt,
+entscheidet dieses Theme; CSS kann den Kontrast nicht prüfen.
 
 Das Theme ist die **Haut**, nicht die Quelle. `theme_elediaai` überschreibt in
-`scss/elediaai/_tokens.scss` genau fünf Token aus seinen eigenen Einstellungen
+`scss/elediaai/_tokens.scss` die Token aus seinen eigenen Einstellungen
 (`--eai-bg`, `--eai-accent`, `--eai-accent-wash`, `--eai-brand`, `--eai-font`)
-und sonst nichts. Ohne das Theme sehen die Plugin-Flächen gleich aus, nur der
-Rahmen ist Boosts. Gemessen und belegt: `ci/README.md`, Abschnitt „Messlauf
-gegen zwei Themes".
+und hält seit 16.10.2026 zusätzlich seine abgestimmte Palette fest
+(Abstufungen, gedämpfte Schrift, Zustände), damit sie nicht durch Bootstraps
+Ableitungen ersetzt wird. Gemessen und belegt: `ci/README.md`, Abschnitt
+„Messlauf gegen zwei Themes".
 
 ### Die Skalen
 

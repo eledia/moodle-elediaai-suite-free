@@ -254,12 +254,22 @@ class agent {
                 // The requires_confirmation flag is the tool's own two-step contract;
                 // destructiveHint pauses even tools without that contract.
                 unset($arguments['confirm']);
+                // The confirmed call must carry the token the preview handed out;
+                // without it the tool would start over instead of publishing (#43).
+                $arguments = self::with_preview_tokens($arguments, $structured);
                 $this->pendingaction = [
                     'tool' => $name,
                     'arguments' => $arguments,
                     'summary' => $summary,
                     'destructive' => $isdestructive,
                 ];
+                // A course outline is what the teacher is actually agreeing
+                // to; one sentence about "N sections" is not enough to say yes
+                // to (#79). Kept short: titles and summaries, no plan.
+                $outline = self::outline_preview($structured['outline'] ?? null);
+                if ($outline !== null) {
+                    $this->pendingaction['outline'] = $outline;
+                }
             }
         }
 
@@ -274,6 +284,66 @@ class agent {
             'role' => 'tool',
             'tool_call_id' => $id,
             'content' => self::untrusted_tool_result($payload),
+        ];
+    }
+
+    /**
+     * Add the tokens a write tool's preview handed out to the arguments of the confirmed call.
+     *
+     * Tools with a two-step contract identify the reviewed draft or job by a
+     * token (`draft_token` of the H5P author, `job_token` of the course
+     * author), at the top level of the result or under `preview`. The tool's
+     * value wins over one the model supplied, so only what was actually
+     * previewed can be confirmed.
+     *
+     * @param array $arguments Arguments of the previewing call.
+     * @param array $structured The tool's structured preview result.
+     * @return array The arguments to replay with confirm=true.
+     */
+    private static function with_preview_tokens(array $arguments, array $structured): array {
+        $preview = is_array($structured['preview'] ?? null) ? $structured['preview'] : [];
+        foreach (['draft_token', 'job_token'] as $name) {
+            foreach ([$structured, $preview] as $source) {
+                if (isset($source[$name]) && is_string($source[$name]) && $source[$name] !== '') {
+                    $arguments[$name] = $source[$name];
+                    break;
+                }
+            }
+        }
+        return $arguments;
+    }
+
+    /**
+     * The part of a course outline a confirmation card shows.
+     *
+     * The course author's outline (local_elediaai_coursegen) carries a plan per
+     * section as well; the card needs only what a teacher reads before saying
+     * yes. Anything not shaped like an outline yields null, so other tools'
+     * previews are unaffected.
+     *
+     * @param mixed $outline The tool's `outline` field.
+     * @return array{title: string, sections: array<int, array{title: string, summary: string}>}|null
+     */
+    private static function outline_preview($outline): ?array {
+        if (!is_array($outline) || !is_array($outline['sections'] ?? null)) {
+            return null;
+        }
+        $sections = [];
+        foreach ($outline['sections'] as $section) {
+            if (!is_array($section) || !is_string($section['title'] ?? null) || trim($section['title']) === '') {
+                continue;
+            }
+            $sections[] = [
+                'title' => trim($section['title']),
+                'summary' => is_string($section['summary'] ?? null) ? trim($section['summary']) : '',
+            ];
+        }
+        if ($sections === []) {
+            return null;
+        }
+        return [
+            'title' => is_string($outline['coursename'] ?? null) ? trim($outline['coursename']) : '',
+            'sections' => $sections,
         ];
     }
 

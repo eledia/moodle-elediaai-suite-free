@@ -50,6 +50,8 @@ class stream_runner {
         'local_elediaai_chatengine' => [
             'error_message_empty', 'error_message_too_long', 'error_rate_limited',
             'error_daily_limit', 'error_mode_unsupported',
+            // Written for the learner by the backend or about the waiting time (#39).
+            'error_backend_refused', 'error_backend_busy', 'error_backend_timeout',
         ],
         'local_elediaai_core' => ['error_quota_token_exceeded', 'error_quota_unavailable'],
         'block_elediaai_tutor' => ['error_consentrequired', 'error_course_chat_disabled', 'error_global_chat_disabled'],
@@ -120,6 +122,7 @@ class stream_runner {
                 'answerhtml' => $result['answerhtml'],
                 'threadid' => $result['threadid'],
                 'iserror' => $result['iserror'],
+                'aigenerated' => !empty($result['aigenerated']),
                 'origin' => $result['origin'],
                 'sources' => array_map(static fn(array $source): array => [
                     'title' => (string) ($source['title'] ?? ''),
@@ -129,7 +132,12 @@ class stream_runner {
                 'confirmation' => is_array($result['confirmation'] ?? null) ? $result['confirmation'] : [],
             ]);
         } catch (\moodle_exception $e) {
-            self::frame('error', ['message' => self::error_message($e, $context)]);
+            self::frame('error', [
+                'message' => self::error_message($e, $context),
+                // The panel decides on the code whether offering a retry makes
+                // sense, as it does for the buffered call's exception.
+                'errorcode' => $e->errorcode,
+            ]);
         }
 
         self::frame('done', '[DONE]');

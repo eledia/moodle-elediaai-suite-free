@@ -34,8 +34,9 @@ use webservice_elediamcp\local\ai\tool_exception;
  *
  * Returns the readable content of a single course module so an LLM can
  * quote from it. Supports page, book (+ chapters), label, url, resource
- * (metadata only) and folder (metadata only). For unknown module types
- * the intro field is returned with a note.
+ * (metadata only), folder (metadata only) and assign (description,
+ * instructions and attached files, once Moodle shows them to the person). For
+ * unknown module types the intro field is returned with a note.
  *
  * @package     webservice_elediamcp
  * @author      Christopher Reimann <christopher.reimann@eledia.de>
@@ -77,9 +78,13 @@ class moodle_get_resource implements ai_tool {
         return 'Returns the readable content of a single course module identified by cmid '
             . '(course_module id). Supports page (full content), book (chapter list, plus full '
             . 'chapter text when chapter_id is given), label (intro is the content), url '
-            . '(external link), resource and folder (metadata + file links, no binary content). '
-            . 'For other module types only the intro is returned. Use moodle_course_contents to '
-            . 'discover cmid values.';
+            . '(external link), resource and folder (metadata + file links, no binary content), '
+            . 'assign (what the assignment asks for: description, instructions and the names and '
+            . 'links of attached files; for learners only once Moodle shows the description, '
+            . 'otherwise the answer says from when). Use this tool for questions about what an '
+            . 'assignment requires; due dates and status come from moodle_my_assignments and '
+            . 'moodle_due_work. For other module types only the intro is returned. Use '
+            . 'moodle_course_contents to discover cmid values.';
     }
 
     /**
@@ -135,6 +140,7 @@ class moodle_get_resource implements ai_tool {
                 'content' => ['type' => 'string'],
                 'content_truncated' => ['type' => 'boolean'],
                 'external_url' => ['type' => 'string'],
+                'available_from' => ['type' => 'integer'],
                 'chapters' => [
                     'type' => 'array',
                     'items' => [
@@ -231,7 +237,8 @@ class moodle_get_resource implements ai_tool {
         // Without this, any authenticated user could read a module in a course
         // (even a hidden one) they cannot otherwise access. can_access_course()
         // honours enrolment, the course-visible flag and moodle/course:view*.
-        if (!$isadmin && !can_access_course($course, $user)) {
+        // Only active enrolments count, as in require_login().
+        if (!$isadmin && !can_access_course($course, $user, '', true)) {
             throw new tool_exception(
                 "Course module {$cmid} is not visible to you.",
                 ['cmid' => $cmid]
@@ -343,6 +350,10 @@ class moodle_get_resource implements ai_tool {
                 $payload['files'] = self::collect_files($context, $modname);
                 break;
 
+            case 'assign':
+                self::fill_assign($payload, $cm, $course, $context, $user, $textopts, $maxchars);
+                break;
+
             default:
                 $payload['intro'] = self::generic_intro($modname, $instanceid, $textopts);
                 break;
@@ -365,6 +376,67 @@ class moodle_get_resource implements ai_tool {
             debugging('moodle_get_resource cache write failed: ' . $ex->getMessage(), DEBUG_DEVELOPER);
         }
         return $payload;
+    }
+
+    /**
+     * Fill the payload for an assignment.
+     *
+     * Moodle hides the description, the instructions and their files from
+     * learners until "Allow submissions from" has passed, unless "Always show
+     * description" is on (assign::show_intro()). The date is the one that
+     * applies to this person, so user and group overrides count, as on
+     * Moodle's own page (mod/assign/view.php). The files follow
+     * assign::should_provide_intro_attachments(), which also honours "Show
+     * description attachments only while submissions are open". People who may
+     * grade the assignment or manage activities, and site administrators,
+     * always see everything. Grading criteria are not part of the answer.
+     *
+     * @param array<string, mixed> $payload Payload under construction.
+     * @param cm_info $cm Course module in the user's context.
+     * @param stdClass $course Course record.
+     * @param context_module $context Module context.
+     * @param stdClass $user Authenticated user record.
+     * @param array<string, mixed> $textopts format_text options.
+     * @param int $maxchars Maximum length of the returned text.
+     */
+    private static function fill_assign(
+        array &$payload,
+        cm_info $cm,
+        stdClass $course,
+        context_module $context,
+        stdClass $user,
+        array $textopts,
+        int $maxchars
+    ): void {
+        global $CFG;
+        require_once($CFG->dirroot . '/mod/assign/locallib.php');
+
+        $userid = (int) $user->id;
+        $assign = new \assign($context, $cm, $course);
+        $assign->update_effective_access($userid);
+        $instance = $assign->get_instance($userid);
+        $mayseeall = is_siteadmin($user)
+            || has_capability('mod/assign:grade', $context, $user)
+            || has_capability('moodle/course:manageactivities', $context, $user);
+        if (!$mayseeall && !$assign->show_intro()) {
+            $payload['available_from'] = (int) $instance->allowsubmissionsfromdate;
+            return;
+        }
+
+        $payload['intro'] = self::plain((string) $instance->intro, (int) $instance->introformat, $textopts);
+        $instructions = self::plain(
+            (string) ($instance->activity ?? ''),
+            (int) ($instance->activityformat ?? FORMAT_HTML),
+            $textopts
+        );
+        $text = $payload['intro'];
+        if ($instructions !== '') {
+            $text = ($text !== '' ? $text . "\n\n" : '') . $instructions;
+        }
+        [$payload['content'], $payload['content_truncated']] = self::truncate($text, $maxchars);
+        if ($mayseeall || $assign->should_provide_intro_attachments($userid)) {
+            $payload['files'] = self::collect_files($context, 'assign', 'introattachment');
+        }
     }
 
     /**
@@ -404,11 +476,11 @@ class moodle_get_resource implements ai_tool {
      *
      * @param context_module $context Module context.
      * @param string $modname Module shortname.
+     * @param string $filearea File area to list.
      * @return array<int, array<string, mixed>>
      */
-    private static function collect_files(context_module $context, string $modname): array {
+    private static function collect_files(context_module $context, string $modname, string $filearea = 'content'): array {
         $component = 'mod_' . $modname;
-        $filearea = 'content';
         $fs = get_file_storage();
         $files = $fs->get_area_files($context->id, $component, $filearea, 0, 'filename ASC', false);
         $out = [];
@@ -493,6 +565,22 @@ class moodle_get_resource implements ai_tool {
             case 'folder':
                 $files = count($payload['files']);
                 return sprintf('%s "%s" with %d %s.', ucfirst($modname), $payload['name'], $files, $files === 1 ? 'file' : 'files');
+            case 'assign':
+                if (!empty($payload['available_from'])) {
+                    return sprintf(
+                        'Assignment "%s": its description is not visible to you yet; it becomes visible on %s.',
+                        $payload['name'],
+                        userdate((int) $payload['available_from'])
+                    );
+                }
+                $files = count($payload['files']);
+                return sprintf(
+                    'Assignment "%s" (%d chars, %d attached %s).',
+                    $payload['name'],
+                    strlen($payload['content']),
+                    $files,
+                    $files === 1 ? 'file' : 'files'
+                );
             default:
                 return sprintf('Module "%s" of type %s (intro only).', $payload['name'], $modname);
         }

@@ -171,4 +171,35 @@ final class extractor_data_test extends \advanced_testcase {
         // No intro, no approved records → null.
         $this->assertNull($result);
     }
+
+    /**
+     * Under separate groups a group's record stays with that group (#100).
+     *
+     * The index is searched course-wide; a record written for group A would
+     * otherwise be cited to group B.
+     */
+    public function test_separate_groups_send_only_records_without_a_group(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        $course = $this->getDataGenerator()->create_course();
+        $group = $this->getDataGenerator()->create_group(['courseid' => $course->id]);
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_data');
+
+        foreach ([SEPARATEGROUPS => false, VISIBLEGROUPS => true] as $groupmode => $groupvisible) {
+            $data = $this->getDataGenerator()->create_module('data', [
+                'course' => $course->id,
+                'groupmode' => $groupmode,
+            ]);
+            $field = $generator->create_field((object) ['name' => 'Topic', 'type' => 'text'], $data);
+            $generator->create_entry($data, [$field->field->id => 'Fuer alle']);
+            $generator->create_entry($data, [$field->field->id => 'Nur Gruppe A'], (int) $group->id);
+
+            $cm = get_fast_modinfo($course->id)->get_cm($data->cmid);
+            $content = (new \aisourcesextractor_data\extractor())->extract($cm)['content'];
+
+            $this->assertStringContainsString('Fuer alle', $content);
+            $this->assertSame($groupvisible, str_contains($content, 'Nur Gruppe A'), 'group mode ' . $groupmode);
+        }
+    }
 }

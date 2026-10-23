@@ -172,8 +172,9 @@ class moodle_my_submission_files implements ai_tool {
             );
         }
         // Course-access gate before module visibility: uservisible does not
-        // check course enrolment/visibility (see moodle_get_resource).
-        if (!is_siteadmin($user) && !can_access_course($course, $user)) {
+        // check course enrolment/visibility (see moodle_get_resource). Only
+        // active enrolments count, as in require_login().
+        if (!is_siteadmin($user) && !can_access_course($course, $user, '', true)) {
             throw new tool_exception(
                 "No assignment with cmid {$cmid} is visible to you.",
                 ['cmid' => $cmid]

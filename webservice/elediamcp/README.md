@@ -178,6 +178,7 @@ capability check.
 | **Allow token in query string** | Off | When off (recommended), only `Authorization: Bearer` is accepted. When on, `?wstoken=` is also accepted and a `Deprecation` header is emitted. |
 | **Expose raw Moodle Web Service functions** | Off | *Premium add-on only.* When off, only the curated AI-native tools are advertised. Recommended for production AI agents. Without the premium add-on the setting has no effect. |
 | **Rate limit per minute / per hour** | 60 / 600 | Per-token (or per-IP if unauthenticated). |
+| **Maximum response size (characters)** | 12000 | Upper size of a tool response in characters (2000 to 100000). The list tools (`moodle_my_assignments`, `moodle_quiz_info`, `moodle_my_courses`, `moodle_get_announcements`) cut their pages to fit it and report `has_more` and `next_offset`. Set it to the limit of your client. |
 | **Maximum request body size** | 1 MiB | Larger requests are rejected with HTTP 413. |
 | **Default page size for tools/list** | 50 | Larger catalogues are paginated through `nextCursor`. |
 | **Token retention (days)** | 30 | How long revoked token metadata is kept before the cleanup task prunes it. |
@@ -309,16 +310,21 @@ Available without any add-on:
 | `moodle_search_courses` | read | Searches the visible course catalogue (respects course/category visibility). |
 | `moodle_list_course_categories` | read | Lists the course categories the user may create courses in, with id and path, so a named category can be turned into a `category_id`. |
 | `moodle_course_contents` | read | Lists sections and visible activities of a course the user may access. |
-| `moodle_get_resource` | read | Returns the readable body of a page/book chapter/label/URL/resource by `cmid`. |
+| `moodle_get_resource` | read | Returns the readable body of a page/book chapter/label/URL/resource by `cmid`, and for an assignment its description, instructions and attached files (for learners only once Moodle shows the description). |
 | `moodle_search_content` | read | Full-text search across accessible content via global search (graceful fallback to activity names/descriptions when disabled). |
-| `moodle_get_announcements` | read | Recent news-forum posts across the user's enrolled courses. |
+| `moodle_get_announcements` | read | Recent news-forum posts across the user's enrolled courses that Moodle's forum would show the user (display period, groups). |
 | `moodle_calendar_upcoming` | read | Upcoming deadlines and events scoped to the user's courses/groups. |
 | `moodle_due_work` | read | Due and overdue work across the user's courses. |
-| `moodle_my_assignments` | read | Assignment submission and grade status across enrolled courses. |
-| `moodle_my_grades` | read | Course-final grades, or per-item breakdown (respects hidden grade items). |
+| `moodle_my_assignments` | read | Assignment submission and grade status across enrolled courses, with the person's own due dates (overrides, extensions). A grade appears only once Moodle shows it (`grade_withheld` marks a grade that exists but is not shown yet). |
+| `moodle_my_grades` | read | Course-final grades, or per-item breakdown, under the gradebook user report's visibility rules (hidden grades, categories and totals are withheld, marked by `grade_withheld`). |
 | `moodle_my_progress` | read | Completion progress per enrolled course, optionally per-activity states for one course. |
 | `moodle_quiz_info` | read | Quizzes with timing/attempt limits and the user's **own** attempt history and best grade — never other users' attempts. |
 | `moodle_create_user` | **write** | Creates a user account. Two-step confirmation; requires `moodle/user:create`. |
+| `moodle_quiz_start_attempt` | **write** | Starts an attempt at a normal quiz or continues the open one (a new attempt with a time limit or a limited number of attempts first returns a preview with `requires_confirmation`; call again with `confirm=true` after the user agreed); returns `inline_supported=false` and a `fallback_url` when an access rule, sequential navigation or a question type needs the browser. Requires `mod/quiz:attempt`. |
+| `moodle_quiz_get_page` | **write** | One page of the user's **own** open attempt as plain text with structured inputs (`single`, `multi`, `text`, `number`, `match`, `unsupported`) and the saved answers — never the solutions. A page with many or long questions comes in parts that fit the response size (`offset`, `has_more`, `next_offset`). Opening a page remembers it as the current page and can close an attempt whose time is up, so it needs `mcp:tools.call`. Questions with images, audio or video carry `has_media` and a `fallback_url`; essay questions report their word limits. |
+| `moodle_quiz_save_answers` | **write** | Saves answers in the user's own open attempt through the question engine. Idempotent. A question already checked in the browser (Check button) is refused with `question_finished`. Send the `sequence` of each question (from `moodle_quiz_get_page` or the previous save): an answer to a question that changed elsewhere is refused with `out_of_sequence`. |
+| `moodle_quiz_finish` | **write** | Submits the user's own attempt for grading by Moodle. Two-step confirmation (`destructiveHint`). |
+| `moodle_quiz_get_review` | read | Review of the user's own finished attempt, filtered by the quiz review options; requires `mod/quiz:reviewmyattempts` after the "immediately after" period. A long review comes in parts that fit the response size (`offset`, `has_more`, `next_offset`). `requires_manual_grading` marks a provisional grade, `teacher_comment` carries the teacher's comment. |
 
 Installed plugins can contribute further tools; these are not subject to the
 premium gating. `local_elediaai_core`, which this plugin requires, contributes:
@@ -413,6 +419,8 @@ issued).
 | CORS | Reflects only allow-listed origins; never `*` together with credentials. |
 | Rate limiting | Per token (or per IP if unauthenticated). HTTP 429 with `Retry-After` and `X-RateLimit-Remaining-*` headers. |
 | Request size | Enforced at the entry point (HTTP 413 above the limit). |
+| OAuth scopes | A token issued through the OAuth consent flow is limited to the scopes the person agreed to: `mcp:tools.read` for tools that only read, `mcp:tools.call` for tools that change data, `mcp:prompts.read` for prompt templates. A request outside the scopes gets HTTP 403 with `WWW-Authenticate: Bearer error="insufficient_scope"`. `tools/list` shows a token without `mcp:tools.call` only the read-only tools, and `prompts/list` answers with an empty list without `mcp:prompts.read` (`prompts/get` is refused). Raw Moodle web service functions (premium) always need `mcp:tools.call`. `mcp:resources.read` is reserved for resources, which this plugin does not serve yet. Manual tokens and tokens issued before 1.12.0 carry no scope and are not limited. A site can switch the check off with `$CFG->webservice_elediamcp_enforce_scopes = false;` (or `0`) in `config.php` (host setting, not an admin setting). |
+| OAuth endpoints | `oauth/register.php` (no sign-in): 5 registrations per minute and 30 per hour per address, `oauth/token.php`: site rate limit per address, HTTP 429 with `Retry-After`. `oauth/authorize.php` shows faulty requests as an error page; only the person's own allow or deny goes back to the client's redirect address. |
 | Endpoint capability | `webservice/elediamcp:use` checked at system context after authentication, in addition to per-function Moodle capability checks. |
 | Per-tool authorisation | Each tool re-checks the relevant Moodle capability with the explicit user id and stays scoped to the authenticated user's data. |
 | Audit | `tool_invoked`, `write_performed`, `context_verified`, `token_created`, `token_revoked` events under *Site admin → Reports → Logs* (forwardable via Logstore plugins). |

@@ -139,5 +139,130 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026082505, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026101402) {
+        // The feedback extractor is withdrawn (#14, operator decision): course
+        // evaluations are not a curated knowledge source, and one person's
+        // rating is noise. Its directory is gone, so it has no upgrade step of
+        // its own left to run; it kept nothing but its version row, and that
+        // row would leave it listed as "missing from disk".
+        $DB->delete_records('config_plugins', ['plugin' => 'aisourcesextractor_feedback']);
+
+        // What it sent must leave the index as well. Queued rather than sent
+        // here: an upgrade must not wait for, or fail on, the destination.
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE st.laststatus <> :empty",
+            ['modname' => 'feedback', 'empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\delete_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026101402, 'local', 'elediaai_sources');
+    }
+
+    if ($oldversion < 2026101500) {
+        // Wikis and databases sent content not every learner may read (#100);
+        // quizzes got valid HTML (#14). The reconcile only revisits courses
+        // whose state diverges, so an indexed module would keep its old
+        // document. Each one with index state is queued once; unchanged
+        // content is skipped by its hash, changed content replaces the old
+        // document, and content that is now empty removes it.
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE m.name IN ('wiki', 'data', 'quiz')
+                AND st.laststatus <> :empty",
+            ['empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\ingest_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026101500, 'local', 'elediaai_sources');
+    }
+
+    if ($oldversion < 2026101501) {
+        // Interactive Books now yield their chapter titles and no longer their
+        // interface labels (#92). Indexed H5P activities are sent once more;
+        // the reconcile alone would not revisit them (see 2026101500).
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE st.laststatus <> :empty",
+            ['modname' => 'h5pactivity', 'empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\ingest_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026101501, 'local', 'elediaai_sources');
+    }
+
+    if ($oldversion < 2026101502) {
+        // Assignments now send the files attached to their description and
+        // become a document set: the description as one sub-document, each file
+        // as another (#90). Indexed assignments are sent once more, so the old
+        // single document is replaced (the multi-document path clears the
+        // module's prefix first).
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE st.laststatus <> :empty",
+            ['modname' => 'assign', 'empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\ingest_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026101502, 'local', 'elediaai_sources');
+    }
+
+    if ($oldversion < 2026101503) {
+        // Assignments are no longer indexed (#103, operator decision
+        // 15.10.2026): the tutor reads them live through the Moodle tools,
+        // which act with the learner's rights. An assignment's description can
+        // be hidden until submissions open, its rubric can be hidden before
+        // grading -- rules the index would have to rebuild and the live path
+        // gets from Moodle. The extractor's directory is gone; its version row
+        // would leave it "missing from disk".
+        $DB->delete_records('config_plugins', ['plugin' => 'aisourcesextractor_assign']);
+
+        // What was sent leaves the index. Queued, as for the feedback
+        // extractor: an upgrade must not wait for the destination.
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module AND m.name = :modname
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE st.laststatus <> :empty",
+            ['modname' => 'assign', 'empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\delete_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026101503, 'local', 'elediaai_sources');
+    }
+
     return true;
 }

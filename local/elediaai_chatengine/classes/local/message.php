@@ -87,4 +87,20 @@ class message {
     public function to_array(): array {
         return ['role' => $this->role, 'content' => $this->content];
     }
+
+    /**
+     * Whether a stored turn is the output of a generative model.
+     *
+     * An assistant turn is, unless the simulator wrote it: its answers carry
+     * their own "simulated" marker and no model is involved (the same rule
+     * chat_service applies before recording provenance). User turns never are.
+     *
+     * @param string $role The turn's role.
+     * @param string $backend The adapter id of the thread.
+     * @return bool
+     */
+    public static function is_ai_generated(string $role, string $backend): bool {
+        return $role === self::ROLE_ASSISTANT
+            && $backend !== \local_elediaai_chatengine\adapter\simulator_adapter::id();
+    }
 }

@@ -267,7 +267,7 @@ final class preview_test extends \advanced_testcase {
         $report = (new ingestion_manager($this->recording_sink()))->preview_module($cm);
 
         $this->assertEqualsCanonicalizing(
-            ['title', 'tenant_id', 'site_url', 'course_id', 'cmid', 'module_url'],
+            ['title', 'tenant_id', 'site_url', 'course_id', 'cmid', 'module_url', 'module_type'],
             array_keys($report['payloadmeta'])
         );
         $this->assertSame((string) $cm->id, $report['payloadmeta']['cmid']);

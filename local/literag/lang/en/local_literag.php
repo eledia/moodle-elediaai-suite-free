@@ -26,6 +26,10 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['confirm_declined'] = 'Okay, I have discarded the action. Nothing was changed.';
 $string['confirm_no'] = 'No, cancel';
+$string['confirm_done'] = 'Done: {$a}';
+$string['confirm_done_generic'] = 'Done.';
+$string['confirm_failed'] = 'That did not work: {$a} Please try again.';
+$string['confirm_failed_generic'] = 'That did not work. Please try again.';
 $string['confirm_yes'] = 'Yes, proceed';
 $string['chattoolname'] = 'Chat tool name';
 $string['chattoolname_desc'] = 'Name of the required chat tool.';
@@ -33,7 +37,6 @@ $string['chunk_overlap'] = 'Chunk overlap (characters)';
 $string['chunk_overlap_desc'] = 'Overlap between consecutive chunks to preserve context across boundaries.';
 $string['chunk_size'] = 'Chunk size (characters)';
 $string['chunk_size_desc'] = 'Target size of each stored text chunk.';
-$string['confirm_sent'] = 'Done — your message was sent.';
 $string['context_chunks'] = 'Context chunks';
 $string['context_chunks_desc'] = 'How many chunks to feed the LLM as grounding context (also the citation count).';
 $string['conversation_retention_days'] = 'Conversation retention (days)';

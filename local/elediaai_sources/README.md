@@ -17,7 +17,7 @@ That split is the point of the plugin, and it opens in two directions:
 
 | Extension axis | Question it answers | Mechanism |
 |---|---|---|
-| **Source types** | What content can we read? | `aisourcesextractor_*` subplugins (17 bundled) |
+| **Source types** | What content can we read? | `aisourcesextractor_*` subplugins (15 bundled) |
 | **Destinations** | Where does it go? | Implementations of the `sink` interface |
 
 Destinations today are the external **Ingestion API** and **LiteRAG** on the
@@ -272,10 +272,8 @@ package/interactive modules.
 
 | Subplugin | Activity | Notes |
 |---|---|---|
-| `assign` | Assignment | Intro, activity instructions, grading criteria; no student submissions |
 | `book` | Book | Visible chapters/subchapters in reading order |
-| `data` | Database | Field definitions and approved records; user responses are scoped to record content |
-| `feedback` | Feedback | Question/item definitions; no submitted responses |
+| `data` | Database | Field definitions and approved records; under separate groups only records without a group |
 | `folder` | Folder | One document per supported file, preserving PDF MIME type |
 | `glossary` | Glossary | Description, approved entries, aliases/synonyms |
 | `h5pactivity` | H5P Activity | Labelled educational text from H5P JSON/package content |
@@ -285,10 +283,17 @@ package/interactive modules.
 | `page` | Page | Page content |
 | `quiz` | Quiz | Questions, answers, feedback, hints, and overall feedback |
 | `resource` | File | Supported text, HTML, and PDF files |
-| `scorm` | SCORM | Intro, SCO titles, and local HTML launch pages |
+| `scorm` | SCORM | Intro, SCO titles, HTML pages in the package, captions and on-screen text; PDFs in the package as sub-documents |
 | `videotime` | Video Time | Intro and VTT captions/transcript |
-| `wiki` | Wiki | Intro and subwiki pages |
+| `wiki` | Wiki | Intro and the pages of the shared wiki (under visible groups also the group wikis); never personal wikis, nor group wikis under separate groups |
 | `workshop` | Workshop | Intro, instructions, conclusion, grading dimensions |
+
+Deliberately not read: forums (discussions are not a curated knowledge
+source), Feedback activities (course evaluations; withdrawn in 1.2.0, #14) and
+assignments (withdrawn in 1.4.0, #103: the tutor reads them live through the
+Moodle tools, which apply Moodle's own visibility rules — a description hidden
+until submissions open, a rubric hidden before grading). Their documents are
+removed from the index on upgrade.
 
 HTML produced by extractors is centrally post-processed for embedded H5P
 placeholders where possible.

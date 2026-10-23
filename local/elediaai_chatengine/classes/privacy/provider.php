@@ -24,6 +24,7 @@ use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
+use local_elediaai_chatengine\local\message;
 use core_privacy\local\request\writer;
 use local_elediaai_chatengine\local\thread_store;
 use local_elediaai_chatengine\local\usage;
@@ -162,6 +163,8 @@ class provider implements
                             'content' => $message->content,
                             'sources' => $message->sources,
                             'origin' => $message->origin,
+                            // Art. 50 Abs. 2 (#52): the export says which turns a model wrote.
+                            'ai_generated' => message::is_ai_generated((string) $message->role, (string) $thread->backend),
                             'timecreated' => transform::datetime($message->timecreated),
                         ],
                         thread_store::messages((int) $thread->id)

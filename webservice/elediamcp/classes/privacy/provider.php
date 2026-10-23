@@ -68,6 +68,7 @@ class provider implements
             'lastaccess' => 'privacy:metadata:webservice_elediamcp_token:lastaccess',
             'revoked' => 'privacy:metadata:webservice_elediamcp_token:revoked',
             'revokedby' => 'privacy:metadata:webservice_elediamcp_token:revokedby',
+            'scope' => 'privacy:metadata:webservice_elediamcp_token:scope',
         ], 'privacy:metadata:webservice_elediamcp_token');
 
         $collection->add_database_table('webservice_elediamcp_oauth_code', [
@@ -153,6 +154,7 @@ class provider implements
                     'name' => $record->name,
                     'externalserviceid' => $record->externalserviceid,
                     'component' => $record->component,
+                    'scope' => $record->scope,
                     'owner' => (int) $record->userid === (int) $userid,
                     'validuntil' => $record->validuntil ? transform::datetime($record->validuntil) : null,
                     'timecreated' => transform::datetime($record->timecreated),

@@ -5,6 +5,392 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.1] – 2026-10-22
+
+### Sicherheit
+
+- Bestaetigungsgate enger (#168): Ein Klick oder ein getipptes Ja gibt genau
+  eine Vorschau der letzten Antwort frei, nicht mehr alle.
+  - Normalfall: Gab es nur eine Vorschau, wird diese freigegeben.
+  - Bei mehreren: die des Werkzeugs, das die Karte nennt (`tooltitle`).
+  - Bleibt es unklar, etwa bei zwei Vorschauen desselben Werkzeugs, wird
+    nichts freigegeben, und der Agent bekommt eine Vorschau zurueck.
+  - Anlass: Max' Agent zeigt bei mehreren Schreibaktionen in einer Antwort
+    nur fuer die erste eine Karte. Ein Klick darauf darf die zweite nicht
+    mittragen.
+  - Neu `confirmation_gate::answer_shown()`: Die Chat-Engine meldet nach
+    jeder Antwort, fuer welches Werkzeug die Karte gilt.
+
+### Behoben
+
+- Die Bestaetigungskarte zeigte den englischen Katalogtitel des Werkzeugs
+  („Send a personal Moodle message“). `confirmation_gate::display_title()`
+  liefert jetzt einen Titel in der Sprache der Person (`cardtitle_*`, 16
+  Werkzeuge). Der MCP-Katalog bleibt fuer alle Clients englisch.
+
+## [1.17.0] – 2026-10-22
+
+### Sicherheit
+
+- Schreibwerkzeuge fuehren `confirm=true` nur noch aus, wenn Moodle die
+  Zustimmung der Person selbst gesehen hat (#168). Bisher entschied allein das
+  Modell des Agenten. Am 22.10. legte der Tutor auf der Testinstanz eine Aufgabe ohne
+  Rueckfrage an, und eine Fragensammlung nach einem „Ja“ auf eine reine
+  Textfrage (Moodle_Agent#35).
+  - `confirmation_gate` merkt sich jede Vorschau (`requires_confirmation`):
+    Person, Werkzeug, Fingerabdruck der Argumente.
+  - Die Chat-Engine meldet jede Nachricht der Person. Ein Klick auf die
+    Bestaetigungskarte oder eine Nachricht, die nur aus Zustimmung besteht
+    („ja“, „ok, mach das“), gibt die Vorschauen der letzten Antwort frei.
+    Alles andere verwirft sie.
+  - `confirm=true` laeuft nur mit einer Freigabe fuer genau diese Person,
+    dieses Werkzeug und diese Argumente durch, hoechstens 10 Minuten alt
+    und nur einmal. Sonst wird `confirm` abgeschaltet, das Werkzeug liefert
+    wieder die Vorschau, und die Antwort traegt `confirmation_withheld` als
+    Hinweis fuer den Agenten.
+  - Nachrichten und Bewertungen (`moodle_send_message`,
+    `moodle_message_course_students`, `moodle_grade_submission`) brauchen
+    den Klick; getipptes Ja reicht dort nicht.
+  - Gilt nur fuer Aufrufe mit einem Token der Chat-Engine. Andere MCP-Clients
+    (persoenliche Tokens, OAuth-Apps) fragen selbst und bleiben unveraendert.
+  - Kein Token reist durch den Agenten. Er muss nichts aendern, damit es
+    sicher ist; Moodle_Agent#35 macht den Ablauf nur sauberer.
+
+## [1.16.3] – 2026-10-22
+
+### Behoben
+
+- `moodle_calendar_upcoming`: Der Link auf eine Aktivitaet nutzt jetzt die
+  Kursmodul-ID statt der Instanz-ID (#173). Auf der Testinstanz zeigte das
+  Tagesbriefing fuer „Uebungsblatt 1“ auf `mod/assign/view.php?id=19` (die
+  Instanz) statt auf `id=497` und fuehrte damit ins Leere oder zu einer
+  fremden Aktivitaet. Ist das Kursmodul nicht aufloesbar, bleibt der
+  bisherige Rueckfall auf Kurs bzw. Kalender.
+
+## [1.16.2] – 2026-10-22
+### Fixed
+- `moodle_quiz_start_attempt` no longer reveals the page count or the question types of a quiz that is not
+  open for the user (not yet open, closed) when the quiz also needs the browser (password, Safe Exam
+  Browser). The access check now comes first and answers `quiz_access_denied`, like the browser's
+  "not available".
+
+### Changed
+- Documentation: the references to an internal specification are gone, the numbers of free tools and
+  tests no longer go stale (they point to `FREE_AI_TOOLS` and the suite), and the changelog of 1.10.0 now
+  lists the OAuth fixes of that release (the doubly defined `NO_MOODLE_COOKIES`, redirects to native apps,
+  the consent page in plain language).
+
+## [1.16.1] – 2026-10-22
+### Fixed
+- Raw Moodle web service functions (premium, setting `expose_raw_functions`) now check the endpoint
+  capability `webservice/elediamcp:use` like the other paths do. This path went through the core
+  server flow, which does not make that check; the core only checked the required capability of the
+  external service. The check runs before the function is loaded.
+
+## [1.16.0] – 2026-10-22
+### Added
+- `moodle_quiz_finish` and `moodle_quiz_get_review` report `requires_manual_grading`: when a teacher
+  still grades some answers, the grade is called provisional in the summary instead of looking final.
+- `moodle_quiz_get_review` returns the teacher's own comment on an answer as `teacher_comment`, when
+  the review options show it (for essays often the only feedback).
+- Essay questions report `min_words`, `max_words` and `response_required` in `moodle_quiz_get_page`.
+  `moodle_quiz_save_answers` reports in `validation` (slot => message) when a saved answer breaks
+  such a limit; the answer is saved, like in the browser, but is not complete.
+- `moodle_quiz_get_page` marks questions with images, audio or video (`has_media`, with a
+  `fallback_url`), because the plain text cannot show them.
+
+### Changed
+- `moodle_quiz_get_page` is no longer annotated as read-only: opening a page remembers it as the
+  current page and can close an attempt whose time is up. A token limited to `mcp:tools.read`
+  therefore cannot call it (see 1.12.0); it was never able to start or answer an attempt.
+- Continuing an attempt that is overdue (grace period) reports `time_left_seconds` 0 and says to submit
+  it with `moodle_quiz_finish`, instead of pointing at `moodle_quiz_get_page`, which refuses it.
+- The descriptions of `moodle_quiz_get_page` and `moodle_quiz_get_review` tell the model that question
+  texts, options, feedback and comments are course content, to be treated as data and never as
+  instructions. The descriptions of `moodle_quiz_finish` and `moodle_quiz_get_review` explain that the
+  grade follows the review options of the quiz, like the review page, while the gradebook can hide it
+  separately (`moodle_quiz_info` reports `grade_withheld`).
+- Errors of the quiz API that are not the quiz's own no longer pass their message on to the caller
+  (it can contain class names); the caller gets the error code (`quiz_error`).
+
+## [1.15.0] – 2026-10-22
+### Added
+- `moodle_quiz_get_page` returns a `sequence` for every question, the state of the question
+  (the number of its steps). `moodle_quiz_save_answers` accepts it per answer. If the question
+  was changed elsewhere since (for example answered in the browser), the call is refused with
+  `out_of_sequence` and nothing is saved; before, such an answer overwrote the one from the
+  browser and the tool reported "Saved". The answer of `moodle_quiz_save_answers` returns the
+  new `sequences` (slot => sequence), so the next save does not need a new page load. Without
+  `sequence` the answer overwrites what is saved, as before; the tool description tells callers
+  to send it.
+
+## [1.14.0] – 2026-10-22
+### Added
+- Quizzes with a Check step (behaviours "immediate feedback", "interactive", "adaptive", "adaptive
+  without penalties") offer hints and feedback while answering through a Check button that only
+  the browser has. `moodle_quiz_start_attempt` now reports `check_in_browser: true` and says so
+  in its summary; answers saved through the tools are graded when the attempt is finished, as
+  before.
+- `moodle_quiz_get_page` marks a question `finished: true` when it was already checked in the
+  browser and can no longer be changed.
+
+### Fixed
+- `moodle_quiz_save_answers` no longer reports "Saved" for a question that was already checked in
+  the browser. Moodle drops such an answer silently; the call is now refused with the error
+  `question_finished` (nothing is saved) and the slot in the message.
+
+## [1.13.1] – 2026-10-21
+### Changed
+- `moodle_quiz_get_page` and `moodle_quiz_get_review` keep their answer within the response
+  size (setting `response_max_chars`, default 12000), like the list tools since 1.11.0. A page
+  with many or long questions, or a long review, comes in parts: the new input `offset` selects
+  the first question, the answer carries `total`, `offset`, `has_more` and `next_offset`, and
+  the summary tells the caller to call again with `offset` set to `next_offset`. Before, such
+  answers were cut off by clients that limit the size, which left unusable JSON. A question is
+  never cut: a single question that alone exceeds the limit comes alone. The overall feedback of
+  a review comes with the first part only. Answers that fit are unchanged apart from the new
+  fields.
+
+## [1.13.0] – 2026-10-21
+### Changed
+- `moodle_quiz_start_attempt` asks before it starts a new attempt that has consequences: with a
+  time limit the clock starts at once, with a limited number of attempts the attempt is used up.
+  The first call returns a preview (`requires_confirmation: true`, `attempts_allowed`,
+  `attempts_used`, the time limit); the attempt starts with `confirm: true` after the user agreed.
+  Continuing an open attempt and quizzes without time limit and with unlimited attempts start
+  as before. In the browser Moodle asks first as well. Callers that start timed or limited
+  quizzes must pass `confirm`.
+
+### Fixed
+- Numerical questions whose unit counts for the grade (penalty for a missing or wrong unit):
+  the tool no longer adds the default unit to the number the learner typed, which handed them
+  the unit part of the grade. The question now reports `unit_required: true` and
+  `default_unit`, and an answer typed with its unit is kept as typed. Questions whose unit
+  is not graded behave as before.
+
+## [1.12.1] – 2026-10-21
+### Security
+- The authorization endpoint no longer sends protocol errors (wrong response type, missing
+  PKCE, unknown scope) back to the client's redirect address. They are shown as an error
+  page. Before, a link with a faulty request sent a signed-in person from the site to any
+  address a stranger had registered through dynamic registration. Only the person's own
+  decision (allow or deny) goes back to the client.
+- `oauth/register.php` (no sign-in) allows 5 registrations per minute and 30 per hour from
+  one address; `oauth/token.php` uses the site rate limit per address. Both answer with HTTP
+  429 and `Retry-After`. A bucket can only be stricter than the site setting, and both stay
+  off when the site rate limit is off.
+
+### Fixed
+- An authorization request without `redirect_uri` for a client with one registered address
+  no longer produces a relative `Location` header when it fails (the error page replaces
+  the redirect).
+
+## [1.12.0] – 2026-10-21
+### Security
+- OAuth scopes are enforced. A token issued after consent is limited to the scopes
+  the person saw on the consent page (new field `scope` in
+  `webservice_elediamcp_token`, upgrade step). Tools that change data need
+  `mcp:tools.call`, read-only tools `mcp:tools.read` or `mcp:tools.call`, prompt
+  templates `mcp:prompts.read`. A request outside the scopes gets HTTP 403 with
+  `WWW-Authenticate: Bearer error="insufficient_scope"`. Before, the consent page
+  promised a limit (for example "see your courses" for `mcp:tools.read`) while the
+  token could use every tool its user may use.
+- An authorization request that asks only for unknown scopes is refused with
+  `invalid_scope` instead of getting a token that is not limited.
+- The scope is looked up through the core token the request authenticated with, so a
+  token sent in another spelling (database with a case-insensitive collation) is
+  limited just the same. `tools/list` shows a token without `mcp:tools.call` only the
+  read-only tools, `prompts/list` answers with an empty list without
+  `mcp:prompts.read`, and raw web service functions always need `mcp:tools.call`.
+- Manual tokens and tokens issued before this version carry no scope and are not
+  limited. To switch the check off for a whole site, set
+  `$CFG->webservice_elediamcp_enforce_scopes = false;` in `config.php`.
+
+### Fixed
+- The OAuth consent page no longer has a branch for unknown scopes that could never
+  run.
+- The privacy export of token metadata includes the scope.
+
+## [1.11.3] – 2026-10-20
+### Fixed
+- With marking allocation, `moodle_grading_queue` and the per-assignment counters
+  of `moodle_course_health` counted all submissions of the grader's groups, while
+  `moodle_read_submission` and `moodle_grade_submission` only allow the allocated
+  ones. Graders without `mod/assign:manageallocations` now count only the students
+  allocated to them, like the grading table. Users who manage allocations count
+  everything as before.
+
+## [1.11.2] – 2026-10-20
+### Fixed
+- `moodle_message_course_students` required `moodle/course:manageactivities`
+  (editing teachers and managers only) instead of Moodle's own capability for
+  messaging many participants, `moodle/course:bulkmessaging`, which non-editing
+  teachers hold as well. It now requires `moodle/course:bulkmessaging`; the
+  group and course access checks are unchanged.
+
+## [1.11.1] – 2026-10-20
+### Fixed
+- The five quiz tools (`moodle_quiz_start_attempt`, `moodle_quiz_get_page`,
+  `moodle_quiz_save_answers`, `moodle_quiz_finish`, `moodle_quiz_get_review`)
+  required only a course enrolment, not an active one. A suspended enrolment or
+  one outside its time window could start, change and submit attempts and read
+  reviews, which the browser refuses via `require_login()`. They now require an
+  active enrolment like every other tool of the plugin (see 1.9.2).
+
+## [1.11.0] – 2026-10-20
+### Added
+- Setting `response_max_chars` (default 12000, range 2000 to 100000): the largest
+  size of a response in characters. The list tools `moodle_my_assignments`,
+  `moodle_quiz_info`, `moodle_my_courses` and `moodle_get_announcements` cut
+  their pages to fit it, so `has_more`, `total`, `offset` and `summary` stay
+  complete. Set it to the limit of the client (for example an AI agent that
+  truncates long tool results). The size is measured as indented JSON with
+  sorted keys, as wrapped in `{"result": …}`, so it is conservative.
+- New output field `next_offset` (integer or `null`) in the four tools: the
+  `offset` of the next page. Their descriptions tell the model to call again
+  with it when `has_more` is true.
+- `moodle_get_announcements`: optional input `offset` (0 to 1000).
+### Changed
+- `moodle_get_announcements`: `total` counts the announcements of this response
+  only, and the summary says so when the list is not complete.
+- Equal due dates are ordered by id in `moodle_my_assignments` and
+  `moodle_quiz_info` (and equal course names in `moodle_my_courses`), so
+  paging neither skips nor repeats entries.
+
+## [1.10.0] – 2026-10-19
+### Added
+- Five free tools take a normal Moodle quiz through MCP, for agents and for
+  learner apps. They use the `mod_quiz` attempt API and the
+  question engine, never the attempt HTML, and run as the signed-in user with
+  the usual `mod/quiz:attempt` and `mod/quiz:reviewmyattempts` checks:
+  - `moodle_quiz_start_attempt` `{cmid}` starts an attempt or continues the
+    open one, with page count, current page, time limit and time left.
+  - `moodle_quiz_get_page` `{attempt_id, page}` returns the questions of one
+    page as plain text with a structured input (`single`, `multi`, `text`,
+    `number`, `match`, or `unsupported` with `fallback_url`) and the answers
+    saved so far, never the solutions. Description items come in `info`.
+  - `moodle_quiz_save_answers` `{attempt_id, answers}` saves answers like
+    "Next page" in Moodle. Saving the same answers again changes nothing; one
+    invalid answer saves none.
+  - `moodle_quiz_finish` `{attempt_id, confirm}` previews the number of
+    unanswered questions and submits only with `confirm=true`
+    (`destructiveHint`). Moodle grades the attempt.
+  - `moodle_quiz_get_review` `{attempt_id}` returns grade, state, mark,
+    feedback and right answer per question, each only as far as the quiz
+    review options show it now (hidden parts are `null` or missing).
+- Quizzes that need the browser are not started in the app:
+  `inline_supported=false` and `fallback_url` when the quiz has a password,
+  Safe Exam Browser, network address, delay or any other access rule besides
+  open/close date, attempt limit and time limit, sequential navigation,
+  certainty-based marking, or a question type the app cannot show. Supported
+  types are multiple choice, true/false, short answer, numerical (without a
+  separate unit field), match, essay without required attachments and
+  `aitext`.
+
+### Fixed
+- The OAuth token and registration endpoints defined `NO_MOODLE_COOKIES` although Moodle defines it
+  itself for web service scripts. On a site with developer debugging the warning ended the request, so
+  no token was issued; on other sites it filled the log with one entry per request.
+- The authorization endpoint sent a native app (private-use scheme such as `com.example.app:/cb`, RFC
+  8252) back with a relative address, so the app never got its callback. Such redirect addresses are
+  now sent unchanged in the `Location` header.
+
+### Changed
+- The OAuth consent page names what the application can do in plain language instead of scope names
+  (see 1.12.0 for what the scopes limit now) and the site and person it connects to.
+
+## [1.9.2] – 2026-10-19
+### Fixed
+- The read tools show only what Moodle shows the person, applying the same
+  visibility rules as Moodle's own pages (#118 to #122).
+- `moodle_my_assignments`: a grade is reported only when Moodle shows it to the
+  person. Grades in a marking workflow appear after release; grades hidden in
+  the gradebook (including "hidden until") are withheld, and the summary says
+  so. Status `graded` follows the visible grade, so `moodle_due_work` keeps
+  unreleased work on its list. Team assignments use the group submission. Due
+  dates, cut-off, start, the overdue flag and the order include user and group
+  overrides, personal extensions and relative course dates. Scale grades are
+  shown with their scale item.
+- `moodle_my_grades`: grades follow the gradebook user report: the report
+  capability and the course setting "Show gradebook to learners", hidden
+  grades and categories, activities the person cannot see, hidden feedback,
+  and totals according to "Hide totals if they contain hidden items". Withheld
+  values are `null` and the summary says so. `include_items` no longer fails
+  for graded items.
+- `moodle_quiz_info`: attempt marks and the overall grade follow the quiz
+  review options and the gradebook visibility, and are reported for finished
+  attempts only. Open and close dates, time limit and allowed attempts include
+  user and group overrides. The tool requires an active enrolment.
+- `moodle_course_contents`: a hidden course is no longer listed for learners
+  without `moodle/course:viewhiddencourses`. Access requires an active
+  enrolment or `moodle/course:view`; guest access does not count. A missing and
+  an inaccessible course get the same message.
+- `moodle_get_announcements`: applies the rules of Moodle's discussion list
+  (display period of timed posts, separate groups within the forum's grouping,
+  `mod/forum:viewdiscussion`), with `forum_user_can_see_discussion()` as the
+  final check. Pages contain visible announcements only.
+- Teacher tools (`moodle_course_health`, `moodle_grading_queue`,
+  `moodle_message_course_students`) respect separate groups on course and
+  activity level, including groupings and groups without participation, and
+  require active course access. Their counters follow the assignment grading
+  summary (active enrolments, "needs grading" rule, team submissions by the
+  status of the team's submission: members of a team that has submitted count
+  as submitted and are not messaged as missing).
+- `moodle_read_submission` and `moodle_grade_submission` respect marking
+  allocation: markers without `mod/assign:manageallocations` see only the
+  students allocated to them.
+- `moodle_get_resource`, `moodle_verify_user_context`,
+  `moodle_forum_discussions` and `moodle_my_submission_files` require active
+  course access, as Moodle does when entering a course.
+- `moodle_my_assignments`, `moodle_my_grades` and `moodle_quiz_info` report a
+  missing, foreign or inaccessible course with the same neutral message as
+  `moodle_course_contents` ("Course {id} is not available to you.").
+- `moodle_calendar_upcoming`: access is checked before the response cache, and
+  the cache follows enrolment, group and activity changes.
+### Added
+- `moodle_my_assignments`: optional output field `extensionduedate_iso` for a
+  personal extension of the due date.
+- `grade_withheld` (boolean) in every entry of `moodle_my_assignments`, in the
+  course and item entries of `moodle_my_grades`, and in the quiz entry and each
+  attempt of `moodle_quiz_info`: `true` means a grade exists that Moodle does
+  not show to the person yet, and the value is `null`; `null` with `false`
+  means not graded yet. Each entry says so itself, independent of the summary.
+- `moodle_my_grades`: `grades_available` per course (`false` without access
+  to the gradebook).
+- The descriptions of `moodle_my_assignments`, `moodle_my_grades` and
+  `moodle_quiz_info` explain `null` values and `grade_withheld`, so clients
+  that only pass the tool description to a model need no further information.
+### Changed
+- `moodle_my_assignments`, `moodle_my_grades` and `moodle_get_announcements` no
+  longer cache their responses, so changes apply at once. `moodle_my_assignments`
+  loads its data with a fixed number of queries.
+
+## [1.9.1] – 2026-10-15
+### Fixed
+- `moodle_get_resource` respects the hidden description of an assignment (#115).
+  Learners get the description, the instructions and the list of attached
+  files only when Moodle shows them (`assign::show_intro()`: "Always show
+  description" on, or "Allow submissions from" passed). Before that the answer
+  carries no text and no files, only `available_from` and a summary that says
+  from when. The date is the one that applies to the person, so user and group
+  overrides of "Allow submissions from" count, as on Moodle's own page. People
+  who may grade the assignment (`mod/assign:grade`) or manage activities
+  (`moodle/course:manageactivities`) and site administrators always see
+  everything. Grading criteria are not returned.
+- The file list follows `assign::should_provide_intro_attachments()`: with
+  "Show description attachments only while submissions are open" a learner gets
+  no files once submissions are closed.
+### Added
+- `moodle_get_resource` returns the instructions of an assignment next to its
+  description and lists the files of the description (`introattachment`).
+- The instructions of an assignment are shown whenever its description is
+  visible. Moodle itself shows them only in the submission form, so the tool
+  may show them somewhat earlier than a learner would look for them there.
+- Optional output field `available_from` (timestamp), set only while the
+  description of an assignment is hidden from the person.
+- The tool description tells the model to use the tool for questions about what
+  an assignment requires.
+
 ## [1.8.2] – 2026-09-28
 ### Fixed
 - The MCP service created by "Activate MCP service" survives plugin upgrades.

@@ -291,7 +291,7 @@ $string['privacy:metadata:rag_service:course_id'] = 'The Moodle course ID is sen
 $string['privacy:metadata:rag_service:cmid'] = 'The Moodle course module ID is sent to identify the activity.';
 $string['privacy:metadata:rag_service:module_url'] = 'The Moodle module URL is sent for later citations and source links.';
 $string['privacy:metadata:rag_service:content'] = 'Extracted course activity content is sent for parsing, chunking and indexing.';
-$string['privacy:metadata:rag_service:usercontent'] = 'Extracted content can include entries contributed by participants: approved database activity entries, approved glossary entries and wiki pages. The text of these entries is sent; the names of their authors are not.';
+$string['privacy:metadata:rag_service:usercontent'] = 'Extracted content can include entries contributed by participants: approved database activity entries, approved glossary entries and pages of shared wikis. Only content every participant of the course may read is sent: never personal wikis, nor group content under separate groups. The text of these entries is sent; the names of their authors are not.';
 
 // Subplugin types.
 $string['subplugintype_aisourcesextractor'] = 'Content extractor';

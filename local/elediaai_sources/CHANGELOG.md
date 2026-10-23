@@ -7,6 +7,122 @@ Format angelehnt an Keep a Changelog.
 Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 `local_ragingest` erschienen und nennen ihn deshalb weiterhin.
 
+## [1.4.0] – 2026-10-15
+
+### Entfernt
+
+- **Aufgaben werden nicht mehr indexiert** (#103, Entscheidung des
+  Betreibers). Der Extraktor `aisourcesextractor_assign` ist entfernt; der
+  Tutor liest Aufgaben live über die Moodle-Werkzeuge, die mit den Rechten der
+  Person arbeiten. Anlass: Aufgaben haben eigene Sichtbarkeitsregeln – die
+  Beschreibung kann bis zum Abgabebeginn verborgen sein, das Bewertungsraster
+  bis zur Bewertung –, und der Extraktor beachtete keine davon. Das Upgrade
+  entfernt den Versionseintrag des Subplugins und stellt für jede indexierte
+  Aufgabe eine Löschaufgabe ein. 15 statt 16 gebündelte Extraktoren.
+- Damit entfällt auch, was 1.3.0 (#90) an Dateien der Aufgabenbeschreibung
+  ergänzt hatte.
+- `grading_criteria` (Bewertungsraster und -richtlinien aus dem Advanced
+  Grading) hatte nur noch den Aufgaben-Extraktor als Nutzer und ist ebenfalls
+  entfernt. Er las die Anzeigeoptionen der Raster nicht und hätte verborgene
+  Raster gesendet.
+
+## [1.3.0] – 2026-10-15
+
+### Hinzugefügt
+
+- **Aufgabe: Dateien der Beschreibung** (#90). Was Lehrende als Datei an die
+  Aufgabenbeschreibung hängen (`mod_assign/introattachment`, z. B. das
+  Aufgabenblatt als PDF), kommt wie bei Folder als eigenes Teildokument in den
+  Index, mit eigenem Typ und Dateinamen als Titel, gefiltert durch die
+  Formatmatrix; nicht sendbare Dateien hinterlassen einen Übersprung-Hinweis.
+  Die Beschreibung selbst wird das Teildokument `description`. Das Upgrade
+  sendet indexierte Aufgaben einmal neu; dabei wird das bisherige
+  Einzeldokument ersetzt.
+- **Termine bewusst nicht** (Entscheidung zu #90): Abgabe- und
+  Fälligkeitstermine fragt der Tutor live ab; README und Datenflüsse sagen das.
+
+## [1.2.2] – 2026-10-15
+
+### Behoben
+
+- **H5P Interactive Book** (#92): Jedes Kapitel kommt als „Chapter: <Titel>“
+  mit seinem Inhalt in den Index. Die Titel gingen bisher verloren, weil sie
+  in `metadata.title` stehen und der Durchlauf `metadata` überspringt. Die
+  rund 35 Bedienbeschriftungen des Buchs („Next page“, „Display 'Table of
+  contents'“ usw.) gelten nicht mehr als Kursinhalt. Aufbau nach der
+  `semantics.json` von H5P.InteractiveBook. Das Upgrade sendet indexierte
+  H5P-Aktivitäten einmal neu; in Seiten oder Büchern eingebettete H5P-Inhalte
+  folgen mit der nächsten Änderung der Aktivität.
+
+## [1.2.1] – 2026-10-15
+
+### Behoben
+
+- **Wiki und Datenbank senden nur, was alle im Kurs lesen dürfen** (#100).
+  Der Wiki-Extraktor setzte alle Subwikis zu einem Kursdokument zusammen –
+  auch **persönliche Wikis** (nur für die Person und Lehrende sichtbar) und
+  Gruppen-Wikis unter **getrennten Gruppen**. Weil der Index kursweit
+  durchsucht wird, konnte der Tutor diese Inhalte jedem Lernenden des Kurses
+  zitieren. Jetzt: nur Subwikis ohne Personenbezug, bei getrennten Gruppen nur
+  das ohne Gruppe. Der Datenbank-Extraktor nimmt bei getrennten Gruppen nur
+  Einträge ohne Gruppe.
+- **Bereits gesendete Dokumente werden ersetzt:** Das Upgrade reiht jede
+  Wiki-, Datenbank- und Quiz-Aktivität mit Indexzustand einmal zum Senden ein.
+  Unveränderter Inhalt wird am Hash übersprungen, geänderter ersetzt das alte
+  Dokument.
+- **Leere Extraktion löscht:** Liefert eine Aktivität nichts mehr, die
+  Dokumente im Index haben kann (etwa ein Wiki nur aus persönlichen Seiten),
+  wird ihr Dokument entfernt. Bisher blieb es stehen.
+
+### Korrigiert
+
+- Der Eintrag zu 1.1.1 versprach, jedes Quiz werde nach dem Upgrade einmal
+  neu übertragen. Das stimmte nicht: Der Abgleich besucht nur Kurse, deren
+  Zustand abweicht. Das Neusenden holt erst dieses Upgrade nach.
+- Datenschutzangaben, README und Datenflüsse nennen die Regel; dort steht
+  jetzt auch, dass Termine bewusst live abgefragt und nicht indexiert werden
+  (#90).
+
+## [1.2.0] – 2026-10-14
+
+### Entfernt
+
+- **Feedback-Extraktor** (`aisourcesextractor_feedback`, #14, Entscheidung des
+  Betreibers). Kursevaluationen sind keine kuratierte Wissensquelle, und eine
+  einzelne Bewertung ist Rauschen. Das Upgrade entfernt den Versionseintrag des
+  Subplugins und stellt für jede Feedback-Aktivität, die Dokumente im Index
+  haben kann, eine Löschaufgabe ein. 16 statt 17 gebündelte Extraktoren.
+
+### Geändert
+
+- Eine Aktivität, für die es keinen Extraktor (mehr) gibt, wird beim Abgleich
+  aus dem Index entfernt, wenn sie dort Dokumente haben kann – bisher wurde sie
+  nur übersprungen, und ihre Dokumente blieben stehen.
+- README: Zeile zu SCORM auf den heutigen Umfang gebracht.
+
+## [1.1.1] – 2026-10-14
+
+### Behoben
+
+- **Quiz: gültiges HTML** (#14). Das Feedback einer Antwort stand als Absatz
+  direkt in der `<ul>` statt im zugehörigen `<li>`; der Parser der Pipeline
+  verlor dadurch die Zuordnung von Antwort und Feedback. Das allgemeine
+  Feedback steckt jetzt in einem `<div>` statt in einem `<p>`, das selbst
+  Absätze enthielt. Weil sich der gesendete Inhalt ändert, wird jedes Quiz
+  einmal neu übertragen.
+
+## [1.1.0] – 2026-10-14
+
+### Hinzugefügt
+
+- **Modultyp in den Metadaten** (#15, API-Spezifikation v1.4). Jedes Dokument
+  trägt `qdrant_metadata.module_type` mit Moodles Modulnamen (`page`,
+  `resource`, `quiz`, …). Der Titel reist seit 0.27.0 schon mit
+  (`qdrant_metadata.title`). Additiv; ein Dienst nach v1.3 ignoriert das Feld.
+  Bereits gespeicherte Dokumente bekommen es mit ihrer nächsten Änderung oder
+  einer Neuindexierung – das Feld löst bewusst keinen Neuversand aller
+  Aktivitäten aus.
+
 ## [1.0.2] – 2026-09-28
 
 ### Behoben

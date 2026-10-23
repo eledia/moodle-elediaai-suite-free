@@ -181,4 +181,73 @@ final class knowledge_scope_test extends \advanced_testcase {
         $this->assertContains((int) $category->id, $scope->categories);
         $this->assertContains((int) $course->id, $scope->courses);
     }
+
+    /**
+     * A teacher sees what they may choose, not the whole site (#169).
+     *
+     * On the test instance a teacher in a sandbox saw the course names of every other
+     * customer. The list now follows the rule rejected_for() applies on
+     * saving, so what the field offers is what saving accepts.
+     */
+    public function test_teacher_sees_only_their_own_courses(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $own = $generator->create_course(['fullname' => 'Eigener Sandkasten']);
+        $foreign = $generator->create_course(['fullname' => 'Kunde Fremd GmbH']);
+        $teacher = $generator->create_user();
+        $generator->enrol_user($teacher->id, $own->id, 'editingteacher');
+        $generator->enrol_user($teacher->id, $foreign->id, 'student');
+        $this->setUser($teacher);
+
+        $options = knowledge_scope::options();
+
+        $this->assertArrayHasKey('course:' . $own->id, $options);
+        $this->assertArrayNotHasKey('course:' . $foreign->id, $options, 'enrolled as student is not choosing');
+        $this->assertArrayNotHasKey('course:' . SITEID, $options);
+        $this->assertSame([], array_filter(array_keys($options), fn($key) => str_starts_with($key, 'cat:')));
+        $this->assertStringNotContainsString('Kunde Fremd', implode(' ', $options));
+
+        // What the list offers, saving accepts -- and nothing more.
+        $wish = knowledge_scope::from_selection(array_keys($options));
+        $this->assertSame([], knowledge_scope::rejected_for($wish, (int) $teacher->id));
+    }
+
+    /**
+     * A selection someone else stored stays visible and survives the form.
+     */
+    public function test_stored_entries_stay_in_the_list(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $category = $generator->create_category(['name' => 'Handbuecher']);
+        $handbook = $generator->create_course(['fullname' => 'Handbuch', 'category' => $category->id]);
+        $own = $generator->create_course(['fullname' => 'Eigener Kurs']);
+        $teacher = $generator->create_user();
+        $generator->enrol_user($teacher->id, $own->id, 'editingteacher');
+        $this->setUser($teacher);
+
+        $options = knowledge_scope::options('cat:' . $category->id . ',course:' . $handbook->id);
+
+        $this->assertArrayHasKey('course:' . $own->id, $options);
+        $this->assertStringContainsString('Handbuch', $options['course:' . $handbook->id]);
+        $this->assertStringContainsString('Handbuecher', $options['cat:' . $category->id]);
+    }
+
+    /**
+     * A category manager chooses freely, like an administrator.
+     */
+    public function test_category_manager_sees_everything(): void {
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(['fullname' => 'Irgendein Kurs']);
+        $manager = $generator->create_user();
+        $role = $this->getDataGenerator()->create_role();
+        assign_capability('moodle/category:manage', CAP_ALLOW, $role, \context_system::instance());
+        role_assign($role, $manager->id, \context_system::instance());
+        $this->setUser($manager);
+
+        $options = knowledge_scope::options();
+
+        $this->assertArrayHasKey('course:' . $course->id, $options);
+        $this->assertArrayHasKey('course:' . SITEID, $options);
+    }
 }

@@ -310,7 +310,13 @@ class ingestion_manager {
         }
 
         if (!$this->has_extractor($cm)) {
-            return ['verdict' => self::VERDICT_SKIP, 'reason' => 'noextractor'];
+            // A type nobody reads (any more) must not keep what it once sent:
+            // when an extractor is withdrawn -- the feedback one was, #14 --
+            // its documents would otherwise stay in the index for good.
+            $verdict = cm_state::may_hold_documents((int) $cm->id)
+                ? self::VERDICT_DELETE
+                : self::VERDICT_SKIP;
+            return ['verdict' => $verdict, 'reason' => 'noextractor'];
         }
 
         return ['verdict' => self::VERDICT_INGEST, 'reason' => ''];
@@ -431,6 +437,14 @@ class ingestion_manager {
         }
 
         if ($document === null || empty($document['content'])) {
+            // Nothing left to send does not mean nothing was sent: a module that
+            // is emptied -- or whose content an extractor no longer reads, as
+            // personal wikis since #100 -- must not keep its old document.
+            if (cm_state::may_hold_documents((int) $cm->id)) {
+                $result = $this->delete_module((int) $cm->course, (int) $cm->id);
+                $result['module_name'] = $modulename;
+                return $result;
+            }
             return [
                 'cmid' => $cm->id,
                 'module_name' => $modulename,
@@ -1195,6 +1209,11 @@ class ingestion_manager {
                 'course_id' => (string) $cm->course,
                 'cmid' => (string) $cm->id,
                 'module_url' => $moduleurl->out(false),
+                // Which kind of activity the document comes from (#15, API v1.4):
+                // a parser or a ranking can then treat a quiz differently from a
+                // page, and a citation can say "Quiz" instead of guessing from a
+                // URL. Moodle's own module name, as in the URL above.
+                'module_type' => (string) $cm->modname,
             ],
             'parser_options' => null,
         ];

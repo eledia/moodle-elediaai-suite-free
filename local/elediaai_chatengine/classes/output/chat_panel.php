@@ -150,10 +150,20 @@ class chat_panel implements templatable {
             'instanceid' => $this->instanceid,
             'prefix' => $this->prefix,
             'persona' => $this->persona->name,
+            // The system behind the answers, for data-ai-system (#52). Not the
+            // persona: that is a display name a site may change to "Lisa".
+            'aisystem' => get_string_manager()->string_exists('pluginname', $this->component)
+                ? get_string('pluginname', $this->component)
+                : $this->component,
             'maxlength' => connection::max_message_length(),
             'streaming' => $streaming,
             'courseid' => $courseid,
             'autoloadhistory' => $this->logcontent === '',
+            // The sentence shown once at the chat, when the site chose that
+            // style for its AI notice (#42); empty otherwise.
+            'ainoticeonce' => method_exists('\\local_aitransparency\\marker', 'chat_notice')
+                ? (string) \local_aitransparency\marker::chat_notice()
+                : '',
         ], $this->config);
 
         return [

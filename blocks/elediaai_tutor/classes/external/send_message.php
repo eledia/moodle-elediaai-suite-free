@@ -134,7 +134,23 @@ class send_message extends external_api {
 
         // Proven before it is believed, and given back afterwards: a static
         // that outlived the turn would configure the next one.
-        placement::use_surface((int) $params['contextid'], $courseid);
+        try {
+            placement::use_surface((int) $params['contextid'], $courseid);
+        } catch (\moodle_exception $e) {
+            // Refused before the engine saw the turn, so the engine cannot log
+            // it. Without this the customer's "Ungueltiger Kontext" of #37 had
+            // no trace anywhere. Only here and not in stream.php: a stream
+            // refused at this point falls back to this endpoint, and the turn
+            // would be counted twice.
+            chat_service::record_rejection(
+                placement::component(),
+                $courseid,
+                (int) $USER->id,
+                $e,
+                $scope->context($courseid)
+            );
+            throw $e;
+        }
         try {
             $result = chat_service::send(
                 placement::component(),
@@ -166,6 +182,7 @@ class send_message extends external_api {
             ),
             'origin' => $result['origin'],
             'iserror' => $result['iserror'],
+            'aigenerated' => !empty($result['aigenerated']),
         ];
     }
 
@@ -191,6 +208,7 @@ class send_message extends external_api {
             ),
             'origin' => new external_value(PARAM_ALPHA, 'grounded, general or mcp'),
             'iserror' => new external_value(PARAM_BOOL, 'Whether the backend reported a tool-level error'),
+            'aigenerated' => new external_value(PARAM_BOOL, 'Whether the answer is the output of a generative model', VALUE_DEFAULT, false),
         ]);
     }
 }

@@ -269,4 +269,34 @@ final class load_history_test extends \advanced_testcase {
 
         $this->fail('The restored conversation contains no assistant turn.');
     }
+
+    /**
+     * A restored model turn says it is one; the question and a simulated answer do not (#52).
+     *
+     * @return void
+     */
+    public function test_a_restored_turn_says_whether_a_model_wrote_it(): void {
+        global $USER;
+
+        $this->install();
+        foreach (['literag' => true, 'simulator' => false] as $backend => $expected) {
+            $thread = thread_store::open(
+                self::COMPONENT,
+                0,
+                (int) \context_system::instance()->id,
+                0,
+                (int) $USER->id,
+                null,
+                $backend,
+                mode::GROUNDED,
+                'h-' . $backend
+            );
+            thread_store::add_message((int) $thread->id, message::ROLE_USER, 'Frage');
+            thread_store::add_message((int) $thread->id, message::ROLE_ASSISTANT, 'Antwort');
+
+            $history = load_history::execute(self::COMPONENT, 0, (int) $thread->id);
+            $this->assertFalse($history['messages'][0]['aigenerated'], 'A question is no model output.');
+            $this->assertSame($expected, $history['messages'][1]['aigenerated'], $backend);
+        }
+    }
 }

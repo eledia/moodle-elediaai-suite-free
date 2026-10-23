@@ -29,6 +29,7 @@ require_once($CFG->dirroot . '/webservice/lib.php');
 use core\output\notification;
 use webservice_elediamcp\form\configuration_form;
 use webservice_elediamcp\form\create_token_form;
+use webservice_elediamcp\local\ai\response_budget;
 use webservice_elediamcp\local\premium;
 use webservice_elediamcp\local\token_manager;
 use webservice_elediamcp\local\tool_provider;
@@ -206,6 +207,7 @@ $current = (object) [
     'rate_limit_per_minute' => get_config('webservice_elediamcp', 'rate_limit_per_minute') ?: 60,
     'rate_limit_per_hour' => get_config('webservice_elediamcp', 'rate_limit_per_hour') ?: 600,
     'max_request_size' => get_config('webservice_elediamcp', 'max_request_size') ?: 1048576,
+    'response_max_chars' => response_budget::max_chars(),
     'tools_page_size' => get_config('webservice_elediamcp', 'tools_page_size') ?: 50,
     'emergency_disable' => (int) (get_config('webservice_elediamcp', 'emergency_disable') ?: 0),
     'oauth_enabled' => (int) (get_config('webservice_elediamcp', 'oauth_enabled') ?: 0),
@@ -237,6 +239,11 @@ if ($data = $mform->get_data()) {
     set_config('rate_limit_per_minute', max(0, (int) $data->rate_limit_per_minute), 'webservice_elediamcp');
     set_config('rate_limit_per_hour', max(0, (int) $data->rate_limit_per_hour), 'webservice_elediamcp');
     set_config('max_request_size', max(0, (int) $data->max_request_size), 'webservice_elediamcp');
+    set_config(
+        'response_max_chars',
+        max(response_budget::MIN_MAX_CHARS, min(response_budget::MAX_MAX_CHARS, (int) $data->response_max_chars)),
+        'webservice_elediamcp'
+    );
     set_config('tools_page_size', max(0, (int) $data->tools_page_size), 'webservice_elediamcp');
     set_config('emergency_disable', empty($data->emergency_disable) ? 0 : 1, 'webservice_elediamcp');
     set_config('oauth_enabled', empty($data->oauth_enabled) ? 0 : 1, 'webservice_elediamcp');

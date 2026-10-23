@@ -19,6 +19,7 @@ declare(strict_types=1);
 namespace local_elediaai_chatengine\local;
 
 use local_elediaai_chatengine\adapter\adapter_exception;
+use local_elediaai_chatengine\adapter\backend_refusal;
 use local_elediaai_chatengine\local\http\curl_transport;
 use local_elediaai_chatengine\local\http\transport;
 use moodle_url;
@@ -49,6 +50,12 @@ use moodle_url;
 class mcp_client {
     /** @var string MCP protocol version advertised on requests. */
     private const MCP_PROTOCOL_VERSION = '2025-06-18';
+
+    /** @var int cURL's error number for a timeout (CURLE_OPERATION_TIMEDOUT). */
+    private const CURLE_OPERATION_TIMEDOUT = 28;
+
+    /** @var int Most outline sections a confirmation card lists. */
+    private const MAX_OUTLINE_SECTIONS = 50;
 
     /** @var moodle_url Validated RAG endpoint. */
     private moodle_url $endpoint;
@@ -504,26 +511,114 @@ class mcp_client {
         }
 
         if ($response['error'] !== '') {
+            // cURL reports a timeout as error 28. It gets its own message: the
+            // learner can shorten the question, and an administrator knows
+            // which setting to raise (#39).
+            if ((int) ($response['errno'] ?? 0) === self::CURLE_OPERATION_TIMEDOUT) {
+                throw new adapter_exception(
+                    'error_backend_timeout',
+                    'transport: ' . $response['error'],
+                    0,
+                    $this->timeout
+                );
+            }
             throw new adapter_exception('error_backend_unavailable', 'transport: ' . $response['error']);
         }
-        if ($response['status'] < 200 || $response['status'] >= 300) {
+
+        $status = (int) $response['status'];
+        if ($status < 200 || $status >= 300) {
+            // The agent documents its failures in the body (rag_server_spec,
+            // error catalogue). A refusal written for the learner is passed
+            // on; a protocol error stays generic for the learner and keeps
+            // its message for the administrator.
+            $envelope = $this->try_decode_envelope($response);
+            $refusal = is_array($envelope['result'] ?? null)
+                ? backend_refusal::from_result($envelope['result'], $status, self::retry_after_header($response))
+                : null;
+            if ($refusal !== null) {
+                throw $refusal;
+            }
             throw new adapter_exception(
                 'error_backend_unavailable',
-                'http status ' . $response['status'],
-                (int) $response['status']
+                'http status ' . $status . self::protocol_error_detail($envelope),
+                $status
             );
         }
 
         $envelope = $this->decode_envelope($response);
         if (isset($envelope['error'])) {
-            $code = $envelope['error']['code'] ?? '?';
-            throw new adapter_exception('error_backend_unavailable', 'jsonrpc error ' . $code);
+            throw new adapter_exception(
+                'error_backend_unavailable',
+                'jsonrpc error' . self::protocol_error_detail($envelope)
+            );
         }
         if (!isset($envelope['result']) || !is_array($envelope['result'])) {
             throw new adapter_exception('error_backend_bad_response', 'missing result');
         }
 
+        // A failure during a stream arrives with status 200 already sent: the
+        // same body comes as `event: error` instead, with the real status in
+        // `error.http_status`.
+        $refusal = backend_refusal::from_result($envelope['result'], $status);
+        if ($refusal !== null) {
+            throw $refusal;
+        }
+
         return $envelope['result'];
+    }
+
+    /**
+     * Decode a response body when it holds a JSON-RPC message, else null.
+     *
+     * For error responses, whose body may be anything from the documented
+     * envelope to a proxy's HTML page.
+     *
+     * @param array $response Transport response.
+     * @return array|null The envelope, or null.
+     */
+    private function try_decode_envelope(array $response): ?array {
+        try {
+            return $this->decode_envelope($response);
+        } catch (adapter_exception $e) {
+            return null;
+        }
+    }
+
+    /**
+     * The JSON-RPC error of an envelope as debug detail.
+     *
+     * The message is the agent's own and safe to show an administrator
+     * (no token, see the spec's table A); a learner never sees debug info.
+     *
+     * @param array|null $envelope The decoded envelope, or null.
+     * @return string ' (code: message)', or ''.
+     */
+    private static function protocol_error_detail(?array $envelope): string {
+        if (!is_array($envelope['error'] ?? null)) {
+            return '';
+        }
+        $code = is_scalar($envelope['error']['code'] ?? null) ? (string) $envelope['error']['code'] : '?';
+        $message = is_string($envelope['error']['message'] ?? null)
+            ? \core_text::substr(clean_param($envelope['error']['message'], PARAM_TEXT), 0, 200)
+            : '';
+        return ' (' . $code . ($message !== '' ? ': ' . $message : '') . ')';
+    }
+
+    /**
+     * Seconds named by a `Retry-After` header.
+     *
+     * Only the delay-seconds form; the HTTP-date form is not used by the agent.
+     *
+     * @param array $response Transport response.
+     * @return int 0 when absent.
+     */
+    private static function retry_after_header(array $response): int {
+        foreach ($response['headers'] ?? [] as $name => $value) {
+            if (strtolower((string) $name) === 'retry-after' && is_numeric(trim((string) $value))) {
+                return max(0, (int) trim((string) $value));
+            }
+        }
+        return 0;
     }
 
     /**
@@ -699,6 +794,8 @@ class mcp_client {
                     'summary' => clean_param((string) ($payload['confirmation']['summary'] ?? ''), PARAM_TEXT),
                     'destructive' => !empty($payload['confirmation']['destructive']),
                     'tooltitle' => clean_param((string) ($payload['confirmation']['tooltitle'] ?? ''), PARAM_TEXT),
+                    // What the person is agreeing to, when it is a course outline (#79).
+                    'outline' => self::normalise_outline($payload['confirmation']['outline'] ?? null),
                 ];
             }
             $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : $payload;
@@ -730,6 +827,45 @@ class mcp_client {
             'iserror' => $iserror,
             'prompttokens' => $prompttokens,
             'completiontokens' => $completiontokens,
+        ];
+    }
+
+    /**
+     * A confirmation's course outline, as plain text and bounded.
+     *
+     * It comes from the backend and lands in the chat window, so every string
+     * is reduced to text and shortened, and the list is capped -- a card that
+     * scrolls for pages is not one anybody reads before agreeing.
+     *
+     * @param mixed $outline The raw `confirmation.outline`.
+     * @return array{title: string, sections: array<int, array{title: string, summary: string}>}|null
+     */
+    private static function normalise_outline($outline): ?array {
+        if (!is_array($outline) || !is_array($outline['sections'] ?? null)) {
+            return null;
+        }
+        $text = static fn($value, int $max): string => is_string($value)
+            ? \core_text::substr(trim(clean_param($value, PARAM_TEXT)), 0, $max)
+            : '';
+
+        $sections = [];
+        foreach ($outline['sections'] as $section) {
+            if (!is_array($section)) {
+                continue;
+            }
+            $title = $text($section['title'] ?? null, 255);
+            if ($title === '') {
+                continue;
+            }
+            $sections[] = ['title' => $title, 'summary' => $text($section['summary'] ?? null, 500)];
+            if (count($sections) >= self::MAX_OUTLINE_SECTIONS) {
+                break;
+            }
+        }
+
+        return $sections === [] ? null : [
+            'title' => $text($outline['title'] ?? null, 255),
+            'sections' => $sections,
         ];
     }
 

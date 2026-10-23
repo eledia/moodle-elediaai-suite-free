@@ -203,6 +203,64 @@ final class insights_page_test extends advanced_testcase {
     }
 
     /**
+     * Bei 0 % Abdeckung keine Erfolgsmeldung (#170).
+     *
+     * Fragen ohne Thema bilden keine Lueckenzeile. Die leere Liste hiess
+     * bisher immer "alles beantwortbar" -- auch wenn nichts gedeckt war.
+     */
+    public function test_no_success_message_when_nothing_was_covered(): void {
+        $person = $this->getDataGenerator()->create_user();
+        turn_recorder::record(
+            component: 'block_elediaai_tutor',
+            actionname: 'chat_turn',
+            contextid: $this->contextid,
+            userid: (int) $person->id,
+            prompt: 'Was ist ein Median?',
+            response: 'Allgemeine Antwort',
+            prompttokens: 10,
+            completiontokens: 5,
+            origin: turn_recorder::ORIGIN_GENERAL,
+        );
+        $courseid = (int) $this->course->id;
+        $summary = insights::summary($courseid);
+        $this->assertSame(0, $summary->groundedpct);
+
+        $html = insights_page::gaps(insights::gaps($courseid), \core\context\course::instance($courseid), $summary);
+
+        $this->assertStringNotContainsString(get_string('insights_gaps_empty', 'local_elediaai_core'), $html);
+        $this->assertStringContainsString(get_string('insights_gaps_untopiced', 'local_elediaai_core'), $html);
+    }
+
+    /**
+     * Ein Generator-Aufruf ist keine Lernendenfrage (#170).
+     *
+     * Der Fragengenerator laeuft ueber core_ai und landet als Turn mit
+     * generate_text im selben Protokoll. In den Einblicken stand sein Prompt
+     * deshalb als Frage einer lernenden Person.
+     */
+    public function test_generator_prompts_are_not_learner_questions(): void {
+        $teacher = $this->getDataGenerator()->create_user();
+        turn_recorder::record(
+            component: 'local_elediaai_questiongen',
+            actionname: 'generate_text',
+            contextid: $this->contextid,
+            userid: (int) $teacher->id,
+            prompt: 'Generate 5 quiz questions in German. Return ONLY Moodle question XML.',
+            response: '<quiz/>',
+            prompttokens: 100,
+            completiontokens: 50,
+            origin: turn_recorder::ORIGIN_GENERAL,
+        );
+        $this->record((int) $teacher->id, 'Lagemasse');
+        $courseid = (int) $this->course->id;
+
+        $this->assertSame(1, insights::summary($courseid)->total);
+        $prompts = array_column(insights::recent($courseid), 'prompt');
+        $this->assertSame(['Frage zu Lagemasse'], $prompts);
+        $this->assertSame([$courseid], array_map('intval', insights::active_courses()));
+    }
+
+    /**
      * Einen Turn schreiben.
      *
      * @param int $userid

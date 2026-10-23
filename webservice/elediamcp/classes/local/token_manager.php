@@ -200,6 +200,7 @@ class token_manager {
      * @param int $validuntil Expiry timestamp, or 0 for no expiry.
      * @param string|null $component Frankenstyle component when created by a first-party plugin, else null.
      * @param int|null $creatorid Acting user; defaults to the current $USER.
+     * @param string|null $scope Space-separated MCP scopes the token is limited to; null for no limit.
      * @return stdClass {token: string, record: stdClass}
      * @throws moodle_exception On any validation failure.
      */
@@ -209,7 +210,8 @@ class token_manager {
         string $label,
         int $validuntil = 0,
         ?string $component = null,
-        ?int $creatorid = null
+        ?int $creatorid = null,
+        ?string $scope = null
     ): stdClass {
         global $DB, $USER;
 
@@ -272,6 +274,7 @@ class token_manager {
             'revoked' => 0,
             'timerevoked' => null,
             'revokedby' => null,
+            'scope' => ($scope !== null && trim($scope) !== '') ? trim($scope) : null,
         ];
         $record->id = $DB->insert_record('webservice_elediamcp_token', $record);
 
@@ -410,6 +413,67 @@ class token_manager {
         global $DB;
         $record = $DB->get_record('webservice_elediamcp_token', ['id' => $tokenid]);
         return $record ?: null;
+    }
+
+    /**
+     * The scopes a presented token is limited to, or null when it is not limited.
+     *
+     * Tokens without a metadata row (created by core) and tokens created without a scope
+     * (manual tokens, tokens issued before scopes were stored) carry all rights of their user.
+     *
+     * @param string $plaintoken Token value as presented by the client.
+     * @return string|null Space-separated scopes, or null for no limit.
+     */
+    public static function get_scope_for_token(string $plaintoken): ?string {
+        global $DB;
+        // Find the metadata through the core token the request authenticated with, not through a hash of
+        // the presented text: on a database with a case-insensitive collation the core accepts a token in
+        // another spelling, and a hash of that spelling would find no row (and so no limit).
+        $coretoken = $DB->get_record(
+            'external_tokens',
+            ['token' => $plaintoken, 'tokentype' => EXTERNAL_TOKEN_PERMANENT],
+            'id'
+        );
+        if (!$coretoken) {
+            return null;
+        }
+        $scope = $DB->get_field(
+            'webservice_elediamcp_token',
+            'scope',
+            ['externaltokenid' => $coretoken->id, 'revoked' => 0],
+            IGNORE_MULTIPLE
+        );
+        return ($scope === false || $scope === null || trim((string) $scope) === '') ? null : trim((string) $scope);
+    }
+
+    /**
+     * The component that issued the token a request presented, if any.
+     *
+     * Same lookup as {@see get_scope_for_token()}: through the core token the
+     * request authenticated with.
+     *
+     * @param string $plaintoken Token value as presented by the client.
+     * @return string|null Frankenstyle of the issuing component, or null for a
+     *         token without one (manual, core, OAuth client).
+     */
+    public static function get_component_for_token(string $plaintoken): ?string {
+        global $DB;
+        $coretoken = $DB->get_record(
+            'external_tokens',
+            ['token' => $plaintoken, 'tokentype' => EXTERNAL_TOKEN_PERMANENT],
+            'id'
+        );
+        if (!$coretoken) {
+            return null;
+        }
+        $component = $DB->get_field(
+            'webservice_elediamcp_token',
+            'component',
+            ['externaltokenid' => $coretoken->id, 'revoked' => 0],
+            IGNORE_MULTIPLE
+        );
+        return ($component === false || $component === null || trim((string) $component) === '')
+            ? null : trim((string) $component);
     }
 
     /**

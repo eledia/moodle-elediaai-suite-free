@@ -2,52 +2,6 @@
 /* === lh-core BEGIN (generated from design/lh-core.css - run php scripts/sync-design.php; do not edit inside this block) === */
 
 .lh-plugin-shell {
-    /* Palette an die Suite-Token gehaengt (task27, 05.09.2026). Vorher stand
-       hier eine eigene Kopie der LernHive-Palette; weil eine Klasse
-       spezifischer ist als :root, ueberschattete sie die Token der Suite und
-       diese Oberflaeche blieb LernHive-Navy. Abstaende, Seitenbreiten,
-       Radien und Schatten darunter sind Layout und bleiben unberuehrt.
-       Erfolg, Warnung und Gefahr haengen seit dem 05.09.2026 ebenfalls an
-       Rollen (--eai-success/-warning/-danger). Die alten Werte waren zu
-       schwach fuer Text -- Tuerkis 2,71:1, und "Warnung" war die
-       Markenfarbe selbst. */
-    --lh-primary: var(--eai-accent);
-    --lh-primary-dark: var(--eai-accent-hover);
-    --lh-primary-light: var(--eai-accent-wash);
-    --lh-accent: var(--eai-brand);
-    --lh-accent-dark: var(--eai-accent-hover);
-    --lh-accent-light: var(--eai-accent-wash);
-    --lh-bg-white: var(--eai-surface);
-    --lh-bg: var(--eai-bg);
-    --lh-bg-soft: var(--eai-bg);
-    --lh-text: var(--eai-fg);
-    --lh-text-secondary: var(--eai-fg-dim);
-    --lh-muted: var(--eai-muted);
-    --lh-text-light: var(--eai-muted);
-    --lh-border: var(--eai-line);
-    --lh-border-light: var(--eai-line-soft);
-    --lh-success: var(--eai-success);
-    --lh-success-light: var(--eai-success-wash);
-    --lh-danger: var(--eai-danger);
-    --lh-danger-light: var(--eai-danger-wash);
-    --lh-warning: var(--eai-warning);
-    --lh-warning-light: var(--eai-warning-wash);
-    --lh-radius-sm: 8px;
-    --lh-radius-btn: 8px;
-    --lh-radius-pill: 999px;
-    --lh-spacing-xs: 4px;
-    --lh-spacing-sm: 8px;
-    --lh-spacing-md: 16px;
-    --lh-spacing-lg: 24px;
-    --lh-spacing-xl: 32px;
-    --lh-shadow-card: 0 2px 8px rgba(15, 23, 42, 0.05);
-    --lh-page-max-default: 72rem;
-    --lh-page-max-reading: 58rem;
-    --lh-page-max-wide: 88rem;
-    --lh-page-max-full: none;
-}
-
-.lh-plugin-shell {
     margin: 0 auto;
     max-width: var(--lh-page-max-default);
     width: 100%;

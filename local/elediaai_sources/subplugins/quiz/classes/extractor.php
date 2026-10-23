@@ -148,11 +148,19 @@ class extractor implements content_extractor {
                 if (!empty($answersbyq[$q->questionid])) {
                     $html .= '<ul>' . "\n";
                     foreach ($answersbyq[$q->questionid] as $answer) {
+                        // The feedback belongs to its answer, inside the same
+                        // list item. It used to follow it as a paragraph
+                        // directly in the <ul>, which is not valid HTML, and
+                        // the pipeline's parser lost the pairing (#14).
+                        $item = '';
                         if (!empty($answer->answer)) {
-                            $html .= '<li>' . self::safe_html((string) $answer->answer, $context) . '</li>' . "\n";
+                            $item .= self::safe_html((string) $answer->answer, $context);
                         }
                         if (!empty($answer->feedback)) {
-                            $html .= '<p><em>' . self::plain_text((string) $answer->feedback) . '</em></p>' . "\n";
+                            $item .= '<p><em>' . self::plain_text((string) $answer->feedback) . '</em></p>';
+                        }
+                        if ($item !== '') {
+                            $html .= '<li>' . $item . '</li>' . "\n";
                         }
                     }
                     $html .= '</ul>' . "\n";
@@ -160,7 +168,9 @@ class extractor implements content_extractor {
 
                 // General feedback.
                 if (!empty($q->generalfeedback)) {
-                    $html .= '<p>' . self::safe_html((string) $q->generalfeedback, $context) . '</p>' . "\n";
+                    // A container, not a paragraph: the formatted text brings
+                    // its own <p>, and a <p> inside a <p> is not valid either.
+                    $html .= '<div>' . self::safe_html((string) $q->generalfeedback, $context) . '</div>' . "\n";
                 }
 
                 // Question hints.

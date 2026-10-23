@@ -360,7 +360,7 @@ final class h5p_text_extractor_test extends \advanced_testcase {
 
     /**
      * Content nested under `action` (Course Presentation, Interactive Video,
-     * Branching Scenario, Interactive Book) is now recursed into — previously
+     * Branching Scenario) is now recursed into — previously
      * `action` was blocklisted and this content was lost entirely.
      */
     public function test_action_nested_content_is_extracted(): void {
@@ -428,5 +428,74 @@ final class h5p_text_extractor_test extends \advanced_testcase {
 
         $this->assertStringContainsString('Direct content without a params wrapper element.', $result);
         $this->assertStringContainsString('A test question placed at the top level.', $result);
+    }
+
+    /**
+     * An Interactive Book yields its chapter titles and contents, not its interface labels (#92).
+     *
+     * Shape as defined by H5P.InteractiveBook's semantics: `chapters` is a list
+     * of H5P.Column library entries, the title in each entry's `metadata.title`;
+     * the interface strings sit at the top level next to `showCoverPage`.
+     * In March a book reached the index empty; the chapter titles were lost
+     * because the generic walk skips `metadata`.
+     */
+    public function test_interactive_book_chapters_are_extracted(): void {
+        $column = static fn(string $title, array $content): array => [
+            'library' => 'H5P.Column 1.22',
+            'subContentId' => 'abc-' . md5($title),
+            'metadata' => ['title' => $title, 'contentType' => 'Column', 'license' => 'U'],
+            'params' => ['content' => array_map(
+                static fn(array $item): array => ['content' => $item, 'useSeparator' => 'auto'],
+                $content
+            )],
+        ];
+        $book = [
+            'showCoverPage' => true,
+            'bookCover' => ['coverDescription' => '<p>Ein Buch ueber die Zellatmung.</p>'],
+            'chapters' => [
+                $column('Glykolyse', [[
+                    'library' => 'H5P.AdvancedText 1.1',
+                    'metadata' => ['title' => 'Untitled Text'],
+                    'params' => ['text' => '<p>Die Glykolyse zerlegt Glukose in zwei Pyruvat.</p>'],
+                ]]),
+                $column('Citratzyklus', [[
+                    'library' => 'H5P.MultiChoice 1.16',
+                    'metadata' => ['title' => 'Frage'],
+                    'params' => [
+                        'question' => '<p>Wo findet der Citratzyklus statt?</p>',
+                        'answers' => [
+                            ['text' => '<div>In der Mitochondrienmatrix</div>', 'correct' => true],
+                            ['text' => '<div>Im Zellkern</div>', 'correct' => false],
+                        ],
+                    ],
+                ]]),
+            ],
+            'behaviour' => ['baseColor' => '#1768c4', 'defaultTableOfContents' => true],
+            'displayTOC' => "Display 'Table of contents'",
+            'nextPage' => 'Next page of the book',
+            'chapterCompleted' => 'Page completed!',
+            'a11y' => ['progress' => 'Page @page of @total.'],
+        ];
+
+        foreach ([json_encode($book), json_encode(['params' => $book])] as $json) {
+            $blocks = h5p_text_extractor::extract_blocks_from_json($json);
+
+            $this->assertContains('Chapter: Glykolyse', $blocks);
+            $this->assertContains('Chapter: Citratzyklus', $blocks);
+            $this->assertContains('Question: Wo findet der Citratzyklus statt?', $blocks);
+            $this->assertContains('Correct answer: In der Mitochondrienmatrix', $blocks);
+            $text = implode("\n", $blocks);
+            $this->assertStringContainsString('Die Glykolyse zerlegt Glukose in zwei Pyruvat.', $text);
+            $this->assertStringContainsString('Ein Buch ueber die Zellatmung.', $text);
+            // Chapter order is kept: the title comes before its content.
+            $this->assertLessThan(
+                array_search('Chapter: Citratzyklus', $blocks, true),
+                array_search('Chapter: Glykolyse', $blocks, true)
+            );
+            // Interface labels are not course content.
+            $this->assertStringNotContainsString('Table of contents', $text);
+            $this->assertStringNotContainsString('Next page of the book', $text);
+            $this->assertStringNotContainsString('Untitled Text', $text);
+        }
     }
 }

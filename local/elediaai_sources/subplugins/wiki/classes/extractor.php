@@ -42,8 +42,15 @@ class extractor implements content_extractor {
     /**
      * Extract content from a wiki activity.
      *
-     * Gathers the activity intro plus all page content from every
-     * sub-wiki belonging to this wiki instance.
+     * Gathers the activity intro plus the pages of every sub-wiki that all
+     * learners of the course may read.
+     *
+     * A wiki holds one sub-wiki per person in individual mode and one per
+     * group in group mode. The index is searched course-wide and the backend
+     * filters by course, not by person or group, so a page written in a
+     * personal wiki, or in a group under separate groups, would be cited to
+     * everybody in the course (#100). Only sub-wikis without an owner are
+     * read, and under separate groups only the one without a group.
      *
      * @param \cm_info $cm The course module info.
      * @return array|null Extracted document data, or null if no content.
@@ -68,8 +75,7 @@ class extractor implements content_extractor {
             );
         }
 
-        // Get all sub-wiki IDs for this wiki.
-        $subwikiids = $DB->get_fieldset('wiki_subwikis', 'id', ['wikiid' => $wiki->id]);
+        $subwikiids = self::shared_subwiki_ids((int) $wiki->id, (int) $cm->effectivegroupmode);
         if (!empty($subwikiids)) {
             [$insql, $inparams] = $DB->get_in_or_equal($subwikiids, SQL_PARAMS_NAMED);
             $pages = $DB->get_records_select(
@@ -98,5 +104,22 @@ class extractor implements content_extractor {
             'content_type' => 'text/html',
             'title' => $wiki->name,
         ];
+    }
+
+    /**
+     * The sub-wikis whose pages every learner of the course may read.
+     *
+     * @param int $wikiid The wiki instance.
+     * @param int $groupmode The module's effective group mode.
+     * @return int[] Sub-wiki ids.
+     */
+    public static function shared_subwiki_ids(int $wikiid, int $groupmode): array {
+        global $DB;
+
+        $conditions = ['wikiid' => $wikiid, 'userid' => 0];
+        if ($groupmode === SEPARATEGROUPS) {
+            $conditions['groupid'] = 0;
+        }
+        return array_map('intval', $DB->get_fieldset('wiki_subwikis', 'id', $conditions));
     }
 }

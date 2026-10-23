@@ -143,6 +143,7 @@ class send_message extends external_api {
             ),
             'origin' => $result['origin'],
             'iserror' => $result['iserror'],
+            'aigenerated' => !empty($result['aigenerated']),
         ];
     }
 
@@ -165,6 +166,7 @@ class send_message extends external_api {
             ),
             'origin' => new external_value(PARAM_ALPHA, 'grounded or general'),
             'iserror' => new external_value(PARAM_BOOL, 'Whether the backend reported a tool-level error'),
+            'aigenerated' => new external_value(PARAM_BOOL, 'Whether the answer is the output of a generative model', VALUE_DEFAULT, false),
         ]);
     }
 }
