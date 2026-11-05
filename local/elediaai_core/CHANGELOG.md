@@ -4,6 +4,36 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.3.0] – 2026-11-04
+
+### Hinzugefügt
+
+- #196: `upload_text_extractor` liest PDFs jetzt auch dann, wenn sie aus Word oder LibreOffice stammen. Bisher lieferten solche PDFs (Text in eingebetteten Schriften) 0 Zeichen. Reihenfolge bei PDFs: 1. ein konfiguriertes `pdftotext` (Poppler, beste Qualität; Einstellung `pdftotext_path` unter „PDF-Dateien lesen“ oder `$CFG->pathtopdftotext`, leer = aus), 2. die mitgelieferte Bibliothek `smalot/pdfparser` 2.12.5 (LGPL-3.0, `vendor/smalot/pdfparser`, `thirdpartylibs.xml`; dieselbe Version wie in `local_literag`), 3. der bisherige einfache Leser als letzter Rückfall. Ein Weg, der scheitert oder keinen Text findet, übergibt an den nächsten; es wird keine Ausnahme geworfen. Gescannte Seiten ohne Textebene bleiben leer (kein OCR). Die Schnittstelle `extract(string $content, string $filename): string` bleibt; neu ist `pdftotext_path()`.
+  - `pdftotext` läuft ohne Shell (`proc_open`) mit 30 Sekunden Zeitlimit und 8 MB Ausgabegrenze; PDFs über 30 MB geben keinen Text statt einer langen Anfrage. Das Seitenende-Zeichen (Form Feed) von `pdftotext` zählt nicht als Text. Bilddaten werden beim Lesen mit smalot nicht behalten.
+  - Wirkt auf alle Aufrufer: Kursautor (Upload und Kursmaterial aus Kursen, #191) und KI Fragen (über die Weiterleitung `local_elediaai_questiongen\local\upload_text_extractor`).
+  - Free-Paket: Das Plugin bringt jetzt `vendor/` mit (LGPL-3.0, Lizenz im Verzeichnis, Eintrag in `thirdpartylibs.xml`).
+  - Tests: `upload_text_extractor_test` (PDF mit eingebetteten Schriften aus Word/LibreOffice, kaputte PDF liefert leer, `pdftotext` zuerst, Binary ohne Text, nur Form Feed, Fehlercode oder fehlend fällt durch, Verzeichnis als Pfad, zu große PDF, Pfad aus `$CFG`).
+
+## [1.2.0] – 2026-10-27
+
+### Geändert
+
+- Der KI-Button in der Kopfleiste, der Eintrag „AI Suite“ in der
+  Hauptnavigation und die Übersicht mit den Kacheln gibt es nur noch für
+  Nutzer mit der neuen Capability `local/elediaai_core:uselauncher`.
+  Standardrollen: Manager, Trainer, Trainer ohne Bearbeitungsrecht.
+  Lernende bekommen sie nicht. Das Recht zählt, wenn es auf der Website oder in
+  irgendeinem Kurs gilt. `index.php` prüft es auch beim direkten Aufruf.
+  Nach dem Upgrade verlieren Lernende und Nutzer eigener Rollen ohne das Recht
+  den Zugang; eigene Rollen vergibt die Administration unter „Rollen
+  definieren“.
+- Der Rücklink im Seitenkopf der Plugins („zurück zur Suite“) und der Punkt
+  „AI Suite“ in der Navigation der Funktionsseiten führen Lernende auf das
+  Dashboard bzw. entfallen, statt auf die gesperrte Übersicht zu zeigen
+  (Hilfe und Feedback sind für Lernende offen). Geregelt wird das zentral im
+  Seitenkopf und in der Navigation des Kerns, die anderen Plugins ändern sich
+  nicht.
+
 ## [1.1.2] – 2026-10-22
 
 ### Behoben

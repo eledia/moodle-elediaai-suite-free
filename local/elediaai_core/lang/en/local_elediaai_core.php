@@ -64,6 +64,9 @@ $string['nav_infra_mcp'] = 'MCP';
 $string['nav_infra_sources'] = 'AI Sources';
 $string['nav_infra_tutor'] = 'Tutor setup';
 $string['nav_overview'] = 'Overview';
+$string['pdf_heading'] = 'Reading PDF files';
+$string['pdftotext_path'] = 'Path to pdftotext (optional)';
+$string['pdftotext_path_desc'] = 'The Poppler tool <code>pdftotext</code> reads PDF files with the best quality, for example <code>/usr/bin/pdftotext</code>. Leave empty to use the built-in reader, which also reads PDFs from Word and LibreOffice. Scanned pages without a text layer cannot be read either way.';
 $string['premium_required_heading'] = 'Not unlocked';
 $string['shell_aitutor_label'] = 'eLeDia.ai Tutor';
 $string['shell_help_label'] = 'Help — AI Suite';
@@ -365,7 +368,7 @@ Two things are deliberately not on the overview, because they belong to a place 
 - The **tutor block** appears in the course or dashboard somebody put it in.
 - **AI activities** appear in the course, in the section they were added to.
 
-The launcher is hidden while you are logged out, and on the login, pop-up and maintenance pages.';
+The launcher is for teachers, managers and administrators: learners do not see it. It is hidden while you are logged out, and on the login, pop-up and maintenance pages.';
 $string['topic_suite_where_summary'] = 'One pill in the top bar opens the overview. Everything else is reached from there, or sits in the course where it is used.';
 $string['topic_suite_where_title'] = 'Where to find the AI features';
 $string['contract_language_note_de'] = 'This contract text is maintained in German and is shown here as written.';
@@ -499,6 +502,7 @@ $string['insights_verbatim_empty'] = 'No questions to show.';
 $string['insights_verbatim_eyebrow'] = 'In their own words';
 $string['insights_verbatim_intro'] = 'The most recent questions, as they were asked.';
 $string['insights_verbatim_title'] = 'The questions themselves';
+$string['elediaai_core:uselauncher'] = 'Use the AI Suite launcher and overview';
 $string['elediaai_core:viewaiactions'] = 'View the log of what the AI did';
 $string['elediaai_core:viewcourseinsights'] = 'View course insights into AI questions';
 $string['insights_metric_grounded_label'] = '{$a->covered} % of the answers came from your course material, {$a->open} % did not';

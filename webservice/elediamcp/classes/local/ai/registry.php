@@ -43,6 +43,7 @@ use webservice_elediamcp\local\ai\tools\moodle_my_courses;
 use webservice_elediamcp\local\ai\tools\moodle_my_grades;
 use webservice_elediamcp\local\ai\tools\moodle_my_progress;
 use webservice_elediamcp\local\ai\tools\moodle_my_submission_files;
+use webservice_elediamcp\local\ai\tools\moodle_quiz_check_question;
 use webservice_elediamcp\local\ai\tools\moodle_quiz_finish;
 use webservice_elediamcp\local\ai\tools\moodle_quiz_get_page;
 use webservice_elediamcp\local\ai\tools\moodle_quiz_get_review;
@@ -126,6 +127,7 @@ class registry {
             moodle_quiz_start_attempt::class,
             moodle_quiz_get_page::class,
             moodle_quiz_save_answers::class,
+            moodle_quiz_check_question::class,
             moodle_quiz_finish::class,
             moodle_quiz_get_review::class,
             // Teacher workflows.

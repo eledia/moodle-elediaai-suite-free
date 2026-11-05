@@ -215,7 +215,10 @@ class moodle_course_contents implements ai_tool {
      * @return array<string, mixed>
      */
     public static function execute(array $arguments, stdClass $user): array {
-        global $DB;
+        global $CFG, $DB;
+
+        // Section names come from get_section_name() in course/lib.php, which Moodle's setup does not load (#182).
+        require_once($CFG->dirroot . '/course/lib.php');
 
         $userid = (int) $user->id;
         $courseid = isset($arguments['course_id']) ? (int) $arguments['course_id'] : 0;

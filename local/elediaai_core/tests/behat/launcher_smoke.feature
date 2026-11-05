@@ -10,6 +10,12 @@ Feature: AI Suite launcher smoke path
     Given the following "users" exist:
       | username | firstname | lastname |
       | regular  | Regular   | User     |
+    And the following "courses" exist:
+      | fullname | shortname |
+      | Course 1 | C1        |
+    And the following "course enrolments" exist:
+      | user    | course | role           |
+      | regular | C1     | editingteacher |
 
   Scenario: Admin walks the launcher happy path and returns to the overview
     Given I log in as "admin"
@@ -40,7 +46,7 @@ Feature: AI Suite launcher smoke path
     Then I should see "AI Suite"
     And "Audit" "link" should exist in the ".lh-plugin-section-nav" "css_element"
 
-  Scenario: Audit tab is hidden from regular users
+  Scenario: Audit tab is hidden from teachers
     Given I log in as "regular"
     When I open the AI Suite
     Then I should see "AI Suite"

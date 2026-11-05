@@ -278,7 +278,7 @@ class connection {
      * **The backend's number, not ours.** The retrieval tool behind the agent
      * validates the list it is handed and refuses one that is too long, so
      * this has to match what that tool accepts -- twenty when this was
-     * written (MCP_Tools/server/validation.py, 20.09.2026), and a setting
+     * written (20.09.2026), and a setting
      * rather than a constant because a server may raise it without asking us.
      *
      * When it does, raise this. Setting it higher than the backend allows does

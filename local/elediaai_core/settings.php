@@ -186,6 +186,20 @@ if ($hassiteconfig) {
         0
     ));
 
+    // Optional: `pdftotext` (Poppler) liest PDFs mit der besten Qualitaet.
+    // Leer: der mitgelieferte PHP-Leser (smalot) genuegt (#196).
+    $settings->add(new admin_setting_heading(
+        'local_elediaai_core/pdf_heading',
+        get_string('pdf_heading', 'local_elediaai_core'),
+        ''
+    ));
+    $settings->add(new admin_setting_configexecutable(
+        'local_elediaai_core/pdftotext_path',
+        get_string('pdftotext_path', 'local_elediaai_core'),
+        get_string('pdftotext_path_desc', 'local_elediaai_core'),
+        ''
+    ));
+
     $settings->add(new admin_setting_heading(
         'local_elediaai_core/developerdocs_heading',
         get_string('developerdocs_heading', 'local_elediaai_core'),

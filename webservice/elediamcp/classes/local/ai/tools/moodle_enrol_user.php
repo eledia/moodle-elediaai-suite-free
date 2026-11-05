@@ -141,6 +141,7 @@ class moodle_enrol_user implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'user_id' => ['type' => 'integer'],
                         'user_fullname' => ['type' => 'string'],
                         'course_id' => ['type' => 'integer'],
@@ -246,7 +247,11 @@ class moodle_enrol_user implements ai_tool {
                 'enrolled' => false,
                 'requires_confirmation' => true,
                 'enrolment' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_enrol_user', (object) [
+                    'user' => $preview['user_fullname'],
+                    'role' => role_get_name($role, $coursecontext),
+                    'course' => $preview['course_fullname'],
+                ]),
                 'summary' => 'Ready to enrol ' . fullname($targetuser) . ' into ' . $course->fullname
                     . ' as ' . $role->shortname . '.' . $manualnote . ' Call again with confirm=true to enrol.',
             ];

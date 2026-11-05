@@ -320,10 +320,11 @@ Available without any add-on:
 | `moodle_my_progress` | read | Completion progress per enrolled course, optionally per-activity states for one course. |
 | `moodle_quiz_info` | read | Quizzes with timing/attempt limits and the user's **own** attempt history and best grade — never other users' attempts. |
 | `moodle_create_user` | **write** | Creates a user account. Two-step confirmation; requires `moodle/user:create`. |
-| `moodle_quiz_start_attempt` | **write** | Starts an attempt at a normal quiz or continues the open one (a new attempt with a time limit or a limited number of attempts first returns a preview with `requires_confirmation`; call again with `confirm=true` after the user agreed); returns `inline_supported=false` and a `fallback_url` when an access rule, sequential navigation or a question type needs the browser. Requires `mod/quiz:attempt`. |
+| `moodle_quiz_start_attempt` | **write** | Starts an attempt at a normal quiz or continues the open one (a new attempt with a time limit or a limited number of attempts first returns a preview with `requires_confirmation` and a `preview` object (`quiz_name`, `attempt_number`, `attempts_allowed`, `time_limit_minutes`, `card_summary`); call again with `confirm=true` after the user agreed); returns `inline_supported=false` and a `fallback_url` when an access rule, sequential navigation or a question type needs the browser. Requires `mod/quiz:attempt`. |
 | `moodle_quiz_get_page` | **write** | One page of the user's **own** open attempt as plain text with structured inputs (`single`, `multi`, `text`, `number`, `match`, `unsupported`) and the saved answers — never the solutions. A page with many or long questions comes in parts that fit the response size (`offset`, `has_more`, `next_offset`). Opening a page remembers it as the current page and can close an attempt whose time is up, so it needs `mcp:tools.call`. Questions with images, audio or video carry `has_media` and a `fallback_url`; essay questions report their word limits. |
-| `moodle_quiz_save_answers` | **write** | Saves answers in the user's own open attempt through the question engine. Idempotent. A question already checked in the browser (Check button) is refused with `question_finished`. Send the `sequence` of each question (from `moodle_quiz_get_page` or the previous save): an answer to a question that changed elsewhere is refused with `out_of_sequence`. |
-| `moodle_quiz_finish` | **write** | Submits the user's own attempt for grading by Moodle. Two-step confirmation (`destructiveHint`). |
+| `moodle_quiz_save_answers` | **write** | Saves answers in the user's own open attempt through the question engine. Idempotent. `answers_checked` shows the saved answer per slot as the user sees it; a value may be the label of an option. A question already checked in the browser (Check button) is refused with `question_finished`. Send the `sequence` of each question (from `moodle_quiz_get_page` or the previous save): an answer to a question that changed elsewhere is refused with `out_of_sequence`. |
+| `moodle_quiz_check_question` | **write** | Saves and checks one answer like the Check button (behaviours immediate feedback and interactive; others are refused with `not_checkable`). Returns `answer_checked` (the answer as the user sees it), `state`, `feedback` and `right_answer` only as far as the review options "during the attempt" show them; interactive questions with tries left return `finished: false` and `tries_left`. |
+| `moodle_quiz_finish` | **write** | Submits the user's own attempt for grading by Moodle. Two-step confirmation (`destructiveHint`); the preview is a `preview` object (`quiz_name`, `answered`, `unanswered`, `card_summary`). |
 | `moodle_quiz_get_review` | read | Review of the user's own finished attempt, filtered by the quiz review options; requires `mod/quiz:reviewmyattempts` after the "immediately after" period. A long review comes in parts that fit the response size (`offset`, `has_more`, `next_offset`). `requires_manual_grading` marks a provisional grade, `teacher_comment` carries the teacher's comment. |
 
 Installed plugins can contribute further tools; these are not subject to the
@@ -425,6 +426,41 @@ issued).
 | Per-tool authorisation | Each tool re-checks the relevant Moodle capability with the explicit user id and stays scoped to the authenticated user's data. |
 | Audit | `tool_invoked`, `write_performed`, `context_verified`, `token_created`, `token_revoked` events under *Site admin → Reports → Logs* (forwardable via Logstore plugins). |
 | Emergency disable | Returns HTTP 503 immediately, before any other processing. |
+
+### Server-side confirmation of write tools
+
+Write tools answer a first call with a preview and act only on `confirm=true`.
+For the agent of the chat engine, Moodle checks itself that the person agreed,
+instead of trusting the model:
+
+- **Scope:** only calls with a token that `local_elediaai_chatengine`
+  provisioned. Personal tokens and OAuth apps (Claude Desktop and others) are not
+  gated; their own client asks the person.
+- **Flow:** Moodle remembers each preview (person, tool, a hash of the
+  arguments, time). The person approves it by clicking the confirmation card,
+  or by a message that is nothing but an agreement ("ja", "ok, mach das") to an
+  answer that showed a card. A message with a question mark, a longer request
+  or a "ja" to a question in plain text approves nothing. A card that names one
+  tool approves only that tool's preview. Messages and grades need the click
+  (`moodle_send_message`, `moodle_message_course_students`,
+  `moodle_grade_submission`).
+- **Window:** an approval is valid for ten minutes, for exactly the arguments
+  of the preview, and once. Without it the tool answers with its preview again
+  and a `confirmation_withheld` hint; the `tool_invoked` event carries
+  `withheld`.
+- **What is stored:** per person, in the Application cache `confirmations`
+  (lifetime one hour): tool name, hash of the arguments, time and whether it was
+  approved, no argument values and no message text. The Privacy provider
+  needs nothing for it; a cache purge only costs a second preview.
+
+> **Note on confirmations with several web nodes:** the server-side check of
+> write tools (preview, then `confirm=true`) keeps its state in the Application
+> cache `confirmations`. The person's answer reaches Moodle in one request and
+> the tool call in another, so all web nodes must use the same store for it
+> (shared moodledata for the default file store, or a shared store such as
+> Redis). With a store per node the tool never finds the approval, answers with
+> its preview again and the agent runs in circles. A lost or purged entry never
+> lets a write through. Changes to the state run under a Moodle lock per person.
 
 > **Note on rate limiting:** counters live in the Moodle Application cache. For strict
 > production limits, configure a shared atomic cache store (e.g. Redis); the increment

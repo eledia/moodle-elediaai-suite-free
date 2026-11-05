@@ -10,9 +10,9 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 - Das Abzeichen fuer Antworten aus Moodle-Werkzeugen heisst „eLeDiaMCP“
   statt „MCP“, als Marke der Suite. Der Text kommt jetzt aus einem
   Sprachstring; die Erklaerung im Tooltip („Diese Antwort hat
-  Moodle-Werkzeuge genutzt.“) bleibt. Zusammen mit Moodle_Agent (answer_origin „mcp“) ersetzt es
-  „Allgemeine Antwort“ bei Antworten, die Moodle-Daten gelesen oder
-  geschrieben haben.
+  Moodle-Werkzeuge genutzt.“) bleibt. Meldet das Backend die Herkunft
+  „mcp“ (answer_origin), ersetzt es „Allgemeine Antwort“ bei Antworten,
+  die Moodle-Daten gelesen oder geschrieben haben.
 
 ## [1.5.5] – 2026-10-22
 

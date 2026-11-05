@@ -122,6 +122,12 @@ class moodle_update_activity implements ai_tool {
                         'url' => ['type' => 'string'],
                     ],
                 ],
+                'preview' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'card_summary' => card_summary::schema(),
+                    ],
+                ],
                 'changes' => [
                     'type' => 'array',
                     'items' => [
@@ -203,6 +209,10 @@ class moodle_update_activity implements ai_tool {
                 'updated' => false,
                 'requires_confirmation' => true,
                 'activity' => null,
+                'preview' => card_summary::only('cardsummary_update_activity', (object) [
+                    'name' => format_string((string) $cm->name, true, ['context' => $context]),
+                    'count' => count($changes),
+                ]),
                 'changes' => $changes,
                 'summary' => 'Ready to change ' . count($changes) . ' field(s) of ' . $type . ' "'
                     . $data->name . '". Call again with confirm=true to apply.',

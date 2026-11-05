@@ -118,4 +118,119 @@ final class upload_text_extractor_test extends advanced_testcase {
         $this->assertSame('Rain forms.', $text);
         $this->assertTrue(mb_check_encoding($text, 'UTF-8'));
     }
+
+    /**
+     * A PDF from Word or LibreOffice keeps its text in embedded fonts; the bundled parser reads it (#196).
+     */
+    public function test_extract_reads_a_pdf_with_embedded_fonts(): void {
+        $this->resetAfterTest();
+        set_config('pdftotext_path', '', 'local_elediaai_core');
+        $pdf = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+
+        $text = upload_text_extractor::extract($pdf, 'skript.pdf');
+
+        $this->assertStringContainsString('Brüche kürzen und erweitern', $text);
+        $this->assertStringContainsString('Zähler und einem Nenner', $text);
+        $this->assertTrue(mb_check_encoding($text, 'UTF-8'));
+    }
+
+    /**
+     * A broken PDF gives an empty text, never an exception to the person (#196).
+     */
+    public function test_extract_returns_empty_for_a_broken_pdf(): void {
+        $this->resetAfterTest();
+        set_config('pdftotext_path', '', 'local_elediaai_core');
+
+        $this->assertSame('', upload_text_extractor::extract("%PDF-1.4\nnot really a pdf", 'kaputt.pdf'));
+        $this->assertSame('', upload_text_extractor::extract('', 'leer.pdf'));
+    }
+
+    /**
+     * A configured pdftotext binary is tried first (#196).
+     */
+    public function test_extract_prefers_a_configured_pdftotext_binary(): void {
+        $this->resetAfterTest();
+        $script = make_request_directory() . '/fake-pdftotext';
+        file_put_contents($script, "#!/bin/sh\necho 'Text vom Programm'\n");
+        chmod($script, 0755);
+        set_config('pdftotext_path', $script, 'local_elediaai_core');
+        $pdf = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+
+        $this->assertSame('Text vom Programm', upload_text_extractor::extract($pdf, 'skript.pdf'));
+    }
+
+    /**
+     * A binary that finds no text, or does not exist, falls through to the bundled parser (#196).
+     */
+    public function test_extract_falls_through_when_the_binary_finds_nothing(): void {
+        $this->resetAfterTest();
+        $pdf = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+
+        $script = make_request_directory() . '/empty-pdftotext';
+        file_put_contents($script, "#!/bin/sh\nexit 0\n");
+        chmod($script, 0755);
+        set_config('pdftotext_path', $script, 'local_elediaai_core');
+        $this->assertStringContainsString('Brüche kürzen', upload_text_extractor::extract($pdf, 'a.pdf'));
+
+        set_config('pdftotext_path', '/nicht/vorhanden/pdftotext', 'local_elediaai_core');
+        $this->assertStringContainsString('Brüche kürzen', upload_text_extractor::extract($pdf, 'b.pdf'));
+    }
+
+    /**
+     * `$CFG->pathtopdftotext` counts when the setting is empty (#196).
+     */
+    public function test_the_binary_path_falls_back_to_the_site_config(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        set_config('pdftotext_path', '', 'local_elediaai_core');
+        $CFG->pathtopdftotext = '/usr/bin/pdftotext';
+        $this->assertSame('/usr/bin/pdftotext', upload_text_extractor::pdftotext_path());
+
+        set_config('pdftotext_path', '/opt/pdftotext', 'local_elediaai_core');
+        $this->assertSame('/opt/pdftotext', upload_text_extractor::pdftotext_path());
+    }
+
+    /**
+     * A binary that prints only a form feed per page, or that fails, finds no text; the parser takes over (#196).
+     */
+    public function test_extract_falls_through_when_the_binary_prints_only_form_feeds_or_fails(): void {
+        $this->resetAfterTest();
+        $pdf = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+
+        $formfeed = make_request_directory() . '/formfeed-pdftotext';
+        file_put_contents($formfeed, "#!/bin/sh\nprintf '\\f'\n");
+        chmod($formfeed, 0755);
+        set_config('pdftotext_path', $formfeed, 'local_elediaai_core');
+        $this->assertStringContainsString('Brüche kürzen', upload_text_extractor::extract($pdf, 'a.pdf'));
+
+        $failing = make_request_directory() . '/failing-pdftotext';
+        file_put_contents($failing, "#!/bin/sh\necho 'halber Text'\nexit 1\n");
+        chmod($failing, 0755);
+        set_config('pdftotext_path', $failing, 'local_elediaai_core');
+        $this->assertStringContainsString('Brüche kürzen', upload_text_extractor::extract($pdf, 'b.pdf'));
+    }
+
+    /**
+     * A directory is no binary (#196).
+     */
+    public function test_a_directory_as_binary_path_is_ignored(): void {
+        $this->resetAfterTest();
+        set_config('pdftotext_path', '/usr/bin', 'local_elediaai_core');
+        $pdf = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+
+        $this->assertStringContainsString('Brüche kürzen', upload_text_extractor::extract($pdf, 'c.pdf'));
+    }
+
+    /**
+     * An oversized PDF gives no text instead of a long request (#196).
+     */
+    public function test_an_oversized_pdf_gives_no_text(): void {
+        $this->resetAfterTest();
+        set_config('pdftotext_path', '', 'local_elediaai_core');
+        $small = (string) file_get_contents(__DIR__ . '/fixtures/word_embedded_fonts.pdf');
+        $this->assertNotSame('', upload_text_extractor::extract($small, 'klein.pdf'), 'The same PDF is readable at normal size.');
+        $big = $small . str_repeat("\n", upload_text_extractor::MAX_PDF_BYTES);
+
+        $this->assertSame('', upload_text_extractor::extract($big, 'gross.pdf'));
+    }
 }

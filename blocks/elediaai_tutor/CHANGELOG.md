@@ -3,6 +3,35 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.12] – 2026-11-05
+
+### Geaendert
+
+- Der Hilfetext von „Nur-LLM-Modus erlauben“ beschreibt jetzt das tatsaechliche
+  Verhalten: Ist die Einstellung aus, laesst sich der Modus nicht waehlen, und
+  ein Kurs ohne Wissensbasis zeigt „nicht verfuegbar“. Wo es eine Wissensbasis
+  gibt, sucht der Tutor immer zuerst darin; findet er nichts, sagt er das und
+  gibt allgemeine Hinweise, gekennzeichnet als „Allgemeine Antwort“. Bisher
+  hiess es, der Tutor antworte dann „ausschliesslich“ aus Kursmaterial.
+
+## [1.0.11] – 2026-10-26
+
+### Zurueckgenommen
+
+- Die Aenderung aus 1.0.10 ist wieder entfernt: Das Tagesbriefing ist ein
+  vorformulierter Prompt wie die anderen Vorschlaege und laeuft im
+  aktuellen Gespraech weiter. Wer neu anfangen will, nutzt den Loeschknopf.
+
+## [1.0.10] – 2026-10-26
+
+### Behoben
+
+- Das Tagesbriefing im Dashboard begann nie ein neues Gespraech. Das
+  Dashboard hat keinen Knopf „Neues Gespraech“, deshalb landeten alle
+  Briefings in einem Gespraech, und dessen Verlauf wuchs ohne Grenze. Jeder
+  Klick auf das Briefing oeffnet jetzt ein eigenes Gespraech; fruehere
+  Briefings bleiben gespeichert, nur das Panel beginnt leer.
+
 ## [1.0.9] – 2026-10-22
 
 ### Behoben

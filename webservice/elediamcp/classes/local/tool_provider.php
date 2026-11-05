@@ -73,6 +73,7 @@ class tool_provider {
         'moodle_quiz_start_attempt',
         'moodle_quiz_get_page',
         'moodle_quiz_save_answers',
+        'moodle_quiz_check_question',
         'moodle_quiz_finish',
         'moodle_quiz_get_review',
     ];

@@ -51,6 +51,10 @@ $definitions = [
     ],
     // Previews of write tools and the person's approvals, per user (#168).
     // Losing an entry only costs a second preview, never lets a write through.
+    // The person's answer and the tool call are different requests: with
+    // several web nodes the store has to be shared by all of them (shared
+    // moodledata for the file store, or Redis), or the tool never sees the
+    // approval and answers with its preview again and again (#177).
     'confirmations' => [
         'mode' => cache_store::MODE_APPLICATION,
         'simplekeys' => true,

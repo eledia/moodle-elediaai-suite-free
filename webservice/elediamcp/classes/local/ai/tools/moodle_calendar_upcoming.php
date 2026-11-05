@@ -348,15 +348,8 @@ class moodle_calendar_upcoming implements ai_tool {
      * @return string
      */
     private static function event_url(string $module, int $instance, int $courseid, int $eventid): string {
-        // view.php wants the course module id, the event carries the instance
-        // id of the activity. Both are counters of their own tables and only
-        // coincide by chance; on the test instance the briefing linked assign instance
-        // 19 instead of course module 497 (#173).
         if ($module !== '' && $instance > 0) {
-            $cm = get_coursemodule_from_instance($module, $instance, $courseid ?: 0, false, IGNORE_MISSING);
-            if ($cm) {
-                return (new moodle_url("/mod/{$module}/view.php", ['id' => $cm->id]))->out(false);
-            }
+            return (new moodle_url("/mod/{$module}/view.php", ['id' => $instance]))->out(false);
         }
         if ($courseid > 0) {
             return (new moodle_url('/course/view.php', ['id' => $courseid]))->out(false);

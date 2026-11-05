@@ -1115,4 +1115,188 @@ final class tutor_chat_test extends \advanced_testcase {
             $result['structuredContent']['answer']
         );
     }
+
+    /**
+     * Two courses with photosynthesis material, a student enrolled in both.
+     *
+     * @return array Course A, course B, student, url A, url B, cmid A, cmid B.
+     */
+    private function two_course_scope(): array {
+        global $CFG;
+        set_config('llm_api_key', 'test-key', 'local_literag');
+        set_config('enable_mcp_tools', 0, 'local_literag');
+        $gen = $this->getDataGenerator();
+        $a = $gen->create_course();
+        $b = $gen->create_course();
+        $student = $gen->create_and_enrol($a, 'student');
+        $gen->enrol_user($student->id, $b->id, 'student');
+        $pagea = $gen->create_module('page', ['course' => $a->id]);
+        $pageb = $gen->create_module('page', ['course' => $b->id]);
+        $urla = $CFG->wwwroot . '/mod/page/view.php?id=' . $pagea->cmid;
+        $urlb = $CFG->wwwroot . '/mod/page/view.php?id=' . $pageb->cmid;
+        return [$a, $b, $student, $urla, $urlb, (int) $pagea->cmid, (int) $pageb->cmid];
+    }
+
+    /**
+     * Ask one turn.
+     *
+     * @param \stdClass $student
+     * @param array $arguments Extra arguments.
+     * @return array The structured result.
+     */
+    private function ask(\stdClass $student, array $arguments): array {
+        global $CFG;
+        $handler = new tutor_chat(new client($this->fake_llm('Antwort.')));
+        $result = $handler->handle($arguments + [
+            'system_url' => $CFG->wwwroot,
+            'moodle_token' => $this->mint_token((int) $student->id),
+            'user_message' => 'How does photosynthesis work?',
+        ]);
+        $this->assertFalse($result['isError']);
+        return $result['structuredContent'];
+    }
+
+    /**
+     * In a course its own material comes first; the rest of the knowledge base is not mixed in.
+     */
+    public function test_knowledge_base_course_first(): void {
+        $this->resetAfterTest();
+        [$a, $b, $student, $urla, $urlb, $cma, $cmb] = $this->two_course_scope();
+        $this->insert_chunk((int) $a->id, $cma, $urla);
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+
+        $structured = $this->ask($student, ['course_id' => (string) $a->id, 'search_course_ids' => "{$a->id},{$b->id}"]);
+
+        $this->assertSame([$urla], array_column($structured['sources'], 'url'));
+        $this->assertStringNotContainsString(get_string('scope_offer', 'local_literag', 1), $structured['answer']);
+    }
+
+    /**
+     * Nothing in the own course: the answer offers the rest, a yes searches it for the original question.
+     */
+    public function test_knowledge_base_offer_and_agreement(): void {
+        $this->resetAfterTest();
+        [$a, $b, $student, , $urlb, , $cmb] = $this->two_course_scope();
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+        $args = ['course_id' => (string) $a->id, 'search_course_ids' => "{$a->id},{$b->id}"];
+
+        $first = $this->ask($student, $args);
+        $this->assertArrayNotHasKey('sources', $first);
+        $this->assertStringContainsString(get_string('scope_offer', 'local_literag', 1), $first['answer']);
+
+        // "Ja" alone matches no passage: the search must use the question asked with the offer.
+        $second = $this->ask($student, $args + ['conversation_id' => $first['conversation_id'], 'user_message' => 'Ja']);
+        $this->assertSame([$urlb], array_column($second['sources'], 'url'));
+        $this->assertSame('rag', $second['answer_origin']);
+    }
+
+    /**
+     * Anything but a yes lets the offer lapse; the next question is searched in the own course again.
+     */
+    public function test_knowledge_base_offer_lapses(): void {
+        $this->resetAfterTest();
+        [$a, $b, $student, , $urlb, , $cmb] = $this->two_course_scope();
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+        $args = ['course_id' => (string) $a->id, 'search_course_ids' => "{$a->id},{$b->id}"];
+
+        $first = $this->ask($student, $args);
+        $second = $this->ask($student, $args + [
+            'conversation_id' => $first['conversation_id'],
+            'user_message' => 'Erklaer mir lieber photosynthesis im eigenen Kurs.',
+        ]);
+
+        $this->assertArrayNotHasKey('sources', $second);
+        $this->assertStringContainsString(get_string('scope_offer', 'local_literag', 1), $second['answer']);
+    }
+
+    /**
+     * Without a course the whole selection is searched at once, and only the selection.
+     */
+    public function test_knowledge_base_without_course_is_the_selection(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        [$a, $b, $student, $urla, $urlb, $cma, $cmb] = $this->two_course_scope();
+        $gen = $this->getDataGenerator();
+        $c = $gen->create_course();
+        $gen->enrol_user($student->id, $c->id, 'student');
+        $pagec = $gen->create_module('page', ['course' => $c->id]);
+        $urlc = $CFG->wwwroot . '/mod/page/view.php?id=' . $pagec->cmid;
+        $this->insert_chunk((int) $a->id, $cma, $urla);
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+        $this->insert_chunk((int) $c->id, (int) $pagec->cmid, $urlc);
+
+        $structured = $this->ask($student, ['search_course_ids' => "{$a->id},{$b->id}"]);
+
+        $urls = array_column($structured['sources'], 'url');
+        sort($urls);
+        $expected = [$urla, $urlb];
+        sort($expected);
+        $this->assertSame($expected, $urls);
+        $this->assertStringNotContainsString(get_string('scope_offer', 'local_literag', 1), $structured['answer']);
+    }
+
+    /**
+     * A course in the list the person is not enrolled in is dropped, whatever the client sent.
+     */
+    public function test_knowledge_base_drops_foreign_courses(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        [$a, , $student, $urla, , $cma] = $this->two_course_scope();
+        $gen = $this->getDataGenerator();
+        $foreign = $gen->create_course();
+        $page = $gen->create_module('page', ['course' => $foreign->id]);
+        $this->insert_chunk((int) $foreign->id, (int) $page->cmid, $CFG->wwwroot . '/mod/page/view.php?id=' . $page->cmid);
+        $this->insert_chunk((int) $a->id, $cma, $urla);
+
+        $structured = $this->ask($student, ['search_course_ids' => "{$a->id},{$foreign->id}"]);
+
+        $this->assertSame([$urla], array_column($structured['sources'], 'url'));
+    }
+
+    /**
+     * An empty selection searches nothing; it must not turn into "all enrolments".
+     */
+    public function test_knowledge_base_empty_selection_searches_nothing(): void {
+        $this->resetAfterTest();
+        [$a, , $student, $urla, , $cma] = $this->two_course_scope();
+        $this->insert_chunk((int) $a->id, $cma, $urla);
+
+        $structured = $this->ask($student, ['search_course_ids' => '']);
+
+        $this->assertArrayNotHasKey('sources', $structured);
+        $this->assertSame('general', $structured['answer_origin']);
+    }
+
+    /**
+     * Without search_course_ids the earlier behaviour stays: the course, or all enrolments.
+     */
+    public function test_knowledge_base_absent_keeps_enrolments(): void {
+        $this->resetAfterTest();
+        [$a, $b, $student, $urla, $urlb, $cma, $cmb] = $this->two_course_scope();
+        $this->insert_chunk((int) $a->id, $cma, $urla);
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+
+        $structured = $this->ask($student, []);
+
+        $this->assertCount(2, $structured['sources']);
+    }
+
+    /**
+     * The chat engine's course limit applies; the surface course survives the cut.
+     */
+    public function test_knowledge_base_limit_keeps_the_surface_course(): void {
+        if (!class_exists(\local_elediaai_chatengine\local\connection::class)) {
+            $this->markTestSkipped('local_elediaai_chatengine is not installed.');
+        }
+        $this->resetAfterTest();
+        [$a, $b, $student, , $urlb, , $cmb] = $this->two_course_scope();
+        $this->insert_chunk((int) $b->id, $cmb, $urlb);
+        set_config('maxscopecourses', 1, 'local_elediaai_chatengine');
+
+        $structured = $this->ask($student, ['course_id' => (string) $a->id, 'search_course_ids' => "{$b->id},{$a->id}"]);
+
+        // Only the surface course is left, so there is nothing further to offer.
+        $this->assertArrayNotHasKey('sources', $structured);
+        $this->assertStringNotContainsString(get_string('scope_offer', 'local_literag', 1), $structured['answer']);
+    }
 }

@@ -135,6 +135,7 @@ class moodle_grade_submission implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'assignment_name' => ['type' => 'string'],
                         'student_fullname' => ['type' => 'string'],
                         'current_grade' => ['type' => ['number', 'null']],
@@ -250,7 +251,15 @@ class moodle_grade_submission implements ai_tool {
                 'graded' => false,
                 'requires_confirmation' => true,
                 'result' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only(
+                    $markingworkflow ? 'cardsummary_grade_review' : 'cardsummary_grade_visible',
+                    (object) [
+                        'student' => $preview['student_fullname'],
+                        'grade' => format_float((float) $grade, 2, true, true),
+                        'max' => format_float((float) $maxgrade, 2, true, true),
+                        'assignment' => $preview['assignment_name'],
+                    ]
+                ),
                 'summary' => 'Ready to grade ' . fullname($student) . ' with ' . $grade . '/' . $maxgrade
                     . ' on "' . $preview['assignment_name'] . '". ' . $preview['visibility_note']
                     . ' Call again with confirm=true to save.',

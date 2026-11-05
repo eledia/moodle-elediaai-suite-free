@@ -163,6 +163,12 @@ class moodle_send_message implements ai_tool {
                 ],
                 'message_id' => ['type' => ['integer', 'null']],
                 'conversation_id' => ['type' => ['integer', 'null']],
+                'preview' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'card_summary' => card_summary::schema(),
+                    ],
+                ],
                 'message_preview' => ['type' => 'string'],
                 'sent_iso' => ['type' => ['string', 'null']],
                 'summary' => ['type' => 'string'],
@@ -262,6 +268,9 @@ class moodle_send_message implements ai_tool {
         ];
 
         if (!$confirm) {
+            $payload['preview'] = card_summary::only('cardsummary_send_message', (object) [
+                'recipient' => fullname($recipient),
+            ]);
             $payload['summary'] = sprintf(
                 'Preview only. Set confirm=true to send "%s" to %s.',
                 $preview,

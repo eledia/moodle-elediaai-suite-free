@@ -26,6 +26,7 @@ namespace local_elediaai_core\output;
 
 use coding_exception;
 use html_writer;
+use local_elediaai_core\local\launcher_access;
 
 /**
  * Renders Core pages without an external UI plugin.
@@ -91,9 +92,13 @@ final class plugin_page {
         $out .= html_writer::start_div('elediaai-core-shell__heading');
         $name = s((string) ($headerdata['name'] ?? ''));
         if (!empty($headerdata['homeurl'])) {
-            $name = html_writer::link((string) $headerdata['homeurl'], $name, [
+            [$homeurl, $homelabel] = launcher_access::home_link(
+                (string) $headerdata['homeurl'],
+                (string) ($headerdata['homelabel'] ?? $headerdata['name'] ?? '')
+            );
+            $name = html_writer::link($homeurl, $name, [
                 'class' => 'elediaai-core-shell__home',
-                'aria-label' => (string) ($headerdata['homelabel'] ?? $headerdata['name'] ?? ''),
+                'aria-label' => $homelabel,
             ]);
         }
         $tagline = s((string) ($headerdata['tagline'] ?? ''));

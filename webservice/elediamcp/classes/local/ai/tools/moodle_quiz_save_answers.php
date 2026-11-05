@@ -60,12 +60,15 @@ class moodle_quiz_save_answers implements ai_tool {
     public static function description(): string {
         return 'Saves the authenticated user\'s answers in their open quiz attempt, like moving to the next '
             . 'page in Moodle. Send {slot, value} for single, text and number inputs and {slot, values} for '
-            . 'multi (list of option values) and match (stem key => option value). Saving the same answers '
+            . 'multi (list of option values) and match (stem key => option value); a value may also be the '
+            . 'label of the option the user chose. answers_checked shows, per slot, the answer as the user sees '
+            . 'it. Saving the same answers '
             . 'again changes nothing. Send the sequence of the question (from moodle_quiz_get_page, or from the '
             . 'previous save) with every answer: if the question was changed elsewhere in the meantime, for '
-            . 'example in the browser, the call is refused with out_of_sequence and nothing is saved; load the '
-            . 'page again then. Without sequence the answer overwrites whatever is saved now. Only save answers '
-            . 'the user gave; Moodle grades them on moodle_quiz_finish.';
+            . 'example in the browser, the call is refused with out_of_sequence and nothing is saved; repeat the '
+            . 'call without sequence then, loading the page again is not needed. Without sequence the answer '
+            . 'overwrites whatever is saved now. Only save answers the user gave; Moodle grades them on '
+            . 'moodle_quiz_finish, which you call when the user is done.';
     }
 
     /**
@@ -130,6 +133,12 @@ class moodle_quiz_save_answers implements ai_tool {
                 'sequences' => [
                     'type' => 'object',
                     'description' => 'Slot => the new sequence of the question, to use with the next save.',
+                ],
+                'answers_checked' => [
+                    'type' => 'object',
+                    'description' => 'Slot => the saved answer as the user sees it: the label of the chosen option '
+                        . '(a list for several choices or a matching question) or the text, shortened when long; '
+                        . 'null when the answer was cleared.',
                 ],
                 'state' => ['type' => 'string'],
                 'summary' => ['type' => 'string'],
@@ -216,16 +225,17 @@ class moodle_quiz_save_answers implements ai_tool {
                 if ((int) $answer['sequence'] !== (int) $qa->get_sequence_check_count()) {
                     throw new tool_exception(
                         "The question in slot {$slot} was changed elsewhere (for example in the browser) since you "
-                            . 'loaded it. Load the page again and retry; nothing was saved.',
+                            . 'loaded it. Nothing was saved. Repeat the call without sequence; the page does not '
+                            . 'need to be loaded again.',
                         ['slot' => $slot, 'attempt_id' => $attemptid, 'errorcode' => 'out_of_sequence']
                     );
                 }
             }
             if ($qa->get_state()->is_finished()) {
-                // Checked in the browser (interactive or immediate feedback): Moodle would drop the answer
-                // silently, so say it instead of reporting "Saved".
+                // Checked (interactive or immediate feedback, in the browser or with moodle_quiz_check_question):
+                // Moodle would drop the answer silently, so say it instead of reporting "Saved".
                 throw new tool_exception(
-                    "The question in slot {$slot} was already checked in the browser; its answer can no longer be changed.",
+                    "The question in slot {$slot} was already checked; its answer can no longer be changed.",
                     ['slot' => $slot, 'errorcode' => 'question_finished']
                 );
             }
@@ -270,13 +280,20 @@ class moodle_quiz_save_answers implements ai_tool {
             $sequences->{(string) $slot} = (int) $attemptobj->get_question_attempt($slot)->get_sequence_check_count();
         }
 
+        $shown = new \stdClass();
+        foreach ($slots as $slot) {
+            // Null for an answer that was cleared, so the model sees that nothing is saved there.
+            $shown->{(string) $slot} = quiz_attempt_helper::answer_shown($attemptobj, $slot);
+        }
+
         $result = [
             'saved' => count($slots),
             'slots' => array_values($slots),
             'sequences' => $sequences,
+            'answers_checked' => $shown,
             'state' => (string) $attemptobj->get_state(),
             'summary' => sprintf(
-                'Saved %d answer(s).%s Finish with moodle_quiz_finish when the user is done.',
+                'Saved %d answer(s).%s',
                 count($slots),
                 (array) $validation === [] ? '' : ' Some answers are not complete, see validation.'
             ),

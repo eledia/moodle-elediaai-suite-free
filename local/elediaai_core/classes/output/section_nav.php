@@ -35,6 +35,7 @@ namespace local_elediaai_core\output;
 
 use local_elediaai_core\feature\registry;
 use local_elediaai_core\local\audit_config;
+use local_elediaai_core\local\launcher_access;
 use local_elediaai_core\output\lucide_icon;
 use moodle_url;
 
@@ -225,13 +226,16 @@ class section_nav {
 
         $cansiteconfig = has_capability('moodle/site:config', \core\context\system::instance());
 
-        $items = [
-            self::FEATURE_SUITE => [
+        $items = [];
+        // Ohne das Recht auf den Launcher gibt es die Uebersicht nicht; der
+        // Punkt fuehrte Lernende auf eine Fehlerseite.
+        if (launcher_access::can_use()) {
+            $items[self::FEATURE_SUITE] = [
                 'url' => new moodle_url('/local/elediaai_core/index.php'),
                 'icon' => 'th-large',
                 'label' => get_string('shell_name', 'local_elediaai_core'),
-            ],
-        ];
+            ];
+        }
         // Der Punkt „Uebersicht" ist der, auf dem der Leser steht, wenn er die
         // Startseite des Werkzeugs offen hat -- also zeigt er auch dorthin.
         // Bis hierher zeigte er auf die Erklaerseite im Kern: man stand auf

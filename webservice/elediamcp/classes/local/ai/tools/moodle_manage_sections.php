@@ -124,6 +124,7 @@ class moodle_manage_sections implements ai_tool {
                         'action' => ['type' => 'string'],
                         'course_fullname' => ['type' => 'string'],
                         'detail' => ['type' => 'string'],
+                        'card_summary' => card_summary::schema(),
                     ],
                 ],
                 'summary' => ['type' => 'string'],
@@ -208,11 +209,29 @@ class moodle_manage_sections implements ai_tool {
         };
 
         if (empty($arguments['confirm'])) {
+            $cardsection = $action === 'create' ? '' : get_section_name($course, $sectioninfo);
+            $card = match ($action) {
+                'create' => card_summary::text('cardsummary_section_create', (object) ['course' => $coursename]),
+                'rename' => card_summary::text('cardsummary_section_rename', (object) [
+                    'course' => $coursename,
+                    'old' => $cardsection,
+                    'new' => $name,
+                ]),
+                'set_visibility' => card_summary::text(
+                    $visible ? 'cardsummary_section_show' : 'cardsummary_section_hide',
+                    (object) ['course' => $coursename, 'section' => $cardsection]
+                ),
+            };
             return [
                 'done' => false,
                 'requires_confirmation' => true,
                 'section' => null,
-                'preview' => ['action' => $action, 'course_fullname' => $coursename, 'detail' => $detail],
+                'preview' => [
+                    'action' => $action,
+                    'course_fullname' => $coursename,
+                    'detail' => $detail,
+                    'card_summary' => $card,
+                ],
                 'summary' => $detail . ' Call again with confirm=true to apply.',
             ];
         }

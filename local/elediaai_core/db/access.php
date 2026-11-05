@@ -56,4 +56,19 @@ $capabilities = [
             'teacher' => CAP_ALLOW,
         ],
     ],
+
+    // Wer den KI-Button in der Kopfleiste und die Uebersicht mit den Kacheln
+    // sieht. Auf Kursebene vergebbar, weil eine Lehrkraft ihre Rolle im Kurs
+    // hat und nicht auf der Website; das Recht zaehlt, wenn es auf der Website
+    // oder in irgendeinem Kurs gilt. Lernende bekommen es nicht: fuer sie
+    // haengt hinter den Kacheln nichts, was sie nicht ohnehin im Kurs finden.
+    'local/elediaai_core:uselauncher' => [
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => [
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+        ],
+    ],
 ];

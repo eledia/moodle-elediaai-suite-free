@@ -62,6 +62,9 @@ final class quiz_attempt_helper {
     /** @var string[] Behaviours with a "Check" step (hints and feedback during the attempt), browser only. */
     private const CHECK_BEHAVIOURS = ['immediatefeedback', 'interactive', 'adaptive', 'adaptivenopenalty'];
 
+    /** @var string[] Behaviours whose Check step moodle_quiz_check_question offers (the question is final afterwards). */
+    private const CHECKABLE_BEHAVIOURS = ['immediatefeedback', 'interactive'];
+
     /** @var string[] Question behaviours whose responses can be saved without extra controls. */
     private const INLINE_BEHAVIOURS = [
         'deferredfeedback',
@@ -314,21 +317,7 @@ final class quiz_attempt_helper {
 
             case 'multichoice':
                 $order = $question->get_order($qa);
-                $options = [];
-                foreach ($order as $answerid) {
-                    $answer = $question->answers[$answerid];
-                    $options[] = [
-                        'value' => (string) $answerid,
-                        'label' => self::plain($question->format_text(
-                            $answer->answer,
-                            $answer->answerformat,
-                            $qa,
-                            'question',
-                            'answer',
-                            $answerid
-                        )),
-                    ];
-                }
+                $options = self::multichoice_options($qa);
                 if ($question instanceof \qtype_multichoice_single_question) {
                     $input = ['kind' => 'single', 'options' => $options];
                     $index = $response['answer'] ?? null;
@@ -451,21 +440,27 @@ final class quiz_attempt_helper {
 
         switch ($question->get_type_name()) {
             case 'truefalse':
+                $options = self::truefalse_options();
                 if (!is_scalar($value)) {
-                    throw $invalid('use value "1" (true) or "0" (false).');
+                    throw self::unmatched_option($slot, 'use value "1" (true) or "0" (false), or its label.', $options);
                 }
                 $value = is_bool($value) ? ($value ? '1' : '0') : (string) $value;
                 if ($value !== '1' && $value !== '0') {
-                    throw $invalid('use value "1" (true) or "0" (false).');
+                    $value = self::value_for_label($value, $options, ['en']);
+                }
+                if ($value === null) {
+                    throw self::unmatched_option($slot, 'use value "1" (true) or "0" (false), or its label.', $options);
                 }
                 return ['answer' => $value];
 
             case 'multichoice':
                 $order = array_map('strval', $question->get_order($qa));
+                $options = self::multichoice_options($qa);
                 if ($question instanceof \qtype_multichoice_single_question) {
-                    $index = is_scalar($value) ? array_search((string) $value, $order, true) : false;
+                    $chosen = is_scalar($value) ? self::value_for_label((string) $value, $options, []) : null;
+                    $index = $chosen === null ? false : array_search($chosen, $order, true);
                     if ($index === false) {
-                        throw $invalid('value must be one of the option values.');
+                        throw self::unmatched_option($slot, 'value must be one of the option values or labels.', $options);
                     }
                     return ['answer' => (string) $index];
                 }
@@ -475,9 +470,13 @@ final class quiz_attempt_helper {
                 if (!is_array($values)) {
                     throw $invalid('values must be a list of option values.');
                 }
-                $chosen = array_map('strval', array_values($values));
-                if (array_diff($chosen, $order)) {
-                    throw $invalid('values may only contain option values.');
+                $chosen = [];
+                foreach (array_values($values) as $one) {
+                    $match = is_scalar($one) ? self::value_for_label((string) $one, $options, []) : null;
+                    if ($match === null) {
+                        throw self::unmatched_option($slot, 'values may only contain option values or labels.', $options);
+                    }
+                    $chosen[] = $match;
                 }
                 $response = [];
                 foreach ($order as $index => $answerid) {
@@ -525,20 +524,247 @@ final class quiz_attempt_helper {
                 foreach ($stemorder as $key => $notused) {
                     $response['sub' . $key] = (string) (int) $qa->get_last_qt_var('sub' . $key, 0);
                 }
-                foreach ($values as $stemid => $choiceid) {
-                    $key = array_search((string) $stemid, $stemorder, true);
+                $stems = self::match_stems($qa);
+                $choices = self::match_choices($question);
+                foreach ($values as $stemref => $choiceref) {
+                    // The stem by its key or its label, the option by its value or its label.
+                    $stemid = self::value_for_label((string) $stemref, $stems, []);
+                    $key = $stemid === null ? false : array_search($stemid, $stemorder, true);
                     if ($key === false) {
-                        throw $invalid("unknown stem key {$stemid}.");
+                        throw self::unmatched_option(
+                            $slot,
+                            "unknown stem {$stemref}: use a stem key or its label.",
+                            $choices,
+                            ['stems' => $stems]
+                        );
                     }
-                    if (!is_scalar($choiceid) || !isset($choicekeys[(string) $choiceid])) {
-                        throw $invalid("unknown option value for stem {$stemid}.");
+                    $choiceid = is_scalar($choiceref) ? self::value_for_label((string) $choiceref, $choices, []) : null;
+                    if ($choiceid === null || !isset($choicekeys[$choiceid])) {
+                        throw self::unmatched_option(
+                            $slot,
+                            "unknown option for stem {$stemref}: use an option value or its label.",
+                            $choices,
+                            ['stems' => $stems]
+                        );
                     }
-                    $response['sub' . $key] = (string) $choicekeys[(string) $choiceid];
+                    $response['sub' . $key] = (string) $choicekeys[$choiceid];
                 }
                 return $response;
         }
 
         throw $invalid('this question type cannot be answered in the app.');
+    }
+
+    /**
+     * The options of a multiple-choice question in the order of the attempt, labels as plain text.
+     *
+     * @param question_attempt $qa Question attempt.
+     * @return array<int, array{value: string, label: string}>
+     */
+    private static function multichoice_options(question_attempt $qa): array {
+        $question = $qa->get_question();
+        $options = [];
+        foreach ($question->get_order($qa) as $answerid) {
+            $answer = $question->answers[$answerid];
+            $options[] = [
+                'value' => (string) $answerid,
+                'label' => self::plain($question->format_text(
+                    $answer->answer,
+                    $answer->answerformat,
+                    $qa,
+                    'question',
+                    'answer',
+                    $answerid
+                )),
+            ];
+        }
+        return $options;
+    }
+
+    /**
+     * The stems of a matching question in the order of the attempt, labels as plain text.
+     *
+     * @param question_attempt $qa Question attempt.
+     * @return array<int, array{value: string, label: string}>
+     */
+    private static function match_stems(question_attempt $qa): array {
+        $question = $qa->get_question();
+        $stems = [];
+        foreach ($question->get_stem_order() as $stemid) {
+            $stems[] = [
+                'value' => (string) $stemid,
+                'label' => self::plain($question->format_text(
+                    $question->stems[$stemid],
+                    $question->stemformat[$stemid],
+                    $qa,
+                    'qtype_match',
+                    'subquestion',
+                    $stemid
+                )),
+            ];
+        }
+        return $stems;
+    }
+
+    /**
+     * The options of a matching question in the order of the attempt, labels as plain text.
+     *
+     * @param \question_definition $question Matching question.
+     * @return array<int, array{value: string, label: string}>
+     */
+    private static function match_choices(\question_definition $question): array {
+        $choices = [];
+        foreach ($question->get_choice_order() as $choiceid) {
+            $choices[] = ['value' => (string) $choiceid, 'label' => self::plain((string) $question->choices[$choiceid])];
+        }
+        return $choices;
+    }
+
+    /**
+     * The two options of a true/false question with their labels in the language of the person.
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private static function truefalse_options(): array {
+        return [
+            ['value' => '1', 'label' => self::person_string('true', 'qtype_truefalse')],
+            ['value' => '0', 'label' => self::person_string('false', 'qtype_truefalse')],
+        ];
+    }
+
+    /**
+     * A string in the language of the person (a web service request may run in the site language, the
+     * answers are read in the language of the person).
+     *
+     * @param string $key String key.
+     * @param string $component Component.
+     * @param mixed $a Placeholders.
+     * @param string|null $lang Language code; the language of the signed-in person when null.
+     * @return string
+     */
+    public static function person_string(string $key, string $component, mixed $a = null, ?string $lang = null): string {
+        global $USER;
+        $lang ??= !empty($USER->lang) ? $USER->lang : current_language();
+        return get_string_manager()->get_string($key, $component, $a, $lang);
+    }
+
+    /**
+     * The option value an input stands for: the value itself, or an option with that label.
+     *
+     * Labels are compared without case and extra white space. When two options have the same label, or the
+     * input is the value of one option and the label of another, the answer is ambiguous and nothing matches.
+     *
+     * @param string $input What was sent.
+     * @param array<int, array{value: string, label: string}> $options The options.
+     * @param string[] $otherlangs Further language codes whose labels count for the two truefalse options.
+     * @return string|null The option value, or null when nothing matches.
+     */
+    private static function value_for_label(string $input, array $options, array $otherlangs): ?string {
+        $input = trim($input);
+        $byvalue = null;
+        foreach ($options as $option) {
+            if ($option['value'] === $input) {
+                $byvalue = $option['value'];
+            }
+        }
+        $norm = static fn(string $text): string => \core_text::strtolower(trim((string) preg_replace('/\s+/u', ' ', $text)));
+        $found = [];
+        foreach ($options as $option) {
+            $labels = [$option['label']];
+            foreach ($otherlangs as $lang) {
+                // Only the two truefalse options have labels in another language (their value is 1 or 0).
+                $key = $option['value'] === '1' ? 'true' : 'false';
+                $labels[] = get_string_manager()->get_string($key, 'qtype_truefalse', null, $lang);
+            }
+            foreach ($labels as $label) {
+                if ($norm($label) === $norm($input) && $norm($input) !== '') {
+                    $found[$option['value']] = true;
+                }
+            }
+        }
+        if ($byvalue !== null) {
+            // The input is the value of one option; if it is also the label of another one (an option "4" next to
+            // an option whose id is 4), nothing tells which was meant, and a wrong guess would be saved.
+            unset($found[$byvalue]);
+            return $found === [] ? $byvalue : null;
+        }
+        return count($found) === 1 ? (string) array_key_first($found) : null;
+    }
+
+    /**
+     * Error for an answer that fits none of the options: the model can repair it, the person is not told.
+     *
+     * Carries the valid options (value and label) and retryable true; no user_message, because the agent
+     * shows that text to the person word for word and ends its turn (#195).
+     *
+     * @param int $slot Slot.
+     * @param string $why What to send instead.
+     * @param array<int, array{value: string, label: string}> $options The options.
+     * @param array<string, mixed> $extra Further context, for example the stems of a matching question.
+     * @return tool_exception
+     */
+    private static function unmatched_option(int $slot, string $why, array $options, array $extra = []): tool_exception {
+        return new tool_exception(
+            "Answer for slot {$slot} is invalid: {$why} Nothing was saved.",
+            ['slot' => $slot, 'errorcode' => 'invalid_answer', 'retryable' => true, 'options' => $options] + $extra
+        );
+    }
+
+    /**
+     * The answer saved in a slot as the person sees it, for the result of a check or save (#195).
+     *
+     * Option labels instead of internal values, so that the person and the model can tell which answer
+     * was taken: a string for a single choice or text, a list for several choices or a matching question.
+     * Null when no answer is saved. Long text is shortened.
+     *
+     * @param quiz_attempt $attemptobj Attempt.
+     * @param int $slot Slot.
+     * @return string|string[]|null
+     */
+    public static function answer_shown(quiz_attempt $attemptobj, int $slot): string|array|null {
+        $input = self::describe_input($attemptobj, $slot);
+        $label = static function (array $options, mixed $value): string {
+            foreach ($options as $option) {
+                if ((string) $option['value'] === (string) $value) {
+                    return (string) $option['label'];
+                }
+            }
+            return (string) $value;
+        };
+        switch ($input['kind']) {
+            case 'single':
+                return isset($input['value']) ? $label($input['options'], $input['value']) : null;
+            case 'multi':
+                $shown = [];
+                foreach ($input['values'] as $value) {
+                    $shown[] = $label($input['options'], $value);
+                }
+                return $shown === [] ? null : $shown;
+            case 'match':
+                $shown = [];
+                foreach ((array) $input['values'] as $stemid => $choiceid) {
+                    $stem = '';
+                    foreach ($input['stems'] as $one) {
+                        if ((string) $one['key'] === (string) $stemid) {
+                            $stem = (string) $one['label'];
+                        }
+                    }
+                    $shown[] = $stem . ' → ' . $label($input['options'], $choiceid);
+                }
+                return $shown === [] ? null : $shown;
+            case 'text':
+            case 'number':
+                if (!isset($input['value']) || (string) $input['value'] === '') {
+                    return null;
+                }
+                $text = (string) $input['value'];
+                // As in response_for(): the unit was added to a bare number only.
+                if ($input['kind'] === 'number' && !empty($input['unit']) && is_numeric(str_replace(',', '.', $text))) {
+                    $text .= ' ' . $input['unit'];
+                }
+                return shorten_text($text, 200);
+        }
+        return null;
     }
 
     /**
@@ -571,6 +797,55 @@ final class quiz_attempt_helper {
      */
     public static function has_check_step(\stdClass $quiz): bool {
         return in_array((string) ($quiz->preferredbehaviour ?? ''), self::CHECK_BEHAVIOURS, true);
+    }
+
+    /**
+     * Whether the quiz's Check step can be taken with moodle_quiz_check_question.
+     *
+     * @param \stdClass $quiz Quiz record.
+     * @return bool
+     */
+    public static function is_checkable_quiz(\stdClass $quiz): bool {
+        return in_array((string) ($quiz->preferredbehaviour ?? ''), self::CHECKABLE_BEHAVIOURS, true);
+    }
+
+    /**
+     * Whether one question of an attempt has a Check step moodle_quiz_check_question can take.
+     *
+     * Per question, because some question types bring their own behaviour (an essay is always graded manually).
+     *
+     * @param question_attempt $qa Question attempt.
+     * @return bool
+     */
+    public static function is_checkable(question_attempt $qa): bool {
+        return in_array($qa->get_behaviour_name(), self::CHECKABLE_BEHAVIOURS, true);
+    }
+
+    /**
+     * App state of a graded question, or null when the display options hide correctness.
+     *
+     * @param \question_state $state Question state.
+     * @param bool $showcorrectness Whether correctness may be shown.
+     * @return string|null
+     */
+    public static function state_for(\question_state $state, bool $showcorrectness): ?string {
+        if (!$state->is_graded() && !$state->is_gave_up()) {
+            // Waiting for a teacher reveals nothing about correctness.
+            return 'needsgrading';
+        }
+        if (!$showcorrectness) {
+            return null;
+        }
+        if ($state->is_gave_up()) {
+            return 'gaveup';
+        }
+        if ($state->is_correct()) {
+            return 'correct';
+        }
+        if ($state->is_partially_correct()) {
+            return 'partial';
+        }
+        return 'incorrect';
     }
 
     /**
@@ -674,7 +949,8 @@ final class quiz_attempt_helper {
                 || $ex->errorcode === 'submissionoutofsequencefriendlymessage'
         ) {
             return new tool_exception(
-                'The attempt was changed elsewhere (for example in the browser). Load the page again and retry.',
+                'The attempt was changed elsewhere (for example in the browser). Repeat the call without sequence; '
+                    . 'the page does not need to be loaded again.',
                 ['attempt_id' => $attemptid, 'errorcode' => 'out_of_sequence']
             );
         }

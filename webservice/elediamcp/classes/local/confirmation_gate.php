@@ -32,7 +32,7 @@ namespace webservice_elediamcp\local;
  * The write tools have a two-step contract: without `confirm` they show a
  * preview, with `confirm=true` they act. Until now the agent's model alone
  * decided when to send `confirm=true`, and on 22.10.2026 it did so without
- * asking (Moodle_Agent#35): an assignment was created straight away, and a
+ * asking: an assignment was created straight away, and a
  * question bank after a "Ja" to a question asked in plain text.
  *
  * Now Moodle keeps its own record, without any token travelling through the
@@ -40,13 +40,14 @@ namespace webservice_elediamcp\local;
  *
  *  1. {@see observe()} remembers every preview a tool hands out: person, tool,
  *     fingerprint of the arguments, time.
- *  2. {@see answer_shown()} notes which tool the confirmation card of an
- *     answer was for. {@see user_turn()} is called by the chat engine for
- *     every message the person sends. A click on the card, or a message that
- *     is nothing but an agreement ("ja", "ok, mach das"), approves exactly one
- *     preview of the previous answer: the only one, or the one the card
- *     names. Anything else discards them -- "ja, aber nimm drei Fragen" is a
- *     new request, not an agreement.
+ *  2. {@see answer_shown()} notes whether an answer carried a confirmation
+ *     card and which tool it was for. {@see user_turn()} is called by the
+ *     chat engine for every message the person sends. A click on the card, or
+ *     a message that is nothing but an agreement ("ja", "ok, mach das") to an
+ *     answer that showed a card, approves exactly one preview of the previous
+ *     answer: the only one, or the one the card names. Anything else discards
+ *     them -- "ja, aber nimm drei Fragen" is a new request, not an agreement,
+ *     and so is a "ja" to a question asked in plain text.
  *  3. {@see guard()} runs before every tool call. `confirm=true` only passes
  *     with an approved preview for the same person, tool and arguments, at
  *     most {@see WINDOW} seconds old, and once. Otherwise `confirm` is turned
@@ -59,7 +60,11 @@ namespace webservice_elediamcp\local;
  * ({@see GATED_COMPONENT}): only there does Moodle see the person's answer.
  *
  * The state lives in the application cache. Losing it (purge, restart) can
- * only cost a second preview, never let a write through.
+ * only cost a second preview, never let a write through. Every change runs
+ * under a lock per person ({@see locked()}), so two confirming calls at once
+ * cannot both use the same approval. The cache has to be shared by all web
+ * nodes of a site (see the README): the person's answer and the tool call
+ * reach different requests.
  */
 final class confirmation_gate {
     /**
@@ -75,6 +80,9 @@ final class confirmation_gate {
 
     /** @var int Seconds an approval or a preview stays valid. */
     public const WINDOW = 600;
+
+    /** @var int Seconds to wait for the lock on a person's state. */
+    private const LOCK_TIMEOUT = 5;
 
     /** @var string[] Tools a typed agreement does not approve: they need the card. */
     public const CARD_ONLY = [
@@ -108,12 +116,21 @@ final class confirmation_gate {
         'proceed', 'alright', 'fine', 'create', 'that', 'sounds', 'good', 'great',
     ];
 
-    /** @var string[] At least one of these must be in the message. */
+    /**
+     * At least one of these must be in the message.
+     *
+     * "genau", "klar" and "go" are not here: alone they are as often an answer
+     * to a question as an agreement ("Klar?", "Genau?"). Next to a word from
+     * this list they are still allowed ({@see AGREEMENT_WORDS}). "ahead" keeps
+     * "go ahead" an agreement.
+     *
+     * @var string[]
+     */
     private const CORE_WORDS = [
-        'ja', 'jawohl', 'jo', 'jep', 'jup', 'genau', 'klar', 'gerne', 'gern', 'ok', 'okay', 'okey', 'oki',
+        'ja', 'jawohl', 'jo', 'jep', 'jup', 'gerne', 'gern', 'ok', 'okay', 'okey', 'oki',
         'passt', 'einverstanden', 'mach', 'mache', 'los', 'fortfahren', 'ausführen', 'ausfuehren',
         'durchführen', 'durchfuehren', 'bestätigen', 'bestaetigen', 'bestätige', 'bestaetige',
-        'bestätigt', 'bestaetigt', 'yes', 'yep', 'yeah', 'sure', 'go', 'confirm', 'confirmed', 'proceed', 'alright',
+        'bestätigt', 'bestaetigt', 'yes', 'yep', 'yeah', 'sure', 'confirm', 'confirmed', 'proceed', 'alright', 'ahead',
     ];
 
     /** @var int More words than this are a new request, not an agreement. */
@@ -132,7 +149,7 @@ final class confirmation_gate {
         if (empty($arguments['confirm'])) {
             return [$arguments, false];
         }
-        if (self::consume($userid, $tool, self::fingerprint($arguments))) {
+        if (self::consume($userid, $tool, $arguments)) {
             return [$arguments, false];
         }
         $arguments['confirm'] = false;
@@ -159,18 +176,29 @@ final class confirmation_gate {
             $fingerprints[] = self::fingerprint(['to_user_id' => $recipient, 'message' => (string) $arguments['message']]);
         }
 
-        $state = self::load($userid);
+        // A preview may announce, in `confirm_args`, the arguments only the
+        // confirmed call carries (a token from the preview). They are not part
+        // of what the person approved, so they stay out of the fingerprint.
+        // The names come from the tool's own output, never from the agent.
+        $announced = self::announced_keys($output);
         $previewid = random_int(1, PHP_INT_MAX);
-        foreach ($fingerprints as $fingerprint) {
-            $state['entries'][] = [
-                'tool' => $tool, 'fp' => $fingerprint, 'time' => time(), 'approved' => false, 'preview' => $previewid,
-            ];
-        }
-        self::save($userid, $state);
+        self::locked($userid, function () use ($userid, $tool, $fingerprints, $announced, $previewid): void {
+            $state = self::load($userid);
+            foreach ($fingerprints as $fingerprint) {
+                $entry = [
+                    'tool' => $tool, 'fp' => $fingerprint, 'time' => time(), 'approved' => false, 'preview' => $previewid,
+                ];
+                if ($announced) {
+                    $entry['ignore'] = $announced;
+                }
+                $state['entries'][] = $entry;
+            }
+            self::save($userid, $state);
+        });
     }
 
     /**
-     * Take note of which tool an answer's confirmation card was for.
+     * Take note whether an answer showed a confirmation card, and for which tool.
      *
      * Called by the chat engine after every answer. The card names the tool
      * by its title (or name); that is matched against the previews of this
@@ -184,26 +212,31 @@ final class confirmation_gate {
         if ($userid <= 0) {
             return;
         }
-        $state = self::load($userid);
-        $state['cardtool'] = null;
-        $label = trim((string) ($confirmation['tooltitle'] ?? ''));
-        if (!empty($confirmation['required']) && $label !== '') {
-            $tools = [];
-            foreach ($state['entries'] as $entry) {
-                if ((int) $entry['time'] >= (int) $state['lastturn'] && self::tool_answers_to($entry['tool'], $label)) {
-                    $tools[$entry['tool']] = true;
+        self::locked($userid, function () use ($userid, $confirmation): void {
+            $state = self::load($userid);
+            $state['cardtool'] = null;
+            $state['card'] = !empty($confirmation['required']);
+            $label = trim((string) ($confirmation['tooltitle'] ?? ''));
+            $state['cardlabel'] = $state['card'] ? $label : '';
+            if ($state['card'] && $label !== '') {
+                $tools = [];
+                foreach ($state['entries'] as $entry) {
+                    if ((int) $entry['time'] >= (int) $state['lastturn'] && self::tool_answers_to($entry['tool'], $label)) {
+                        $tools[$entry['tool']] = true;
+                    }
                 }
+                $state['cardtool'] = count($tools) === 1 ? (string) array_key_first($tools) : null;
             }
-            $state['cardtool'] = count($tools) === 1 ? (string) array_key_first($tools) : null;
-        }
-        self::save($userid, $state);
+            self::save($userid, $state);
+        });
     }
 
     /**
      * Take note of a message the person sent.
      *
      * Approves one preview of the previous answer when the message is an
-     * agreement, discards all of them otherwise. Approvals that were not used
+     * agreement to a card shown with it (or a click on it), discards all of
+     * them otherwise. Approvals that were not used
      * by the next message lapse as well: an agreement belongs to one answer.
      *
      * Which preview: the only one the answer produced; with several, the one
@@ -219,37 +252,49 @@ final class confirmation_gate {
         if ($userid <= 0) {
             return;
         }
-        $state = self::load($userid);
-        $now = time();
-        $previous = (int) $state['lastturn'];
-        $card = $decision === 'confirm';
-        $typed = $decision === '' && self::is_agreement($message);
+        self::locked($userid, function () use ($userid, $message, $decision): void {
+            $state = self::load($userid);
+            $now = time();
+            $previous = (int) $state['lastturn'];
+            $card = $decision === 'confirm';
+            // A typed agreement counts only as an answer to a card: a "ja" to
+            // a question in plain text is not the person's approval of a write.
+            $typed = $decision === '' && !empty($state['card']) && self::is_agreement($message);
 
-        // What the last answer previewed, still within the window; older
-        // entries and unused approvals had their turn.
-        $candidates = [];
-        foreach ($state['entries'] as $entry) {
-            if ((int) $entry['time'] >= $previous && (int) $entry['time'] >= $now - self::WINDOW && !$entry['approved']) {
-                $candidates[] = $entry;
+            // What the last answer previewed, still within the window; older
+            // entries and unused approvals had their turn.
+            $candidates = [];
+            foreach ($state['entries'] as $entry) {
+                if ((int) $entry['time'] >= $previous && (int) $entry['time'] >= $now - self::WINDOW && !$entry['approved']) {
+                    $candidates[] = $entry;
+                }
             }
-        }
-        if ($typed) {
-            $candidates = array_values(array_filter(
-                $candidates,
-                fn(array $entry) => !in_array($entry['tool'], self::CARD_ONLY, true)
-            ));
-        }
+            // A card that names a tool stands for that tool and no other.
+            $label = (string) ($state['cardlabel'] ?? '');
+            if ($label !== '') {
+                $candidates = array_values(array_filter(
+                    $candidates,
+                    fn(array $entry) => self::tool_answers_to($entry['tool'], $label)
+                ));
+            }
+            if ($typed) {
+                $candidates = array_values(array_filter(
+                    $candidates,
+                    fn(array $entry) => !in_array($entry['tool'], self::CARD_ONLY, true)
+                ));
+            }
 
-        $kept = [];
-        if ($card || $typed) {
-            $chosen = self::single_preview($candidates, $state['cardtool'] ?? null);
-            if ($chosen !== null) {
-                $chosen['approved'] = true;
-                $chosen['time'] = $now;
-                $kept[] = $chosen;
+            $kept = [];
+            if ($card || $typed) {
+                $chosen = self::single_preview($candidates, $state['cardtool'] ?? null);
+                if ($chosen !== null) {
+                    $chosen['approved'] = true;
+                    $chosen['time'] = $now;
+                    $kept[] = $chosen;
+                }
             }
-        }
-        self::save($userid, ['lastturn' => $now, 'entries' => $kept, 'cardtool' => null]);
+            self::save($userid, ['lastturn' => $now, 'entries' => $kept, 'cardtool' => null, 'card' => false, 'cardlabel' => '']);
+        });
     }
 
     /**
@@ -342,10 +387,16 @@ final class confirmation_gate {
     /**
      * Whether a message is nothing but an agreement.
      *
+     * A message with a question mark never is one.
+     *
      * @param string $message The message as typed.
      * @return bool
      */
     public static function is_agreement(string $message): bool {
+        // A question is not an agreement: "Ja?", "Ok?".
+        if (str_contains($message, '?')) {
+            return false;
+        }
         $words = preg_split('/[^\p{L}\p{N}]+/u', \core_text::strtolower(trim($message)), -1, PREG_SPLIT_NO_EMPTY);
         if (!$words || count($words) > self::MAX_WORDS) {
             return false;
@@ -359,13 +410,34 @@ final class confirmation_gate {
     }
 
     /**
+     * The argument names a preview announces in `confirm_args`.
+     *
+     * @param array $output The tool's structured output.
+     * @return string[] Names, without `confirm`; empty when none are announced.
+     */
+    private static function announced_keys(array $output): array {
+        $args = $output['confirm_args'] ?? null;
+        if (!is_array($args)) {
+            return [];
+        }
+        $keys = [];
+        foreach (array_keys($args) as $key) {
+            if (is_string($key) && $key !== '' && $key !== 'confirm') {
+                $keys[] = $key;
+            }
+        }
+        return $keys;
+    }
+
+    /**
      * Fingerprint of a call's arguments, independent of key order.
      *
      * @param array $arguments The arguments.
+     * @param string[] $ignore More argument names to leave out, announced by a preview in `confirm_args`.
      * @return string
      */
-    public static function fingerprint(array $arguments): string {
-        foreach (self::IGNORED_KEYS as $key) {
+    public static function fingerprint(array $arguments, array $ignore = []): string {
+        foreach (array_merge(self::IGNORED_KEYS, $ignore) as $key) {
             unset($arguments[$key]);
         }
         return hash('sha256', json_encode(self::normalise($arguments), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -376,27 +448,58 @@ final class confirmation_gate {
      *
      * @param int $userid The person.
      * @param string $tool The tool name.
-     * @param string $fingerprint Fingerprint of the arguments.
+     * @param array $arguments The arguments of the confirmed call.
      * @return bool Whether one was there.
      */
-    private static function consume(int $userid, string $tool, string $fingerprint): bool {
+    private static function consume(int $userid, string $tool, array $arguments): bool {
         if ($userid <= 0) {
             return false;
         }
-        $state = self::load($userid);
-        foreach ($state['entries'] as $index => $entry) {
-            $matches = $entry['fp'] === $fingerprint || in_array($fingerprint, $entry['aliases'] ?? [], true);
-            if (
-                $entry['approved'] && $entry['tool'] === $tool && $matches
-                && (int) $entry['time'] >= time() - self::WINDOW
-            ) {
-                unset($state['entries'][$index]);
-                $state['entries'] = array_values($state['entries']);
-                self::save($userid, $state);
-                return true;
+        // Without the lock nothing is used up: the call gets its preview again.
+        return (bool) self::locked($userid, function () use ($userid, $tool, $arguments): bool {
+            $state = self::load($userid);
+            foreach ($state['entries'] as $index => $entry) {
+                $fingerprint = self::fingerprint($arguments, $entry['ignore'] ?? []);
+                $matches = $entry['fp'] === $fingerprint || in_array($fingerprint, $entry['aliases'] ?? [], true);
+                if (
+                    $entry['approved'] && $entry['tool'] === $tool && $matches
+                    && (int) $entry['time'] >= time() - self::WINDOW
+                ) {
+                    unset($state['entries'][$index]);
+                    $state['entries'] = array_values($state['entries']);
+                    self::save($userid, $state);
+                    return true;
+                }
             }
+            return false;
+        });
+    }
+
+    /**
+     * Run a change of a person's state under a lock.
+     *
+     * Reading and writing the cache are two steps; two requests of one person
+     * at once (a retry, two parallel tool calls) would otherwise both read the
+     * same approval and both use it. The lock comes from Moodle's lock
+     * factory, which is shared by all web nodes.
+     *
+     * @param int $userid The person.
+     * @param callable $change What to do while holding the lock.
+     * @return mixed What $change returned, or null when the lock could not be had in time
+     *         (nothing was changed then; the tool answers with its preview again).
+     */
+    private static function locked(int $userid, callable $change): mixed {
+        $factory = \core\lock\lock_config::get_lock_factory('webservice_elediamcp_confirmations');
+        $lock = $factory->get_lock('person' . $userid, self::LOCK_TIMEOUT);
+        if (!$lock) {
+            debugging('webservice_elediamcp: no lock on the confirmations of user ' . $userid, DEBUG_DEVELOPER);
+            return null;
         }
-        return false;
+        try {
+            return $change();
+        } finally {
+            $lock->release();
+        }
     }
 
     /**
@@ -419,11 +522,11 @@ final class confirmation_gate {
      * The person's state.
      *
      * @param int $userid The person.
-     * @return array{lastturn: int, entries: array, cardtool: ?string}
+     * @return array{lastturn: int, entries: array, cardtool: ?string, card: bool, cardlabel: string}
      */
     private static function load(int $userid): array {
         $state = \cache::make('webservice_elediamcp', 'confirmations')->get($userid);
-        $empty = ['lastturn' => 0, 'entries' => [], 'cardtool' => null];
+        $empty = ['lastturn' => 0, 'entries' => [], 'cardtool' => null, 'card' => false, 'cardlabel' => ''];
         return is_array($state) ? $state + $empty : $empty;
     }
 

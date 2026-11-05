@@ -19,7 +19,6 @@ declare(strict_types=1);
 namespace webservice_elediamcp\local\ai\tools;
 
 use question_display_options;
-use question_state;
 use stdClass;
 use webservice_elediamcp\local\ai\ai_tool;
 use webservice_elediamcp\local\ai\response_budget;
@@ -214,7 +213,7 @@ class moodle_quiz_get_review implements ai_tool {
                 'number' => (string) $attemptobj->get_question_number($slot),
                 'type' => (string) $attemptobj->get_question_type_name($slot),
                 'text' => quiz_attempt_helper::plain($question->format_questiontext($qa)),
-                'state' => self::state_for($qa->get_state(), (bool) $options->correctness),
+                'state' => quiz_attempt_helper::state_for($qa->get_state(), (bool) $options->correctness),
                 'mark' => null,
                 'max_mark' => null,
                 'feedback' => '',
@@ -313,32 +312,5 @@ class moodle_quiz_get_review implements ai_tool {
                 return $payload;
             }
         );
-    }
-
-    /**
-     * App state of a question, or null when the review options hide correctness.
-     *
-     * @param question_state $state Question state.
-     * @param bool $showcorrectness Whether correctness may be shown.
-     * @return string|null
-     */
-    private static function state_for(question_state $state, bool $showcorrectness): ?string {
-        if (!$state->is_graded() && !$state->is_gave_up()) {
-            // Waiting for a teacher reveals nothing about correctness.
-            return 'needsgrading';
-        }
-        if (!$showcorrectness) {
-            return null;
-        }
-        if ($state->is_gave_up()) {
-            return 'gaveup';
-        }
-        if ($state->is_correct()) {
-            return 'correct';
-        }
-        if ($state->is_partially_correct()) {
-            return 'partial';
-        }
-        return 'incorrect';
     }
 }

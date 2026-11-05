@@ -64,6 +64,9 @@ $string['nav_infra_mcp'] = 'MCP';
 $string['nav_infra_sources'] = 'KI-Quellen';
 $string['nav_infra_tutor'] = 'Tutor einrichten';
 $string['nav_overview'] = 'Übersicht';
+$string['pdf_heading'] = 'PDF-Dateien lesen';
+$string['pdftotext_path'] = 'Pfad zu pdftotext (optional)';
+$string['pdftotext_path_desc'] = 'Das Poppler-Programm <code>pdftotext</code> liest PDF-Dateien mit der besten Qualität, zum Beispiel <code>/usr/bin/pdftotext</code>. Leer lassen, um den eingebauten Leser zu verwenden, der auch PDFs aus Word und LibreOffice liest. Gescannte Seiten ohne Textebene lassen sich in beiden Fällen nicht lesen.';
 $string['premium_required_heading'] = 'Nicht freigeschaltet';
 $string['shell_aitutor_label'] = 'eLeDia.ai Tutor';
 $string['shell_help_label'] = 'Hilfe — KI-Suite';
@@ -365,7 +368,7 @@ Zwei Dinge stehen bewusst nicht auf der Übersicht, weil sie zu einem Ort gehör
 - Der **Tutor-Block** erscheint in dem Kurs oder Dashboard, in den ihn jemand gesetzt hat.
 - **KI-Aktivitäten** erscheinen im Kurs, in dem Abschnitt, in den sie eingefügt wurden.
 
-Ausgeloggt ist der Launcher nicht sichtbar, ebenso wenig auf Anmelde-, Popup- und Wartungsseiten.';
+Der Launcher ist für Lehrende, Manager und Administratoren gedacht: Lernende sehen ihn nicht. Ausgeloggt ist er nicht sichtbar, ebenso wenig auf Anmelde-, Popup- und Wartungsseiten.';
 $string['topic_suite_where_summary'] = 'Eine Pille in der obersten Leiste öffnet die Übersicht. Alles andere geht von dort aus — oder sitzt im Kurs, in dem es benutzt wird.';
 $string['topic_suite_where_title'] = 'Wo die KI-Funktionen zu finden sind';
 $string['contract_language_note_de'] = 'Dieser Vertragstext wird auf Deutsch gepflegt und steht hier, wie er geschrieben ist.';
@@ -500,6 +503,7 @@ $string['insights_verbatim_empty'] = 'Keine Fragen anzuzeigen.';
 $string['insights_verbatim_eyebrow'] = 'Im Wortlaut';
 $string['insights_verbatim_intro'] = 'Die letzten Fragen, wie sie gestellt wurden.';
 $string['insights_verbatim_title'] = 'Die Fragen selbst';
+$string['elediaai_core:uselauncher'] = 'KI-Suite-Launcher und Übersicht verwenden';
 $string['elediaai_core:viewaiactions'] = 'Protokoll der KI-Handlungen einsehen';
 $string['elediaai_core:viewcourseinsights'] = 'Kurs-Einblicke in die KI-Fragen einsehen';
 $string['insights_metric_grounded_label'] = '{$a->covered} % der Antworten kamen aus Ihrem Kursmaterial, {$a->open} % nicht';

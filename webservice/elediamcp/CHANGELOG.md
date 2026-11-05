@@ -5,6 +5,243 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.0] – 2026-11-05
+
+### Hinzugefuegt
+
+- Text der Bestätigungskarte in der Sprache der Person (#198, Entscheidung
+  vom 05.11.2026). Alle Werkzeuge mit `confirm`-Schritt liefern in der
+  Vorschau `preview.card_summary`: ein bis zwei Sätze aus den Sprachdateien
+  (Deutsch und Englisch), ohne Werkzeugnamen und ohne Anweisung an das Modell.
+  Neu sind es `moodle_create_course`, `moodle_update_course`,
+  `moodle_create_activity`, `moodle_update_activity`, `moodle_manage_sections`,
+  `moodle_create_user`, `moodle_enrol_user`, `moodle_grade_submission`,
+  `moodle_send_message`, `moodle_message_course_students`,
+  `moodle_generate_questions`, `moodle_generate_h5p` und
+  `moodle_selfstudy_create_quiz`; die Quiz-Werkzeuge hatten es seit 1.19.1.
+  Die englische `summary` bleibt unverändert, sie richtet sich an das Modell.
+  Der bestätigte Aufruf trägt das Feld nicht.
+- `moodle_update_activity`, `moodle_send_message` und
+  `moodle_message_course_students` haben dafür ein `preview`-Objekt in der
+  Vorschau bekommen, das nur `card_summary` enthält; ihre bisherigen Felder
+  sind unverändert.
+- Klasse `card_summary` und Test `tests/card_summary_test.php`: Jedes
+  Werkzeug mit `confirm`-Argument muss `preview.card_summary` in
+  `output_schema()` deklarieren. Konvention in `docs/03-dev-doc.md`.
+
+## [1.19.2] – 2026-11-05
+
+### Hinzugefuegt
+
+- Geprüfte Antwort im Ergebnis (#195). `moodle_quiz_check_question` liefert
+  `answer_checked`, die Antwort so, wie die Person sie sieht: die Beschriftung
+  der gewählten Option (Liste bei Mehrfachauswahl und Zuordnung, jeweils
+  „Begriff → Auswahl“), bei Freitext und Zahl der Text (gekürzt ab 200
+  Zeichen). `moodle_quiz_save_answers` liefert `answers_checked`, je Slot
+  dasselbe (null für eine geleerte Antwort). Anlass: Das Modell hatte einmal „Wahr“ als `value: "0"` geschickt,
+  Moodle hat „Falsch“ geprüft und die Frage festgeschrieben, ohne dass es
+  jemand bemerkte.
+- `value` und `values` nehmen bei Wahr/Falsch, Auswahl- und Zuordnungsfragen
+  auch die Beschriftung der Option an (ohne Groß-/Kleinschreibung und
+  überzählige Leerzeichen; bei Wahr/Falsch auch die englische), bei Zuordnung
+  auch die Beschriftung des Begriffs statt seines Schlüssels. Zwei Optionen
+  mit gleicher Beschriftung sind mehrdeutig, ebenso eine Eingabe, die der
+  Wert der einen und die Beschriftung einer anderen Option ist (eine Option
+  „4“ neben der Option mit der Id 4): dann wird nicht geraten, der Fehler
+  nennt die Optionen.
+- Passt eine Antwort zu keiner Option, trägt der Fehler `retryable: true` und im
+  `context` die gültigen Optionen (`options`, Wert und Beschriftung), aber
+  **keinen** `user_message`: Der Agent zeigt `user_message` wörtlich an und
+  beendet den Zug, hier soll das Modell den Aufruf selbst korrigieren. Allgemein
+  gilt: Setzt ein Werkzeug `retryable` (bool) im Kontext, steht es in der
+  Antwort neben dem Fehler und nicht im `context`; ein `user_message` setzt es
+  weiterhin auf `false`.
+- Vorschau von `moodle_quiz_start_attempt` und `moodle_quiz_finish` als
+  `preview`-Objekt mit `card_summary` (ein bis drei Sätze Klartext in der
+  Sprache der Person, Englisch und Deutsch, ohne Werkzeugnamen), dazu
+  `quiz_name`, beim Start `attempt_number`, `attempts_allowed` und
+  `time_limit_minutes` (null ohne Grenze), bei der Abgabe `answered` und
+  `unanswered`. Die Fakten stehen nur dort.
+
+### Geändert
+
+- Die Vorschau von Start und Abgabe trägt `state`, `unanswered`, `max_grade`,
+  `attempts_allowed`, `attempts_used`, `time_limit_seconds`, `page_count` und
+  `current_page` nicht mehr auf oberster Ebene; die Karte druckte sie sonst
+  neben dem Text („State: inprogress“, „Unanswered: 0“). Das Ausgabeschema
+  verlangt für beide Werkzeuge nur noch die Felder, die jede Antwort hat. Nach
+  der Abgabe (und beim Weiterführen) bleiben `state` und `unanswered` wie bisher.
+- Die `summary` der Quiz-Werkzeuge nennt keine Werkzeugnamen und keine
+  Anweisungen ans Modell mehr, nur noch, was passiert ist. Was als Nächstes zu
+  tun ist, steht in den Werkzeugbeschreibungen (Anlass: Der Tutor sagte nach
+  fast jeder Abgabe „Details mit moodle_quiz_get_review einsehen“).
+- `sequence` ist in `moodle_quiz_check_question` als optional beschrieben: weglassen,
+  außer man hat sie für genau diese Frage. Die Meldung bei `out_of_sequence`
+  sagt, dass der Aufruf ohne `sequence` wiederholt werden kann; die Seite muss
+  nicht neu geladen werden. Sie bleibt ohne `user_message`.
+
+## [1.19.1] – 2026-11-03
+
+### Hinzugefuegt
+
+- Fehler mit Text für die Person (#193). Ist ein Fehler eine Tatsache, die die
+  Person so hören soll („diese Frage wurde schon geprüft“), liefert die Antwort
+  zusätzlich `user_message` (in der Sprache der Person, Englisch und Deutsch)
+  und `retryable: false`. Der Agent zeigt den Text wörtlich an; das Modell
+  formuliert ihn nicht um und wiederholt den Aufruf nicht. Aktuell gilt das für
+  `question_finished`, `attempt_not_finished` und `not_checkable` (Quiz-Werkzeuge).
+  Dazu gehört ein Sprachtext `usermessage_<errorcode>`; die Werte aus dem
+  Kontext des Fehlers (zum Beispiel `slot`) sind seine Platzhalter. Fehler ohne
+  solchen Text bleiben unverändert, damit das Modell falsche Argumente selbst
+  korrigieren kann. Fehlercode und gekürzte Meldung im Ereignis `tool_invoked`
+  ändern sich nicht (#182).
+
+### Geändert
+
+- `moodle_quiz_check_question`: Die Beschreibung verlangt, jede Antwort der Person
+  auf eine Frage des offenen Versuchs mit dem Werkzeug zu prüfen und die Antwort
+  nie selbst zu beurteilen. Der Satz „nur prüfen, wenn die Person es verlangt“
+  ist ersetzt durch „nur die eigene Antwort der Person prüfen, nie eine geratene
+  oder erfundene“.
+
+## [1.19.0] – 2026-10-28
+
+### Hinzugefuegt
+
+- Neues Werkzeug `moodle_quiz_check_question` `{attempt_id, slot, value | values, sequence?}`:
+  speichert die Antwort auf eine Frage und prueft sie wie der Button „Pruefen“ im Browser
+  (`process_submitted_actions` mit `-submit`). Fuer die LernHive-App (feat13, spec §6.3, A7).
+  - Nur fuer Fragen mit dem Verhalten „Direkte Auswertung“ oder „Mehrfachversuche“
+    (`immediatefeedback`, `interactive`); sonst `not_checkable`, etwa bei spaeter Auswertung
+    oder bei Freitext, den Moodle immer von Hand bewerten laesst.
+  - Antwort `{slot, state, feedback, right_answer?, finished, tries_left?, sequence}`. `state`
+    ist `correct`, `partial`, `incorrect` oder `needsgrading`. `state`, `feedback` und
+    `right_answer` folgen den Ueberpruefungsoptionen „Waehrend des Versuchs“ und sind `null`
+    bzw. fehlen, wenn sie verborgen sind.
+  - Mehrfachversuche mit Hinweisen: Ist die Antwort falsch und bleibt ein Versuch, kommt
+    `finished: false` mit `tries_left` und dem Hinweis im Feedback, aber wie im Browser ohne
+    Richtig/Falsch. Die naechste Pruefung derselben Frage startet den neuen Versuch.
+  - Gleiche Pruefungen wie `moodle_quiz_save_answers`: nur eigene, offene Versuche,
+    `mod/quiz:attempt`, Zugangsregeln, Seitenzugriff, `sequence`. Eine unvollstaendige Antwort
+    wird mit `invalid_answer` abgelehnt und nicht gespeichert, eine schon gepruefte Frage mit
+    `question_finished`.
+- `moodle_quiz_start_attempt` meldet `checkable: true`, wenn der Test diese Pruefung anbietet.
+
+### Geaendert
+
+- `check_in_browser` ist nur noch bei Pruefschritten wahr, die das Werkzeug nicht anbietet
+  (adaptiver Modus). Bei „Direkte Auswertung“ und „Mehrfachversuche“ ist es jetzt `false`, die
+  Zusammenfassung verweist auf `moodle_quiz_check_question`.
+
+## [1.18.3] – 2026-10-28
+
+### Behoben
+
+- Bestätigungssperre (#168), Kleinfunde aus der Prüfung (#178):
+  - Eine Nachricht mit Fragezeichen („Ja?“, „Ok?“, „Klar?“) gilt nie als
+    Zustimmung. „genau“, „klar“ und „go“ allein genügen nicht mehr; neben
+    „ja“ oder „ok“ sind sie weiter erlaubt, „go ahead“ bleibt eine Zustimmung.
+  - Hält Moodle ein `confirm=true` zurück, steht das im Ereignis
+    `tool_invoked` (`withheld`). Bisher blieb ein zurückgehaltener
+    Schreibversuch ohne Spur im Log.
+  - `moodle_selfstudy_create_quiz`: Die Beschreibung wies den Agenten an,
+    direkt mit `confirm=true` zu rufen, was für Tokens der Chat Engine immer
+    zurückgehalten wird. Sie nennt jetzt den Zwei-Schritt-Weg.
+
+### Dokumentation
+
+- README, `docs/01-features.md`, `docs/03-dev-doc.md`, `docs/00-master.md`
+  (adr06) und `docs/05-quality.md` beschreiben die serverseitige Zustimmung:
+  Geltungsbereich, Ablauf, Fenster, Kartenpflicht, Cache-Voraussetzung,
+  `confirmation_withheld`, und was der Cache über die Person speichert (#178).
+
+### Tests
+
+- Tests für die Sperre ergänzt: Vorschau und `confirm=true` im selben Zug,
+  zweites „ja“, Nur-Karte-Werkzeuge (Nachricht, Nachricht an Kurs,
+  Bewertung), abgelaufene Vorschau, Aufruf ohne Person, Fragen und
+  mehrdeutige Wörter. Neu: `tests/confirmation_server_test.php` prüft über
+  `dispatch_ai_tool()`, dass der Server die Sperre fragt, nur Tokens der Chat
+  Engine sperrt und den zurückgehaltenen Versuch protokolliert.
+
+## [1.18.2] – 2026-10-27
+
+### Behoben
+
+- Bestätigungssperre (#168), Lücken aus der Prüfung (#177):
+  - Ein getipptes „ja“ gibt eine Vorschau nur noch frei, wenn die Antwort davor
+    eine Bestätigungskarte gezeigt hat. Stellt das Modell nach einer Vorschau
+    nur eine Rückfrage im Text, genügt das „ja“ nicht mehr. Nennt die Karte
+    ein anderes Werkzeug als das mit der Vorschau, gibt weder Klick noch „ja“
+    die Vorschau frei.
+  - Eine Freigabe wird genau einmal verbraucht, auch bei zwei gleichzeitigen
+    `confirm=true`-Aufrufen (Wiederholung, parallele Tool-Calls): Lesen und
+    Schreiben des Zustands laufen unter einer Sperre je Person
+    (`\core\lock\lock_config`). Bekommt ein Aufruf die Sperre nicht binnen
+    fünf Sekunden, bekommt er die Vorschau noch einmal; die Freigabe bleibt.
+
+### Dokumentation
+
+- Der Zustand der Sperre liegt im Anwendungs-Cache `confirmations`. Bei
+  mehreren Web-Knoten muss dieser Cache für alle Knoten gemeinsam sein; die
+  README und `db/caches.php` sagen jetzt, was sonst geschieht (#177).
+
+## [1.18.1] – 2026-10-26
+
+### Behoben
+
+- Zwei Werkzeuge riefen Funktionen aus `course/lib.php` auf, ohne die Datei zu
+  laden: `moodle_course_contents` (`get_section_name()`) und
+  `moodle_my_assignments` (`course_get_course_dates_for_user_id()`). Ein
+  statischer Test (`core_library_require_test`) prüft jetzt für alle Dateien
+  unter `classes/`, dass sie die Bibliothek laden, deren Funktion sie aufrufen
+  (`course/lib.php`, `lib/gradelib.php`, `grade/querylib.php`,
+  `lib/questionlib.php`) (#182).
+- `moodle_generate_h5p`: Die Beschreibung war an einer Stelle abgebrochen und
+  nannte nur drei der vier Typen. Der Typ akzeptiert die üblichen Schreibweisen
+  („Dialog Cards“, „dialog_cards“, „Fill in the Blanks“, „Lückentext“); das
+  `enum` im Schema entfällt dafür. Das Argument `target` beschreibt, wann
+  `activity` und wann `contentbank` zu wählen ist.
+
+### Geändert
+
+- Das Ereignis `tool_invoked` trägt bei einem Fehler den Fehlercode und, bei
+  einem Fachfehler, die auf 200 Zeichen gekürzte Meldung. Bei einer
+  unerwarteten Ausnahme steht nur deren Klasse darin, nie Meldung, Datei oder
+  Argumentwerte (#182).
+- Die Antwort auf eine unerwartete Ausnahme nennt zusätzlich die Klasse
+  (`exception_class`), der Text für das Modell bleibt unverändert.
+
+## [1.18.0] – 2026-10-26
+
+### Hinzugefügt
+
+- Vorschauen von Zwei-Schritt-Werkzeugen können im Feld `confirm_args` die
+  Argumente ankündigen, die nur der bestätigte Aufruf braucht (#179).
+  `moodle_generate_h5p` liefert `confirm_args: {"draft_token": …}`; `draft_token`
+  steht weiter zusätzlich in der Vorschau, für Clients ohne das Feld. Die
+  Konvention steht in `docs/03-dev-doc.md`.
+- `confirmation_gate` lässt die Schlüssel aus `confirm_args` im Fingerabdruck
+  der Freigabe weg. Die Namen kommen aus der Ausgabe des Werkzeugs, nicht vom
+  Client; alle anderen Argumente müssen weiter mit der Vorschau übereinstimmen.
+- Ein statischer Test prüft, dass jedes Werkzeug mit `confirm` und einem
+  `*_token`-Argument dieses in `confirm_args` ankündigt.
+
+## [1.17.3] – 2026-10-26
+
+### Geändert
+
+- `moodle_calendar_upcoming`: Die Änderung am Aktivitäts-Link aus 1.16.3 (#173)
+  ist vorerst zurückgenommen, das Verhalten entspricht dem von 1.16.2. Die
+  Korrektur wird mit Review neu eingebracht.
+
+## [1.17.2] – 2026-10-23
+
+### Behoben
+
+- Interne Verweise aus Changelog, Klassenkommentar und Testkommentar entfernt
+  (#176): Das Paket ist oeffentlich. Nur Texte, keine Aenderung am Verhalten.
+
 ## [1.17.1] – 2026-10-22
 
 ### Sicherheit
@@ -15,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Bei mehreren: die des Werkzeugs, das die Karte nennt (`tooltitle`).
   - Bleibt es unklar, etwa bei zwei Vorschauen desselben Werkzeugs, wird
     nichts freigegeben, und der Agent bekommt eine Vorschau zurueck.
-  - Anlass: Max' Agent zeigt bei mehreren Schreibaktionen in einer Antwort
+  - Anlass: Der Agent zeigt bei mehreren Schreibaktionen in einer Antwort
     nur fuer die erste eine Karte. Ein Klick darauf darf die zweite nicht
     mittragen.
   - Neu `confirmation_gate::answer_shown()`: Die Chat-Engine meldet nach
@@ -36,7 +273,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Zustimmung der Person selbst gesehen hat (#168). Bisher entschied allein das
   Modell des Agenten. Am 22.10. legte der Tutor auf der Testinstanz eine Aufgabe ohne
   Rueckfrage an, und eine Fragensammlung nach einem „Ja“ auf eine reine
-  Textfrage (Moodle_Agent#35).
+  Textfrage.
   - `confirmation_gate` merkt sich jede Vorschau (`requires_confirmation`):
     Person, Werkzeug, Fingerabdruck der Argumente.
   - Die Chat-Engine meldet jede Nachricht der Person. Ein Klick auf die
@@ -54,7 +291,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Gilt nur fuer Aufrufe mit einem Token der Chat-Engine. Andere MCP-Clients
     (persoenliche Tokens, OAuth-Apps) fragen selbst und bleiben unveraendert.
   - Kein Token reist durch den Agenten. Er muss nichts aendern, damit es
-    sicher ist; Moodle_Agent#35 macht den Ablauf nur sauberer.
+    sicher ist; eine Anpassung des Agenten macht den Ablauf nur sauberer.
 
 ## [1.16.3] – 2026-10-22
 

@@ -22,4 +22,14 @@
     <name>Lucide icons licence</name>
     <license>ISC</license>
   </library>
+  <library>
+    <location>vendor/smalot/pdfparser</location>
+    <name>PdfParser</name>
+    <description>Pure-PHP library that reads and extracts text from PDF files. Used by the upload text reader as a fallback when no pdftotext binary is configured.</description>
+    <version>2.12.5</version>
+    <license>LGPL</license>
+    <licenseversion>3.0</licenseversion>
+    <copyright>Copyright (c) Sebastien MALOT</copyright>
+    <repository>https://github.com/smalot/pdfparser</repository>
+  </library>
 </libraries>

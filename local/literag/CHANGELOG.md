@@ -5,6 +5,22 @@ All notable changes to the **local_literag** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] – 2026-11-05
+
+### Fixed
+
+- The tutor now answers only from the configured knowledge base. `tutor_chat`
+  ignored the `search_course_ids` argument the chat engine sends, so it
+  searched the current course or, without one, every enrolled course. It now:
+  - searches the own course first inside a course; when that finds nothing and
+    the knowledge base holds further courses, the answer offers to search them,
+    and a yes on the next turn searches the whole set for the original question;
+  - searches the whole selection at once where there is no course (dashboard);
+  - drops courses the person is not enrolled in, keeps the surface course, and
+    applies the chat engine's course limit;
+  - searches nothing for an empty selection, instead of all enrolments.
+  Clients that do not send `search_course_ids` keep the earlier behaviour.
+
 ## [1.1.3] – 2026-10-20
 
 ### Behoben

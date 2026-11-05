@@ -149,6 +149,12 @@ class moodle_message_course_students implements ai_tool {
                         ],
                     ],
                 ],
+                'preview' => [
+                    'type' => 'object',
+                    'properties' => [
+                        'card_summary' => card_summary::schema(),
+                    ],
+                ],
                 'message_preview' => ['type' => 'string'],
                 'summary' => ['type' => 'string'],
             ],
@@ -238,6 +244,10 @@ class moodle_message_course_students implements ai_tool {
                 'sent_count' => 0,
                 'skipped' => [],
                 'message_preview' => shorten_text($message, 200),
+                'preview' => card_summary::only('cardsummary_message_students', (object) [
+                    'count' => count($recipients),
+                    'course' => format_string($course->fullname, true, ['context' => $context]),
+                ]),
                 'summary' => 'Ready to message ' . count($recipients) . ' student(s) in '
                     . format_string($course->fullname, true, ['context' => $context])
                     . '. Show the user the recipient list and the message, then call again with confirm=true.',

@@ -68,10 +68,10 @@ class moodle_selfstudy_create_quiz implements ai_tool {
             . 'only the topic, never invent questions yourself. The quiz is private to the user '
             . '(no course activity, no question bank entry); results feed Moodle competencies as '
             . 'evidence. Requires the teacher to have enabled self-study quizzes in the course; '
-            . 'a per-student daily limit applies. If the user has already asked to create/generate '
-            . 'the quiz and course_id/topic are known, call this with confirm=true. Otherwise call '
-            . 'once without confirm for a readiness preview, then call again with confirm=true after '
-            . 'the user confirms. Afterwards use moodle_selfstudy_get_quiz to fetch the questions '
+            . 'a per-student daily limit applies. Call once without confirm for a readiness preview, '
+            . 'show it and ask the user to confirm, then call again with confirm=true and the same '
+            . 'arguments after the user agreed (the site may refuse confirm=true without that '
+            . 'agreement). Afterwards use moodle_selfstudy_get_quiz to fetch the questions '
             . 'and quiz the user.';
     }
 
@@ -138,6 +138,7 @@ class moodle_selfstudy_create_quiz implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'course_fullname' => ['type' => 'string'],
                         'topic' => ['type' => 'string'],
                         'count' => ['type' => 'integer'],
@@ -232,7 +233,11 @@ class moodle_selfstudy_create_quiz implements ai_tool {
                 'created' => false,
                 'requires_confirmation' => true,
                 'quiz' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_selfstudy_quiz', (object) [
+                    'count' => $count,
+                    'topic' => $topic,
+                    'remaining' => $remaining,
+                ]),
                 'summary' => 'Ready to generate a personal ' . $count . '-question practice quiz about "'
                     . $topic . '" (' . $remaining . ' generation(s) left today). Call again with '
                     . 'confirm=true; this may take up to 60 seconds.',

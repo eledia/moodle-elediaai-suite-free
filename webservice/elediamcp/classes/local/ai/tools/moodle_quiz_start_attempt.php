@@ -61,14 +61,18 @@ class moodle_quiz_start_attempt implements ai_tool {
             . 'the attempt that is still open; it never opens a second one. Returns the attempt id, page count, '
             . 'current page and the time left. A new attempt with a time limit or a limited number of attempts '
             . 'starts the clock or uses up an attempt, so the first call only returns a preview '
-            . '(requires_confirmation true, with the time limit and the attempts left): tell the user and call '
+            . '(requires_confirmation true; preview holds quiz_name, attempt_number, attempts_allowed and '
+            . 'time_limit_minutes, null when there is no limit): tell the user and call '
             . 'again with confirm=true only after they agreed. Continuing an open attempt needs no confirmation. '
-            . 'check_in_browser is true when the quiz also has a Check button with hints and feedback during the '
-            . 'attempt: that step exists only in the browser; answers saved here are graded when the attempt is finished. '
+            . 'checkable is true when the quiz has a Check button with feedback during the attempt (immediate '
+            . 'feedback, interactive): check one answer with moodle_quiz_check_question when the user asks for it. '
+            . 'check_in_browser is true when the quiz has a Check step this server cannot offer (adaptive mode): '
+            . 'that step exists only in the browser; answers saved here are graded when the attempt is finished. '
             . 'When inline_supported is false (password, Safe Exam Browser, '
             . 'network or delay rules, sequential navigation or question types that cannot be shown here), '
             . 'send the user to fallback_url instead. Then use moodle_quiz_get_page, moodle_quiz_save_answers '
-            . 'and moodle_quiz_finish. Moodle grades the attempt; never answer questions for the user.';
+            . 'and moodle_quiz_finish; an attempt whose time is up can only be submitted with moodle_quiz_finish. '
+            . 'Moodle grades the attempt; never answer questions for the user.';
     }
 
     /**
@@ -104,8 +108,7 @@ class moodle_quiz_start_attempt implements ai_tool {
     public static function output_schema(): array {
         return [
             'type' => 'object',
-            'required' => ['attempt_id', 'state', 'page_count', 'current_page', 'inline_supported',
-                'fallback_url', 'summary'],
+            'required' => ['attempt_id', 'inline_supported', 'fallback_url', 'summary'],
             'properties' => [
                 'attempt_id' => ['type' => ['integer', 'null'],
                     'description' => 'Null when no attempt was started because the browser is needed.'],
@@ -117,9 +120,27 @@ class moodle_quiz_start_attempt implements ai_tool {
                 'time_left_seconds' => ['type' => ['integer', 'null']],
                 'requires_confirmation' => ['type' => 'boolean',
                     'description' => 'True when nothing was started: confirm with the user, then call again with confirm=true.'],
+                'preview' => [
+                    'type' => 'object',
+                    'description' => 'Only with requires_confirmation=true: what the confirmation shows the user. '
+                        . 'The facts are here and not at the top level.',
+                    'properties' => [
+                        'quiz_name' => ['type' => 'string'],
+                        'attempt_number' => ['type' => 'integer', 'description' => 'The attempt this would be.'],
+                        'attempts_allowed' => ['type' => ['integer', 'null'], 'description' => 'Null when unlimited.'],
+                        'time_limit_minutes' => ['type' => ['integer', 'null'], 'description' => 'Null when there is none.'],
+                        'card_summary' => [
+                            'type' => 'string',
+                            'description' => 'Plain text for the confirmation card, in the language of the user. '
+                                . 'Show this and not the English summary.',
+                        ],
+                    ],
+                ],
                 'attempts_allowed' => ['type' => ['integer', 'null'], 'description' => 'Null when unlimited.'],
                 'attempts_used' => ['type' => 'integer'],
                 'inline_supported' => ['type' => 'boolean'],
+                'checkable' => ['type' => 'boolean',
+                    'description' => 'True when single answers can be checked with moodle_quiz_check_question.'],
                 'check_in_browser' => ['type' => 'boolean',
                     'description' => 'True when hints and feedback during the attempt (Check button) exist only in the browser.'],
                 'unsupported_reason' => ['type' => ['string', 'null']],
@@ -235,28 +256,32 @@ class moodle_quiz_start_attempt implements ai_tool {
 
         $overdue = $resumed && (string) $attemptobj->get_state() === quiz_attempt::OVERDUE;
         $verb = $resumed ? 'Continued' : 'Started';
-        $checkinbrowser = quiz_attempt_helper::has_check_step($quizobj->get_quiz());
-        $checknote = $checkinbrowser
-            ? ' This quiz also has a Check step with hints and feedback; it exists only in the browser, answers saved '
-                . 'here are graded when the attempt is finished.'
-            : '';
+        $checkable = quiz_attempt_helper::is_checkable_quiz($quizobj->get_quiz());
+        $checkinbrowser = !$checkable && quiz_attempt_helper::has_check_step($quizobj->get_quiz());
+        if ($checkable) {
+            $checknote = ' This quiz has a Check step with feedback.';
+        } else if ($checkinbrowser) {
+            $checknote = ' This quiz also has a Check step with hints and feedback; it exists only in the browser, answers saved '
+                . 'here are graded when the attempt is finished.';
+        } else {
+            $checknote = '';
+        }
         $attemptid = (int) $attemptobj->get_attemptid();
         if ($overdue) {
             // The tool refuses pages and answers for an overdue attempt: say what is left to do.
             $graceend = $endtime !== false ? (int) $endtime + (int) ($quizobj->get_quiz()->graceperiod ?? 0) : 0;
             $summary = sprintf(
-                'Continued attempt %d, but its time is up. Answers can no longer be saved; submit the attempt with '
-                    . 'moodle_quiz_finish%s.',
+                'Continued attempt %d, but its time is up. Answers can no longer be saved; the attempt can only be '
+                    . 'submitted%s.',
                 $attemptid,
                 $graceend > 0 ? ' (the grace period lasts until ' . userdate($graceend) . ')' : ''
             );
         } else if ($inline) {
             $summary = sprintf(
-                '%s attempt %d with %d page(s). Load page %d with moodle_quiz_get_page.',
+                '%s attempt %d with %d page(s).',
                 $verb,
                 $attemptid,
-                $attemptobj->get_num_pages(),
-                $attemptobj->get_currentpage()
+                $attemptobj->get_num_pages()
             ) . $checknote;
         } else {
             $summary = sprintf('%s attempt %d, but some questions need the browser: open fallback_url.', $verb, $attemptid);
@@ -271,6 +296,7 @@ class moodle_quiz_start_attempt implements ai_tool {
             'time_limit_seconds' => $timelimit > 0 ? $timelimit : null,
             'time_left_seconds' => $overdue ? 0 : ($endtime !== false ? max(0, (int) $endtime - $now) : null),
             'inline_supported' => $inline,
+            'checkable' => $checkable,
             'check_in_browser' => $checkinbrowser,
             'unsupported_reason' => $inline ? null
                 : 'Questions in slots ' . implode(', ', $unsupported) . ' cannot be shown in the app.',
@@ -303,13 +329,7 @@ class moodle_quiz_start_attempt implements ai_tool {
      * @return array<string, mixed>
      */
     private static function confirmation_payload(quiz_settings $quizobj, int $used): array {
-        global $DB;
-
         $quiz = $quizobj->get_quiz();
-        $pages = (int) $DB->count_records_sql(
-            'SELECT COUNT(DISTINCT page) FROM {quiz_slots} WHERE quizid = :quizid',
-            ['quizid' => $quizobj->get_quizid()]
-        );
         $timelimit = (int) ($quiz->timelimit ?? 0);
         $allowed = (int) ($quiz->attempts ?? 0);
         $parts = [];
@@ -320,19 +340,34 @@ class moodle_quiz_start_attempt implements ai_tool {
             $parts[] = sprintf('it uses attempt %d of %d', $used + 1, $allowed);
         }
 
+        $minutes = $timelimit > 0 ? (int) ceil($timelimit / 60) : null;
+        $a = (object) [
+            'quiz' => format_string((string) $quiz->name),
+            'number' => $used + 1,
+            'allowed' => $allowed,
+            'minutes' => $minutes,
+        ];
+        $key = $allowed > 0 ? 'cardsummary_quiz_start_limited' : 'cardsummary_quiz_start';
+        $card = quiz_attempt_helper::person_string($key, 'webservice_elediamcp', $a);
+        if ($minutes !== null) {
+            $key = $minutes === 1 ? 'cardsummary_quiz_timelimit_one' : 'cardsummary_quiz_timelimit';
+            $card .= ' ' . quiz_attempt_helper::person_string($key, 'webservice_elediamcp', $a);
+        }
+
+        // What the confirmation shows is in `preview` only (#195): the card used to print state and counts
+        // from the top level, next to its text.
         return [
             'attempt_id' => null,
-            'state' => 'notstarted',
             'resumed' => false,
             'requires_confirmation' => true,
-            'attempts_allowed' => $allowed > 0 ? $allowed : null,
-            'attempts_used' => $used,
-            'page_count' => $pages,
-            'current_page' => 0,
-            'time_limit_seconds' => $timelimit > 0 ? $timelimit : null,
-            'time_left_seconds' => null,
+            'preview' => [
+                'quiz_name' => $a->quiz,
+                'attempt_number' => $used + 1,
+                'attempts_allowed' => $allowed > 0 ? $allowed : null,
+                'time_limit_minutes' => $minutes,
+                'card_summary' => $card,
+            ],
             'inline_supported' => true,
-            'unsupported_reason' => null,
             'fallback_url' => quiz_attempt_helper::view_url((int) $quizobj->get_cmid()),
             'summary' => 'Nothing was started. Starting a new attempt cannot be undone: '
                 . implode(' and ', $parts) . '. Ask the user, then call again with confirm=true.',

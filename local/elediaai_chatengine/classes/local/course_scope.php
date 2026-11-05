@@ -79,8 +79,8 @@ final class course_scope {
      * Not our number: the retrieval tool behind the agent validates
      * `course_ids` and rejects a list that is too long, so a list over the
      * limit would fail the whole turn rather than widen it. Twenty is what
-     * that tool accepted when this was written (MCP_Tools/server/validation.py,
-     * 20.09.2026) -- but it belongs to the backend and a backend may raise it,
+     * that tool accepted when this was written (20.09.2026) -- but it
+     * belongs to the backend and a backend may raise it,
      * so the effective value is the site setting `maxscopecourses` and this is
      * only its default. Read it through {@see limit()}.
      */

@@ -209,6 +209,7 @@ class moodle_create_activity implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'type' => ['type' => 'string'],
                         'name' => ['type' => 'string'],
                         'course_id' => ['type' => 'integer'],
@@ -313,7 +314,12 @@ class moodle_create_activity implements ai_tool {
                 'created' => false,
                 'requires_confirmation' => true,
                 'activity' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_create_activity', (object) [
+                    'type' => card_summary::module_name($type),
+                    'name' => $preview['name'],
+                    'course' => $preview['course_fullname'],
+                    'section' => $preview['section_name'],
+                ]),
                 'summary' => 'Ready to create ' . $type . ' "' . $preview['name'] . '" in section '
                     . $section . ' of ' . $preview['course_fullname'] . '. Call again with confirm=true to create.',
             ];

@@ -33,11 +33,21 @@ namespace local_elediaai_core\content;
  * sibling {@see content_extractor} does the same job for material that is
  * already an activity in a course.
  *
- * Deliberately dependency-free: docx and pdf are read with the means PHP
- * brings along. That is enough for text documents and fails honestly on
+ * docx is read with the means PHP brings along. PDFs go through a configured
+ * `pdftotext`, the bundled smalot/pdfparser and a simple reader, in that
+ * order (#196). That is enough for text documents and fails honestly on
  * scanned pages -- an OCR stack is a different decision.
  */
 final class upload_text_extractor {
+    /** @var int Largest PDF read, in bytes; a bigger one gives no text instead of a long request. */
+    public const MAX_PDF_BYTES = 31457280;
+
+    /** @var int Seconds the pdftotext binary may run. */
+    public const BINARY_TIMEOUT = 30;
+
+    /** @var int Most bytes taken from the output of pdftotext. */
+    private const BINARY_MAX_OUTPUT = 8388608;
+
     /**
      * Plain text from an uploaded file, chosen by its extension.
      *
@@ -143,16 +153,129 @@ final class upload_text_extractor {
     }
 
     /**
-     * Best-effort text extraction for text-based PDFs.
+     * Extract text from a PDF.
      *
-     * This intentionally does not OCR scanned PDFs. It decodes plain and
-     * Flate-compressed content streams, then pulls literal text operands
-     * used by common PDF text operators.
+     * Three ways, in this order, each one only when the one before found no
+     * text: a configured `pdftotext` binary (best fidelity), the bundled
+     * smalot/pdfparser (reads PDFs from Word and LibreOffice, which keep their
+     * text in embedded fonts), and the simple reader for plain text operators.
+     * A way that fails falls through to the next; nothing here throws.
+     * Scanned pages without a text layer give an empty result on every way.
      *
-     * @param string $content
+     * @param string $content Raw PDF content.
      * @return string
      */
     private static function extract_pdf_text(string $content): string {
+        if (strlen($content) > self::MAX_PDF_BYTES) {
+            return '';
+        }
+        foreach (['extract_pdf_with_binary', 'extract_pdf_with_parser', 'extract_pdf_text_simple'] as $way) {
+            try {
+                $text = self::$way($content);
+            } catch (\Throwable) {
+                // A damaged or unusual PDF is normal here: the next way gets its turn,
+                // and the caller tells the person that no text could be read.
+                continue;
+            }
+            // The form feed pdftotext puts after every page does not count as text.
+            if (trim($text, " \t\n\r\0\x0B\x0C") !== '') {
+                return $text;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * The path of the pdftotext binary: the setting, or `$CFG->pathtopdftotext`.
+     *
+     * @return string Empty when none is configured.
+     */
+    public static function pdftotext_path(): string {
+        global $CFG;
+        $path = trim((string) get_config('local_elediaai_core', 'pdftotext_path'));
+        if ($path === '' && !empty($CFG->pathtopdftotext)) {
+            $path = trim((string) $CFG->pathtopdftotext);
+        }
+        return $path;
+    }
+
+    /**
+     * Read a PDF with the configured pdftotext binary.
+     *
+     * @param string $content Raw PDF content.
+     * @return string Empty when no binary is configured or it found no text.
+     */
+    private static function extract_pdf_with_binary(string $content): string {
+        $binary = self::pdftotext_path();
+        if ($binary === '' || !is_file($binary) || !is_executable($binary) || !function_exists('proc_open')) {
+            return '';
+        }
+        $file = make_request_directory() . '/in.pdf';
+        if (file_put_contents($file, $content) === false) {
+            return '';
+        }
+        try {
+            return self::run_binary([$binary, '-enc', 'UTF-8', '-q', $file, '-']);
+        } finally {
+            @unlink($file);
+        }
+    }
+
+    /**
+     * Run a command without a shell, with a time limit and a limit on its output.
+     *
+     * @param string[] $command Program and arguments.
+     * @return string Standard output; empty on failure, timeout or too much output.
+     */
+    private static function run_binary(array $command): string {
+        $process = proc_open($command, [1 => ['pipe', 'w'], 2 => ['file', '/dev/null', 'w']], $pipes);
+        if (!is_resource($process)) {
+            return '';
+        }
+        stream_set_blocking($pipes[1], false);
+        $output = '';
+        $deadline = microtime(true) + self::BINARY_TIMEOUT;
+        $finished = false;
+        while (microtime(true) < $deadline && strlen($output) <= self::BINARY_MAX_OUTPUT) {
+            $chunk = fread($pipes[1], 65536);
+            if ($chunk !== false && $chunk !== '') {
+                $output .= $chunk;
+                continue;
+            }
+            if (feof($pipes[1])) {
+                $finished = true;
+                break;
+            }
+            usleep(20000);
+        }
+        fclose($pipes[1]);
+        if (!$finished) {
+            proc_terminate($process, 9);
+        }
+        $exitcode = proc_close($process);
+        return ($finished && $exitcode === 0) ? $output : '';
+    }
+
+    /**
+     * Read a PDF with the bundled pure-PHP parser.
+     *
+     * @param string $content Raw PDF content.
+     * @return string
+     */
+    private static function extract_pdf_with_parser(string $content): string {
+        require_once(__DIR__ . '/../../vendor/smalot/pdfparser/autoload.php');
+        $config = new \Smalot\PdfParser\Config();
+        $config->setRetainImageContent(false);
+        return (new \Smalot\PdfParser\Parser([], $config))->parseContent($content)->getText();
+    }
+
+    /**
+     * Extract text from simple PDFs with plain text operators.
+     *
+     * @param string $content Raw PDF content.
+     * @return string
+     */
+    private static function extract_pdf_text_simple(string $content): string {
         $streams = [];
         if (preg_match_all('/(<<.*?>>)\s*stream\r?\n(.*?)\r?\nendstream/s', $content, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {

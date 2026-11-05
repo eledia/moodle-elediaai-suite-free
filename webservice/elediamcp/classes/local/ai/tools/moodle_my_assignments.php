@@ -239,6 +239,7 @@ class moodle_my_assignments implements ai_tool {
         }
 
         require_once($CFG->dirroot . '/mod/assign/locallib.php');
+        require_once($CFG->dirroot . '/course/lib.php');
         require_once($CFG->libdir . '/gradelib.php');
 
         [$insql, $params] = $DB->get_in_or_equal(array_keys($coursemap), SQL_PARAMS_NAMED, 'cid');

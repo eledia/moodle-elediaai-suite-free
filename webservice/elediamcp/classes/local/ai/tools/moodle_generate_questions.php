@@ -195,6 +195,7 @@ class moodle_generate_questions implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'qbank_cmid' => ['type' => 'integer'],
                         'qbank_name' => ['type' => 'string'],
                         'qbank_action' => ['type' => 'string', 'description' => 'use or create.'],
@@ -339,7 +340,14 @@ class moodle_generate_questions implements ai_tool {
                 'created' => false,
                 'requires_confirmation' => true,
                 'result' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only(
+                    $qbankcm !== null ? 'cardsummary_generate_questions' : 'cardsummary_generate_questions_newbank',
+                    (object) [
+                        'count' => $count,
+                        'bank' => $qbankcm !== null ? $qbankcm->get_formatted_name() : '',
+                        'course' => format_string($course->fullname, true, ['context' => $coursecontext]),
+                    ]
+                ),
                 'summary' => 'Ready to generate ' . $count . ' question(s) (' . implode(', ', $questiontypes)
                     . ') into question bank "' . $preview['qbank_name'] . '". Call again with confirm=true '
                     . 'to generate; this may take up to 60 seconds.',

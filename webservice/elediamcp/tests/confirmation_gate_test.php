@@ -43,16 +43,22 @@ final class confirmation_gate_test extends advanced_testcase {
      * @param string $decision Card decision, or ''.
      * @param string $tool The tool.
      * @param array $args The previewed arguments.
+     * @param array|null $card The answer's confirmation payload; by default a card for the tool.
      */
     private function preview_then(
         int $userid,
         string $message,
         string $decision = '',
         string $tool = 'moodle_create_activity',
-        array $args = self::ARGS
+        array $args = self::ARGS,
+        ?array $card = ['required' => true, 'tooltitle' => '']
     ): void {
+        if ($card !== null && ($card['tooltitle'] ?? '') === '') {
+            $card['tooltitle'] = $tool;
+        }
         confirmation_gate::user_turn($userid, 'Lege Uebungsblatt 2 an');
         confirmation_gate::observe($tool, $args, self::PREVIEW, $userid);
+        confirmation_gate::answer_shown($userid, $card);
         $this->waitForSecond();
         confirmation_gate::user_turn($userid, $message, $decision);
     }
@@ -106,6 +112,58 @@ final class confirmation_gate_test extends advanced_testcase {
         $this->assertFalse($this->passes(2));
     }
 
+    public function test_a_typed_yes_without_a_card_approves_nothing(): void {
+        $this->resetAfterTest();
+        // The model fetched a preview but asked something else in plain text.
+        $this->preview_then(2, 'ja', '', 'moodle_create_activity', self::ARGS, null);
+        $this->assertFalse($this->passes(2));
+    }
+
+    public function test_an_answer_without_card_resets_an_earlier_card(): void {
+        $this->resetAfterTest();
+        confirmation_gate::user_turn(2, 'Lege Uebungsblatt 2 an');
+        confirmation_gate::observe('moodle_create_activity', self::ARGS, self::PREVIEW, 2);
+        confirmation_gate::answer_shown(2, ['required' => true, 'tooltitle' => 'moodle_create_activity']);
+        confirmation_gate::answer_shown(2, null);
+        $this->waitForSecond();
+        confirmation_gate::user_turn(2, 'ja');
+        $this->assertFalse($this->passes(2));
+    }
+
+    public function test_a_card_for_another_tool_approves_nothing(): void {
+        $this->resetAfterTest();
+        $card = ['required' => true, 'tooltitle' => 'moodle_update_course'];
+        $this->preview_then(2, 'Ausfuehren', 'confirm', 'moodle_create_activity', self::ARGS, $card);
+        $this->assertFalse($this->passes(2), 'click on a card of another tool');
+
+        $this->preview_then(2, 'ja', '', 'moodle_create_activity', self::ARGS, $card);
+        $this->assertFalse($this->passes(2), 'typed yes to a card of another tool');
+    }
+
+    public function test_a_card_without_title_still_approves_the_only_preview(): void {
+        $this->resetAfterTest();
+        $this->preview_then(2, 'Ausfuehren', 'confirm', 'moodle_create_activity', self::ARGS, ['required' => true]);
+        $this->assertTrue($this->passes(2));
+    }
+
+    public function test_a_confirming_call_without_the_lock_is_withheld_and_keeps_the_approval(): void {
+        global $CFG;
+        $this->resetAfterTest();
+        // The database lock of PostgreSQL is re-entrant within one connection; a file lock is not.
+        $CFG->lock_factory = '\core\lock\file_lock_factory';
+        $this->preview_then(2, 'ja');
+        $factory = \core\lock\lock_config::get_lock_factory('webservice_elediamcp_confirmations');
+        $held = $factory->get_lock('person2', 1);
+        $this->assertNotFalse($held);
+        try {
+            $this->assertFalse($this->passes(2), 'someone else is using this person\'s state');
+        } finally {
+            $held->release();
+        }
+        $this->assertDebuggingCalled();
+        $this->assertTrue($this->passes(2), 'the approval was not used up');
+    }
+
     public function test_decline_on_the_card_withholds(): void {
         $this->resetAfterTest();
         $this->preview_then(2, 'Abbrechen', 'decline');
@@ -139,6 +197,7 @@ final class confirmation_gate_test extends advanced_testcase {
             self::PREVIEW + ['recipient' => ['id' => 7]],
             2
         );
+        confirmation_gate::answer_shown(2, ['required' => true, 'tooltitle' => 'moodle_send_message']);
         $this->waitForSecond();
         confirmation_gate::user_turn(2, 'Senden', 'confirm');
         $this->assertTrue($this->passes(2, ['to_user_id' => 7, 'message' => 'Hallo'], 'moodle_send_message'));
@@ -163,7 +222,7 @@ final class confirmation_gate_test extends advanced_testcase {
     /**
      * Two writes previewed in one answer, card for the first (#168, tightened).
      *
-     * Max's agent shows a card only for the first write; a click on it must not
+     * The agent shows a card only for the first write; a click on it must not
      * also carry the second, which the person never saw on a card.
      *
      * @param array|null $card The confirmation payload of the answer.
@@ -264,5 +323,102 @@ final class confirmation_gate_test extends advanced_testcase {
         foreach (['nein', 'bitte', 'Ja, aber drei Fragen', 'Wie viele Abschnitte?', '', 'ja ja ja ja ja ja'] as $no) {
             $this->assertFalse(confirmation_gate::is_agreement($no), $no);
         }
+    }
+
+    /**
+     * A question is no agreement, and three words that answer questions as often are not either (#178 F7).
+     */
+    public function test_questions_and_ambiguous_words_are_no_agreement(): void {
+        foreach (['Ja?', 'Ok?', 'Klar?', 'Genau?', 'Ja, machen wir das?', 'Genau', 'Klar', 'Go', 'Genau so'] as $no) {
+            $this->assertFalse(confirmation_gate::is_agreement($no), $no);
+        }
+        foreach (['Ja, genau', 'Ok, klar', 'Ja klar!'] as $yes) {
+            $this->assertTrue(confirmation_gate::is_agreement($yes), $yes);
+        }
+    }
+
+    /**
+     * The preview and `confirm=true` in the same turn, as the 22.10. case happened (#178 F6.1).
+     */
+    public function test_preview_and_confirm_in_the_same_turn_is_withheld(): void {
+        $this->resetAfterTest();
+        confirmation_gate::user_turn(2, 'Lege Uebungsblatt 2 an');
+        confirmation_gate::observe('moodle_create_activity', self::ARGS, self::PREVIEW, 2);
+        $this->assertFalse($this->passes(2), 'no answer of the person lies between preview and confirm');
+    }
+
+    /**
+     * A second "ja" does not renew an approval that is still unused (#178 F6.3).
+     */
+    public function test_a_second_yes_does_not_renew_an_unused_approval(): void {
+        $this->resetAfterTest();
+        $this->preview_then(2, 'ja');
+        $this->waitForSecond();
+        confirmation_gate::user_turn(2, 'ja');
+        $this->assertFalse($this->passes(2), 'typed');
+
+        // The same with the click: a second click on a card is not a second approval.
+        $this->preview_then(2, 'Ausfuehren', 'confirm');
+        $this->waitForSecond();
+        confirmation_gate::user_turn(2, 'Ausfuehren', 'confirm');
+        $this->assertFalse($this->passes(2), 'click');
+    }
+
+    /**
+     * Tools that reach other people need the click (#178 F6.4).
+     *
+     * @dataProvider card_only_tools
+     * @param string $tool The tool.
+     * @param array $args Its arguments.
+     */
+    public function test_card_only_tools_need_the_click(string $tool, array $args): void {
+        $this->resetAfterTest();
+        $this->preview_then(2, 'ja', '', $tool, $args);
+        $this->assertFalse($this->passes(2, $args, $tool), 'typed yes');
+
+        $this->preview_then(2, 'Senden', 'confirm', $tool, $args);
+        $this->assertTrue($this->passes(2, $args, $tool), 'click');
+    }
+
+    /**
+     * The tools a typed agreement does not approve.
+     *
+     * @return array
+     */
+    public static function card_only_tools(): array {
+        return [
+            'send_message' => ['moodle_send_message', ['to_user_id' => 7, 'message' => 'Hallo']],
+            'message_course_students' => ['moodle_message_course_students', ['course_id' => 49, 'message' => 'Hallo']],
+            'grade_submission' => ['moodle_grade_submission', ['assignment_id' => 5, 'user_id' => 7, 'grade' => 80]],
+        ];
+    }
+
+    /**
+     * A preview older than the window cannot be approved any more (#178 F6.5).
+     */
+    public function test_an_expired_preview_cannot_be_approved(): void {
+        $this->resetAfterTest();
+        confirmation_gate::user_turn(2, 'Lege Uebungsblatt 2 an');
+        confirmation_gate::observe('moodle_create_activity', self::ARGS, self::PREVIEW, 2);
+        confirmation_gate::answer_shown(2, ['required' => true, 'tooltitle' => 'moodle_create_activity']);
+        $cache = \cache::make('webservice_elediamcp', 'confirmations');
+        $state = $cache->get(2);
+        $state['entries'][0]['time'] -= confirmation_gate::WINDOW + 1;
+        $cache->set(2, $state);
+        $this->waitForSecond();
+        confirmation_gate::user_turn(2, 'ja');
+        $this->assertFalse($this->passes(2));
+    }
+
+    /**
+     * Without a person nothing is remembered and nothing passes (#178 F6.5).
+     */
+    public function test_no_person_no_approval(): void {
+        $this->resetAfterTest();
+        confirmation_gate::user_turn(0, 'Lege Uebungsblatt 2 an');
+        confirmation_gate::observe('moodle_create_activity', self::ARGS, self::PREVIEW, 0);
+        confirmation_gate::answer_shown(0, ['required' => true, 'tooltitle' => 'moodle_create_activity']);
+        confirmation_gate::user_turn(0, 'ja');
+        $this->assertFalse($this->passes(0));
     }
 }

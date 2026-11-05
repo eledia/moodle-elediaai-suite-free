@@ -9,6 +9,14 @@ Feature: AI Suite Plugin Shell pages
     Given the following "users" exist:
       | username   | firstname | lastname |
       | regular    | Regular   | User     |
+      | learner    | Learner   | User     |
+    And the following "courses" exist:
+      | fullname | shortname |
+      | Course 1 | C1        |
+    And the following "course enrolments" exist:
+      | user    | course | role           |
+      | regular | C1     | editingteacher |
+      | learner | C1     | student        |
 
   Scenario: Admin sees the AI Suite dashboard with feature cards
     Given I log in as "admin"
@@ -64,13 +72,19 @@ Feature: AI Suite Plugin Shell pages
     And I should see "Every AI request"
     And I should see "Access and retention"
 
-  Scenario: Regular user does not see the audit section tab
+  Scenario: A teacher sees the launcher but not the audit section tab
     Given I log in as "regular"
     When I open the AI Suite
     Then I should see "AI Suite"
     And I should see "Overview"
     And "Audit" "link" should not exist in the ".lh-plugin-section-nav" "css_element"
     And "[data-region=suite-components]" "css_element" should not exist
+
+  Scenario: A student gets no launcher button and no navigation entry
+    Given I log in as "learner"
+    And I am on "Course 1" course homepage
+    Then ".lh-ai-launcher-host" "css_element" should not exist
+    And I should not see "AI Suite" in the ".primary-navigation" "css_element"
 
   Scenario: Admin sees every installed suite component with version and status
     Given I log in as "admin"

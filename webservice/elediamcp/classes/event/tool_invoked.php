@@ -25,7 +25,11 @@ use core\event\base;
  *
  * The event records the tool name, error state, and duration in milliseconds
  * in its "other" payload but never includes raw arguments or response bodies,
- * because they may contain personal data.
+ * because they may contain personal data. A failed call adds its error code and,
+ * for a business error, its message shortened to 200 characters; for an
+ * unexpected exception only the class of the exception, never its message or file.
+ * A write whose `confirm` Moodle held back for lack of the person's approval
+ * carries `withheld` (#178).
  *
  * @package     webservice_elediamcp
  * @author      Christopher Reimann <christopher.reimann@eledia.de>

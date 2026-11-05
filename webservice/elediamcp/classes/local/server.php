@@ -1001,6 +1001,9 @@ class server extends webservice_base_server {
         $start = microtime(true);
         $iserror = false;
         $errorcode = null;
+        $errormessage = null;
+        $exceptionclass = null;
+        $withheld = false;
 
         try {
             // Moodle decides whether the person agreed, not the agent's model
@@ -1010,7 +1013,6 @@ class server extends webservice_base_server {
             // person's answer. Other MCP clients ask the person themselves.
             $gated = token_manager::get_component_for_token((string) $this->token)
                 === confirmation_gate::GATED_COMPONENT;
-            $withheld = false;
             if ($gated) {
                 [$arguments, $withheld] = confirmation_gate::guard($name, $arguments, (int) $USER->id);
             }
@@ -1027,26 +1029,55 @@ class server extends webservice_base_server {
         } catch (tool_exception $ex) {
             $iserror = true;
             $errorcode = (string) ($ex->get_context()['errorcode'] ?? 'toolerror');
-            $this->emit_tool_result([
+            $errormessage = $ex->getMessage();
+            $result = [
                 'error' => $ex->getMessage(),
                 'context' => $ex->get_context(),
-            ], true, $ex->getMessage());
+            ];
+            // A tool may say that the call is worth repeating with corrected arguments (#195). The flag belongs
+            // beside the error, not inside its context; an error with a text for the person overrides it below.
+            if (is_bool($result['context']['retryable'] ?? null)) {
+                $result['retryable'] = $result['context']['retryable'];
+                unset($result['context']['retryable']);
+            }
+            // An error meant for the person (not for the model to repair) comes with its own text (#193).
+            $usermessage = $this->user_message_for($ex);
+            if ($usermessage !== null) {
+                $result['user_message'] = $usermessage;
+                $result['retryable'] = false;
+            }
+            $this->emit_tool_result($result, true, $ex->getMessage());
         } catch (\core\exception\required_capability_exception $ex) {
             // A missing permission is not an outage. Saying "internal error,
             // try again later" made people repeat the same failing call (#33).
             $iserror = true;
             $errorcode = (string) $ex->errorcode;
+            $errormessage = $ex->getMessage();
             $message = $ex->getMessage() . ' This is a missing permission, not a fault: do not retry the same call.';
             $this->emit_tool_result(['error' => $message], true, $message);
         } catch (\Throwable $ex) {
             $iserror = true;
             $errorcode = $ex instanceof moodle_exception ? (string) $ex->errorcode : 'internal';
+            // Only the class of the exception, neither its message nor its file: that tells a PHP error
+            // from a business error without putting paths or content into the answer or the log (#182).
+            $exceptionclass = get_class($ex);
             $this->log_throwable_for_debug($ex);
             $this->emit_tool_result([
                 'error' => get_string('err_internal_tool_error', 'webservice_elediamcp'),
+                'exception_class' => $exceptionclass,
             ], true, get_string('err_internal_tool_error', 'webservice_elediamcp'));
         } finally {
-            $this->record_tool_invocation($name, $iserror, $start, true, $arguments, $errorcode);
+            $this->record_tool_invocation(
+                $name,
+                $iserror,
+                $start,
+                true,
+                $arguments,
+                $errorcode,
+                $errormessage,
+                $exceptionclass,
+                $withheld
+            );
         }
     }
 
@@ -1124,7 +1155,17 @@ class server extends webservice_base_server {
             }
             $this->emit_tool_result(['error' => $message], true, $message);
             $errorcode = $ex instanceof moodle_exception ? (string) $ex->errorcode : 'internal';
-            $this->record_tool_invocation($name, true, microtime(true), false, [], $errorcode);
+            $known = $ex instanceof tool_exception || $ex instanceof \core\exception\required_capability_exception;
+            $this->record_tool_invocation(
+                $name,
+                true,
+                microtime(true),
+                false,
+                [],
+                $errorcode,
+                $known ? $ex->getMessage() : null,
+                $known ? null : get_class($ex)
+            );
             return;
         }
 
@@ -1298,6 +1339,34 @@ class server extends webservice_base_server {
     }
 
     /**
+     * The text of a tool error that is meant for the person, in their language.
+     *
+     * A tool error normally goes to the model, which words it for the person
+     * and, when an argument was wrong, corrects it and tries again. Some errors
+     * are a fact the person has to hear as it is ("this question was already
+     * checked"); the model must neither retell nor retry them. For those the
+     * language file has a string `usermessage_<errorcode>`; the scalar values of
+     * the error's context are its placeholders (`{$a->slot}`). Errors without
+     * such a string are unchanged (#193).
+     *
+     * @param tool_exception $ex The business error.
+     * @return string|null The text, or null when the error has none.
+     */
+    private function user_message_for(tool_exception $ex): ?string {
+        global $USER;
+        $context = $ex->get_context();
+        $code = (string) ($context['errorcode'] ?? '');
+        $key = 'usermessage_' . $code;
+        $strings = get_string_manager();
+        if ($code === '' || !$strings->string_exists($key, 'webservice_elediamcp')) {
+            return null;
+        }
+        $a = (object) array_filter($context, 'is_scalar');
+        $lang = !empty($USER->lang) ? $USER->lang : current_language();
+        return $strings->get_string($key, 'webservice_elediamcp', $a, $lang);
+    }
+
+    /**
      * Record an MCP tool invocation in the Moodle event log.
      *
      * @param string $toolname Tool name.
@@ -1306,6 +1375,9 @@ class server extends webservice_base_server {
      * @param bool $aitool Whether this was an AI-native tool.
      * @param array $arguments Tool arguments, to place the action.
      * @param string|null $errorcode Why it failed, for the action log.
+     * @param string|null $errormessage The message of a business error, shortened for the event (#182).
+     * @param string|null $exceptionclass The class of an unexpected exception, never its message (#182).
+     * @param bool $withheld Whether `confirm` was withheld for lack of the person's approval (#178).
      * @return void
      */
     protected function record_tool_invocation(
@@ -1314,23 +1386,41 @@ class server extends webservice_base_server {
         float $start,
         bool $aitool,
         array $arguments = [],
-        ?string $errorcode = null
+        ?string $errorcode = null,
+        ?string $errormessage = null,
+        ?string $exceptionclass = null,
+        bool $withheld = false
     ): void {
         try {
             $durationms = (int) round((microtime(true) - $start) * 1000);
             $userid = (int) ($this->userid ?? 0);
 
+            $other = [
+                'toolname' => $toolname,
+                'iserror' => $iserror,
+                'durationms' => $durationms,
+                'aitool' => $aitool,
+                'tokenfromquery' => $this->tokenfromquery,
+                'protocolversion' => $this->protocolversion,
+            ];
+            // Why a call failed, so a fault shows in the log without a trace tool (#182). No argument values.
+            if ($iserror) {
+                $other['errorcode'] = $errorcode ?? 'unknown';
+                if ($errormessage !== null && $errormessage !== '') {
+                    $other['errormessage'] = \core_text::substr(trim(preg_replace('/\s+/u', ' ', $errormessage)), 0, 200);
+                }
+                if ($exceptionclass !== null && $exceptionclass !== '') {
+                    $other['exceptionclass'] = $exceptionclass;
+                }
+            }
+            // A write that was held back for lack of the person's approval leaves a trace (#178).
+            if ($withheld) {
+                $other['withheld'] = true;
+            }
             $event = tool_invoked::create([
                 'context' => \core\context\system::instance(),
                 'userid' => $userid > 0 ? $userid : 0,
-                'other' => [
-                    'toolname' => $toolname,
-                    'iserror' => $iserror,
-                    'durationms' => $durationms,
-                    'aitool' => $aitool,
-                    'tokenfromquery' => $this->tokenfromquery,
-                    'protocolversion' => $this->protocolversion,
-                ],
+                'other' => $other,
             ]);
             $event->trigger();
 

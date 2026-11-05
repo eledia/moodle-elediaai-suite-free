@@ -29,6 +29,7 @@
 require_once(__DIR__ . '/../../config.php');
 
 use local_elediaai_core\feature\registry;
+use local_elediaai_core\local\launcher_access;
 use local_elediaai_core\output\component_overview;
 use local_elediaai_core\output\feature_grid;
 use local_elediaai_core\output\plugin_page;
@@ -38,6 +39,11 @@ use local_elediaai_core\output\section_nav;
 require_login();
 
 $context = \core\context\system::instance();
+
+// Ausblenden genuegt nicht: wer die Adresse kennt, kommt sonst trotzdem hin.
+if (!launcher_access::can_use()) {
+    throw new required_capability_exception($context, launcher_access::CAPABILITY, 'nopermissions', '');
+}
 
 // Suche und Zielgruppe reisen ueber GET, damit ein gefilterter Blick sich
 // verschicken und mit einem Lesezeichen versehen laesst -- und damit die Seite

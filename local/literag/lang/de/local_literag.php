@@ -161,6 +161,7 @@ $string['rate_limit_per_minute_desc'] = 'Burst-Limit für kostenpflichtige Tutor
     . 'Der Wert muss mindestens 1 sein.';
 $string['retrieval_candidates'] = 'Kandidaten-Chunks';
 $string['retrieval_candidates_desc'] = 'Wie viele Chunks die Volltextsuche vor der Berechtigungsfilterung zurückliefert.';
+$string['scope_offer'] = 'Im Material dieses Kurses habe ich dazu nichts gefunden. Soll ich auch in den übrigen Kursen der Wissensbasis suchen ({$a} weitere)?';
 $string['settings_hub_desc'] = 'Wählen Sie einen eLeDia.ai LiteRAG-Einstellungsbereich aus.';
 $string['settings_section_connection_desc'] = 'Endpunkt-URLs, gemeinsame Secrets und Not-Aus.';
 $string['settings_section_livetools_desc'] = 'Live-Zugriff auf Moodle-Tools über eLeDia MCP.';

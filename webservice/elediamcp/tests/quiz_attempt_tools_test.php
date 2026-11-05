@@ -236,10 +236,18 @@ final class quiz_attempt_tools_test extends advanced_testcase {
         $preview = moodle_quiz_start_attempt::execute($args, $this->student);
         $this->assertTrue($preview['requires_confirmation']);
         $this->assertNull($preview['attempt_id']);
-        $this->assertSame('notstarted', $preview['state']);
-        $this->assertSame(600, $preview['time_limit_seconds']);
-        $this->assertSame(2, $preview['attempts_allowed']);
-        $this->assertSame(0, $preview['attempts_used']);
+        // The facts are in `preview` only, so the card does not print them a second time (#195).
+        foreach (['state', 'time_limit_seconds', 'attempts_allowed', 'attempts_used', 'page_count'] as $key) {
+            $this->assertArrayNotHasKey($key, $preview, $key);
+        }
+        $this->assertSame($quiz->name, $preview['preview']['quiz_name']);
+        $this->assertSame(1, $preview['preview']['attempt_number']);
+        $this->assertSame(2, $preview['preview']['attempts_allowed']);
+        $this->assertSame(10, $preview['preview']['time_limit_minutes']);
+        $this->assertSame(
+            'Attempt 1 of 2 at the quiz "' . $quiz->name . '" will be started. The time limit of 10 minutes starts at once.',
+            $preview['preview']['card_summary']
+        );
         $this->assertStringContainsString('confirm=true', $preview['summary']);
         $this->assertSame(0, $DB->count_records('quiz_attempts', ['quiz' => $quiz->id]), 'Nothing was started.');
 
@@ -432,7 +440,8 @@ final class quiz_attempt_tools_test extends advanced_testcase {
             $this->assert_tool_error('attempt_not_found', $call);
         }
         $this->setUser($this->student);
-        $this->assertSame('inprogress', moodle_quiz_finish::execute(['attempt_id' => $attemptid], $this->student)['state']);
+        // The attempt of the owner is untouched: it is still open, so the preview comes back.
+        $this->assertTrue(moodle_quiz_finish::execute(['attempt_id' => $attemptid], $this->student)['requires_confirmation']);
     }
 
     /**
@@ -591,7 +600,17 @@ final class quiz_attempt_tools_test extends advanced_testcase {
 
         $this->assertFalse($preview['finished']);
         $this->assertTrue($preview['requires_confirmation']);
-        $this->assertSame(1, $preview['unanswered']);
+        foreach (['state', 'unanswered', 'max_grade'] as $key) {
+            $this->assertArrayNotHasKey($key, $preview, $key);
+        }
+        $this->assertSame(1, $preview['preview']['unanswered']);
+        $this->assertSame($quiz->name, $preview['preview']['quiz_name']);
+        $this->assertSame(
+            'The attempt at the quiz "' . $quiz->name . '" will be submitted. '
+                . $preview['preview']['answered'] . ' of ' . ($preview['preview']['answered'] + 1)
+                . ' questions are answered. Afterwards the answers can no longer be changed.',
+            $preview['preview']['card_summary']
+        );
         $this->assertSame('inprogress', $DB->get_field('quiz_attempts', 'state', ['id' => $attemptid]));
     }
 
@@ -902,17 +921,137 @@ final class quiz_attempt_tools_test extends advanced_testcase {
         });
     }
     /**
-     * A quiz with a Check step (hints and feedback while answering) says that this step is browser only.
+     * Saving names the saved answer per slot, and no summary of a quiz tool carries a tool name (#195).
+     */
+    public function test_save_shows_the_answers_and_summaries_have_no_tool_names(): void {
+        $quiz = $this->create_quiz([[['truefalse', 'true'], ['multichoice', 'two_of_four']]]);
+        $attemptid = $this->start($quiz);
+        $page = moodle_quiz_get_page::execute(['attempt_id' => $attemptid, 'page' => 0], $this->student);
+        $input = $this->question_in($page, 2)['input'];
+        $labels = [$input['options'][0]['label'], $input['options'][1]['label']];
+
+        $saved = moodle_quiz_save_answers::execute(['attempt_id' => $attemptid, 'answers' => [
+            ['slot' => 1, 'value' => 'False'],
+            ['slot' => 2, 'values' => $labels],
+        ]], $this->student);
+
+        $this->assertSame('False', $saved['answers_checked']->{'1'});
+        $this->assertSame($labels, $saved['answers_checked']->{'2'});
+        $this->assertStringNotContainsString('moodle_', $saved['summary']);
+        $this->assertStringNotContainsString('moodle_', $page['summary']);
+
+        $preview = moodle_quiz_finish::execute(['attempt_id' => $attemptid], $this->student);
+        $this->assertStringNotContainsString('moodle_', $preview['summary']);
+        $done = moodle_quiz_finish::execute(['attempt_id' => $attemptid, 'confirm' => true], $this->student);
+        $this->assertStringNotContainsString('moodle_', $done['summary']);
+    }
+
+    /**
+     * Number, matching and cleared answers in answers_checked (#195).
+     */
+    public function test_answers_checked_for_number_match_and_cleared_answers(): void {
+        $quiz = $this->create_quiz([[
+            ['numerical', 'pi', $this->unit_overrides(false)],
+            ['match', 'foursubq'],
+            ['shortanswer', 'frogtoad'],
+        ]]);
+        $attemptid = $this->start($quiz);
+        $page = moodle_quiz_get_page::execute(['attempt_id' => $attemptid, 'page' => 0], $this->student);
+        $match = $this->question_in($page, 2)['input'];
+        $stem = $match['stems'][0]['label'];
+        $choice = $match['options'][1]['label'];
+
+        // A bare number gets the unit shown next to it, an answer with its own unit is shown as typed.
+        $saved = moodle_quiz_save_answers::execute(['attempt_id' => $attemptid, 'answers' => [
+            ['slot' => 1, 'value' => '42'],
+            ['slot' => 2, 'values' => [$stem => $choice]],
+            ['slot' => 3, 'value' => 'frog'],
+        ]], $this->student);
+        $this->assertSame('42 m', $saved['answers_checked']->{'1'});
+        $this->assertSame([$stem . ' → ' . $choice], $saved['answers_checked']->{'2'});
+        $this->assertSame('frog', $saved['answers_checked']->{'3'});
+
+        $saved = moodle_quiz_save_answers::execute(['attempt_id' => $attemptid, 'answers' => [
+            ['slot' => 1, 'value' => '500 cm'],
+            ['slot' => 3, 'value' => ''],
+        ]], $this->student);
+        $this->assertSame('500 cm', $saved['answers_checked']->{'1'});
+        $this->assertNull($saved['answers_checked']->{'3'}, 'A cleared answer shows as null.');
+    }
+
+    /**
+     * An answer that fits no option or stem is refused with the valid options and retryable true, also when
+     * saving and for a matching question (#195).
+     */
+    public function test_save_answers_refuses_unmatched_answers_with_options(): void {
+        $quiz = $this->create_quiz([[['truefalse', 'true'], ['multichoice', 'two_of_four'], ['match', 'foursubq']]]);
+        $attemptid = $this->start($quiz);
+        $page = moodle_quiz_get_page::execute(['attempt_id' => $attemptid, 'page' => 0], $this->student);
+        $match = $this->question_in($page, 3)['input'];
+
+        $cases = [
+            [1, ['value' => 'maybe'], $this->question_in($page, 1)['input']['options'], false],
+            [2, ['values' => ['no such option']], $this->question_in($page, 2)['input']['options'], false],
+            [3, ['values' => [$match['stems'][0]['label'] => 'no such option']], $match['options'], true],
+            [3, ['values' => ['no such stem' => $match['options'][0]['label']]], $match['options'], true],
+        ];
+        foreach ($cases as [$slot, $answer, $options, $withstems]) {
+            try {
+                moodle_quiz_save_answers::execute(
+                    ['attempt_id' => $attemptid, 'answers' => [['slot' => $slot] + $answer]],
+                    $this->student
+                );
+                $this->fail('An answer that fits no option must be refused.');
+            } catch (tool_exception $ex) {
+                $context = $ex->get_context();
+                $this->assertSame('invalid_answer', $context['errorcode']);
+                $this->assertTrue($context['retryable']);
+                $this->assertSame($options, $context['options']);
+                $this->assertSame($withstems, isset($context['stems']));
+            }
+        }
+        // A label works for a matching question, a stem by its label too.
+        $saved = moodle_quiz_save_answers::execute(['attempt_id' => $attemptid, 'answers' => [
+            ['slot' => 3, 'values' => [$match['stems'][0]['label'] => $match['options'][0]['label']]],
+        ]], $this->student);
+        $this->assertSame(1, $saved['saved']);
+    }
+
+    /**
+     * One minute is "1 minute", and a limit shows in minutes on the card (#195).
+     */
+    public function test_start_card_names_one_minute(): void {
+        $quiz = $this->create_quiz([[['truefalse', 'true']]], ['timelimit' => 60]);
+        $preview = moodle_quiz_start_attempt::execute(['cmid' => (int) $quiz->cmid], $this->student);
+        $this->assertSame(
+            'Attempt 1 at the quiz "' . $quiz->name . '" will be started. The time limit of 1 minute starts at once.',
+            $preview['preview']['card_summary']
+        );
+        $this->assertSame(1, $preview['preview']['time_limit_minutes']);
+        $this->assertNull($preview['preview']['attempts_allowed']);
+    }
+
+    /**
+     * A quiz with a Check step says whether moodle_quiz_check_question takes it or only the browser has it.
      */
     public function test_start_attempt_flags_the_check_step(): void {
         $interactive = $this->create_quiz([[['truefalse', 'true']]], ['preferredbehaviour' => 'interactive']);
         $output = moodle_quiz_start_attempt::execute(['cmid' => (int) $interactive->cmid], $this->student);
         $this->assertTrue($output['inline_supported']);
+        $this->assertTrue($output['checkable']);
+        $this->assertFalse($output['check_in_browser']);
+        $this->assertStringContainsString('Check step with feedback', $output['summary']);
+        $this->assertStringNotContainsString('moodle_', $output['summary'], 'The summary is for the person, not for the model.');
+
+        $adaptive = $this->create_quiz([[['truefalse', 'true']]], ['preferredbehaviour' => 'adaptive']);
+        $output = moodle_quiz_start_attempt::execute(['cmid' => (int) $adaptive->cmid], $this->student);
+        $this->assertFalse($output['checkable']);
         $this->assertTrue($output['check_in_browser']);
-        $this->assertStringContainsString('Check step', $output['summary']);
+        $this->assertStringContainsString('only in the browser', $output['summary']);
 
         $deferred = $this->create_quiz([[['truefalse', 'true']]]);
         $output = moodle_quiz_start_attempt::execute(['cmid' => (int) $deferred->cmid], $this->student);
+        $this->assertFalse($output['checkable']);
         $this->assertFalse($output['check_in_browser']);
         $this->assertStringNotContainsString('Check step', $output['summary']);
     }
@@ -1134,7 +1273,7 @@ final class quiz_attempt_tools_test extends advanced_testcase {
         });
         $preview = moodle_quiz_finish::execute(['attempt_id' => $attemptid], $this->student);
         $this->assertTrue($preview['requires_confirmation']);
-        $this->assertSame('overdue', $preview['state']);
+        $this->assertArrayHasKey('card_summary', $preview['preview']);
         $done = moodle_quiz_finish::execute(['attempt_id' => $attemptid, 'confirm' => true], $this->student);
         $this->assertTrue($done['finished']);
 
@@ -1163,8 +1302,8 @@ final class quiz_attempt_tools_test extends advanced_testcase {
         ]);
 
         $preview = moodle_quiz_start_attempt::execute(['cmid' => (int) $quiz->cmid], $this->student);
-        $this->assertSame(60, $preview['time_limit_seconds']);
-        $this->assertSame(2, $preview['attempts_allowed']);
+        $this->assertSame(1, $preview['preview']['time_limit_minutes']);
+        $this->assertSame(2, $preview['preview']['attempts_allowed']);
 
         $first = $this->start($quiz);
         moodle_quiz_finish::execute(['attempt_id' => $first, 'confirm' => true], $this->student);
@@ -1351,8 +1490,8 @@ final class quiz_attempt_tools_test extends advanced_testcase {
         $this->assertSame($attemptid, $output['attempt_id']);
         $this->assertSame('overdue', $output['state']);
         $this->assertSame(0, $output['time_left_seconds']);
-        $this->assertStringContainsString('moodle_quiz_finish', $output['summary']);
-        $this->assertStringNotContainsString('Load page', $output['summary']);
+        $this->assertStringContainsString('can only be submitted', $output['summary']);
+        $this->assertStringNotContainsString('moodle_', $output['summary'], 'The summary is for the person, not for the model.');
     }
 
     /**

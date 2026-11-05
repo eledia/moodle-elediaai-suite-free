@@ -143,6 +143,10 @@ final class teacher_tools_test extends advanced_testcase {
         $preview = moodle_grade_submission::execute($args, $teacher);
         $this->assertTrue($preview['requires_confirmation']);
         $this->assertFalse($preview['preview']['marking_workflow']);
+        $this->assertSame(
+            fullname($student1) . ' will get 85 of 100 points for "Essay". The grade is visible at once.',
+            $preview['preview']['card_summary']
+        );
         $this->assertNull($DB->get_field('assign_grades', 'grade', ['userid' => $student1->id]) ?: null);
 
         $result = moodle_grade_submission::execute($args + ['confirm' => true], $teacher);
@@ -295,6 +299,29 @@ final class teacher_tools_test extends advanced_testcase {
     }
 
     /**
+     * update_activity previews with a card text and changes nothing (#198).
+     */
+    public function test_update_activity_preview_card(): void {
+        global $DB;
+        $this->resetAfterTest(true);
+        [, $teacher, , , $cm] = $this->grading_fixture();
+        $this->setUser($teacher);
+
+        $preview = moodle_update_activity::execute([
+            'cmid' => (int) $cm->id,
+            'name' => 'Essay v3',
+            'duedate' => time() + WEEKSECS,
+        ], $teacher);
+
+        $this->assertTrue($preview['requires_confirmation']);
+        $this->assertSame(
+            'In the activity "Essay" 2 detail(s) will be changed.',
+            $preview['preview']['card_summary']
+        );
+        $this->assertSame('Essay', $DB->get_field('assign', 'name', ['id' => (int) $cm->instance]));
+    }
+
+    /**
      * message_course_students resolves the not_submitted target and sends on confirm.
      */
     public function test_message_course_students(): void {
@@ -311,6 +338,10 @@ final class teacher_tools_test extends advanced_testcase {
         $preview = moodle_message_course_students::execute($args, $teacher);
         $this->assertTrue($preview['requires_confirmation']);
         $this->assertSame(1, $preview['recipient_count']);
+        $this->assertSame(
+            'A message will be sent to 1 person(s) in the course "' . $course->fullname . '".',
+            $preview['preview']['card_summary']
+        );
         $this->assertStringContainsString(fullname($student2), implode(' ', $preview['recipients_preview']));
 
         $result = moodle_message_course_students::execute($args + ['confirm' => true], $teacher);

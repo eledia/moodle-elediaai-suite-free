@@ -159,6 +159,7 @@ $string['rate_limit_per_minute'] = 'Tutor turns per user and minute';
 $string['rate_limit_per_minute_desc'] = 'Burst limit for paid tutor turns by one user. The value must be at least 1.';
 $string['retrieval_candidates'] = 'Candidate chunks';
 $string['retrieval_candidates_desc'] = 'How many chunks the full-text search returns before permission filtering.';
+$string['scope_offer'] = 'I found nothing on this in this course\'s material. Shall I also search the other courses of the knowledge base ({$a} more)?';
 $string['suite_feature_desc'] = 'One of the destinations course material can be ingested into - this one runs inside Moodle itself, rather than at an external service.';
 $string['suite_feature_detail'] = 'When the tutor cites the course rather than inventing an answer, this is what it asked. LiteRAG receives the material that AI Sources selected, keeps it searchable and returns the passages that fit a question. Administrators configure the backend, check its health and see what has been ingested.';
 $string['suite_feature_key_1'] = 'Receives and stores the material selected in AI Sources.';

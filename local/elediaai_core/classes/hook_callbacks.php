@@ -34,6 +34,7 @@ use core\hook\output\before_standard_head_html_generation;
 use core\hook\output\before_standard_top_of_body_html_generation;
 use core\hook\navigation\primary_extend;
 use local_elediaai_core\feature\registry;
+use local_elediaai_core\local\launcher_access;
 use moodle_url;
 
 /**
@@ -92,6 +93,9 @@ class hook_callbacks {
         if (in_array($PAGE->pagelayout, ['login', 'popup', 'embedded', 'maintenance'], true)) {
             return;
         }
+        if (!launcher_access::can_use()) {
+            return;
+        }
 
         $descriptors = registry::visible();
         if (empty($descriptors)) {
@@ -136,6 +140,9 @@ class hook_callbacks {
      */
     public static function extend_primary_navigation(primary_extend $hook): void {
         if (!isloggedin() || isguestuser()) {
+            return;
+        }
+        if (!launcher_access::can_use()) {
             return;
         }
         if (empty(registry::visible())) {

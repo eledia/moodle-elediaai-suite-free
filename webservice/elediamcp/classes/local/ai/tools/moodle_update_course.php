@@ -138,6 +138,7 @@ class moodle_update_course implements ai_tool {
                     'type' => 'object',
                     'properties' => [
                         'course_id' => ['type' => 'integer'],
+                        'card_summary' => card_summary::schema(),
                         'changes' => [
                             'type' => 'array',
                             'items' => [
@@ -262,7 +263,10 @@ class moodle_update_course implements ai_tool {
                 'updated' => false,
                 'requires_confirmation' => true,
                 'course' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_update_course', (object) [
+                    'course' => format_string($course->fullname, true, ['context' => $context]),
+                    'count' => count($changes),
+                ]),
                 'summary' => 'Ready to update Moodle course ' . $course->shortname
                     . '. Call again with confirm=true to update.',
             ];

@@ -53,6 +53,12 @@ class tutor_chat implements tool {
     /** @var int Room for a client's safety frame around the learner's message. */
     private const MAX_FRAME_CHARS = 1000;
 
+    /** @var string Kind of a stored pending action that offers to search the rest of the knowledge base. */
+    private const SCOPE_OFFER = 'scope_offer';
+
+    /** @var int Course ids taken from search_course_ids when the chat engine does not say otherwise. */
+    private const SCOPE_LIMIT = 20;
+
     /** @var client|null Injected LLM client (tests), or null to build on demand. */
     private ?client $llm;
 
@@ -140,6 +146,9 @@ class tutor_chat implements tool {
         $starttime = microtime(true);
 
         $courseid = (int) ($arguments['course_id'] ?? 0);
+        // The knowledge base the chat engine resolved for this turn:
+        // null when the client sent none, as clients before it did.
+        $scope = self::search_scope($arguments, $courseid, $userid);
         $answerstyle = in_array(($arguments['answer_style'] ?? ''), ['explain', 'hint', 'quiz'], true)
             ? (string) $arguments['answer_style'] : null;
         $userlang = isset($arguments['user_lang']) ? clean_param((string) $arguments['user_lang'], PARAM_LANG) : null;
@@ -191,6 +200,17 @@ class tutor_chat implements tool {
         $decision = in_array(($arguments['pending_decision'] ?? ''), ['confirm', 'decline'], true)
             ? (string) $arguments['pending_decision'] : '';
         $pending = $this->repo->get_pending_action($conversation);
+        // An offer to search the rest of the knowledge base, made on the
+        // previous turn, is answered by this one: a yes searches the whole set
+        // for the question asked then, anything else lets it lapse.
+        $scopeoffer = null;
+        if ($pending !== null && ($pending['kind'] ?? '') === self::SCOPE_OFFER) {
+            $this->repo->set_pending_action($conversation, null);
+            if ($decision === 'confirm' || confirmation::is_yes($question)) {
+                $scopeoffer = $pending;
+            }
+            $pending = null;
+        }
         if ($pending !== null) {
             $this->repo->set_pending_action($conversation, null);
             if ($decision === 'decline') {
@@ -226,19 +246,34 @@ class tutor_chat implements tool {
             }
         }
 
+        // The agreed offer answers the question asked with it, not the "yes".
+        $promptmessage = $scopeoffer !== null ? (string) ($scopeoffer['message'] ?? $message) : $message;
+        $searchquestion = $scopeoffer !== null ? (string) ($scopeoffer['question'] ?? $question) : $question;
+
         // Retrieval (skipped entirely in LLM-only mode and for action intents).
         $contextchunks = [];
         $numcandidates = 0;
+        $furthercourses = [];
         if ($ragenabled && $intent !== 'action') {
-            $courseids = $courseid > 0 ? [$courseid] : array_keys(enrol_get_users_courses($userid, true));
-            $candidates = (new retriever())->candidates($question, $courseids, config::retrieval_candidates());
+            if ($scope === null) {
+                // No knowledge base sent: the course, or without one all enrolments.
+                $courseids = $courseid > 0 ? [$courseid] : array_keys(enrol_get_users_courses($userid, true));
+            } else if ($scopeoffer === null && $courseid > 0 && in_array($courseid, $scope, true)) {
+                // In a course its own material comes first; the rest of the
+                // knowledge base is searched only once the person agrees.
+                $courseids = [$courseid];
+                $furthercourses = array_values(array_diff($scope, [$courseid]));
+            } else {
+                $courseids = $scope;
+            }
+            $candidates = (new retriever())->candidates($searchquestion, $courseids, config::retrieval_candidates());
             $numcandidates = count($candidates);
 
             $candidates = (new permission_filter($user))->filter($candidates);
 
             if (config::enable_rerank() && count($candidates) > config::context_chunks()) {
                 $reranker = new reranker($this->client());
-                $candidates = $reranker->rerank($question, $candidates, config::context_chunks());
+                $candidates = $reranker->rerank($searchquestion, $candidates, config::context_chunks());
                 $turnusage = self::add_usage($turnusage, $reranker->get_usage());
             } else {
                 $candidates = array_slice($candidates, 0, config::context_chunks());
@@ -303,7 +338,7 @@ class tutor_chat implements tool {
         }
 
         $messages = prompt_builder::build(
-            $message,
+            $promptmessage,
             $contextchunks,
             $history,
             $answerstyle,
@@ -376,6 +411,18 @@ class tutor_chat implements tool {
             ], true);
         }
 
+        // Nothing in this course, but the knowledge base holds more: offer it.
+        // A fixed sentence rather than the model's wording, so the offer is
+        // always made and the next turn knows exactly what was offered.
+        if (!empty($furthercourses) && empty($contextchunks) && $confirmation === null && $answerorigin !== 'mcp') {
+            $this->repo->set_pending_action($conversation, [
+                'kind' => self::SCOPE_OFFER,
+                'question' => $question,
+                'message' => $message,
+            ]);
+            $answer = rtrim($answer) . "\n\n" . self::string_in('scope_offer', $userlang, count($furthercourses));
+        }
+
         // The sources list (deduplicated, ordered, sources[0] = primary) was built above.
         // The url MUST be the module_url so the block can resolve the analytics cmid.
         $primarycmid = !empty($contextchunks) ? (int) $contextchunks[0]->cmid : 0;
@@ -389,7 +436,7 @@ class tutor_chat implements tool {
         $this->repo->touch($conversation, (string) $answerstyle);
 
         $latencyms = (int) round((microtime(true) - $starttime) * 1000);
-        $this->log_query($userid, $courseid, $question, $numcandidates, count($contextchunks), $latencyms);
+        $this->log_query($userid, $courseid, $searchquestion, $numcandidates, count($contextchunks), $latencyms);
 
         $this->record_provenance($userid, $courseid, $answer);
 
@@ -415,6 +462,46 @@ class tutor_chat implements tool {
         }
 
         return result::tool($answer, $structured, false);
+    }
+
+    /**
+     * The courses this turn may be answered from, as the client resolved them.
+     *
+     * The chat engine sends the knowledge base of the surface as
+     * `search_course_ids`: its own course plus the chosen ones the person is
+     * enrolled in, cut to its limit. That resolution is repeated here only as a
+     * guard, never as a widening: an id the person is not enrolled in is
+     * dropped, the surface course itself always stays (the placement has
+     * already decided the person may be there).
+     *
+     * @param array $arguments The tool arguments.
+     * @param int $courseid The surface course, 0 when there is none.
+     * @param int $userid The person asking.
+     * @return int[]|null Course ids, or null when the client sent no knowledge base.
+     */
+    private static function search_scope(array $arguments, int $courseid, int $userid): ?array {
+        if (!array_key_exists('search_course_ids', $arguments)) {
+            return null;
+        }
+        $raw = $arguments['search_course_ids'];
+        $ids = is_array($raw) ? $raw : explode(',', (string) $raw);
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn(int $id) => $id > 0)));
+
+        $enrolled = array_map('intval', array_keys(enrol_get_users_courses($userid, true, 'id')));
+        $ids = array_values(array_filter($ids, fn(int $id) => $id === $courseid || in_array($id, $enrolled, true)));
+
+        $limit = self::SCOPE_LIMIT;
+        if (class_exists(\local_elediaai_chatengine\local\connection::class)) {
+            $limit = \local_elediaai_chatengine\local\connection::max_scope_courses();
+        }
+        if (count($ids) > $limit) {
+            // The surface course must survive the cut.
+            $others = array_values(array_diff($ids, [$courseid]));
+            $ids = in_array($courseid, $ids, true)
+                ? array_merge([$courseid], array_slice($others, 0, $limit - 1))
+                : array_slice($ids, 0, $limit);
+        }
+        return $ids;
     }
 
     /**

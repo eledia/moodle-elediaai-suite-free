@@ -172,6 +172,7 @@ class moodle_create_course implements ai_tool {
                         'category_id' => ['type' => 'integer'],
                         'category_name' => ['type' => 'string'],
                         'visible' => ['type' => 'boolean'],
+                        'card_summary' => card_summary::schema(),
                     ],
                 ],
                 'summary' => ['type' => 'string'],
@@ -260,7 +261,10 @@ class moodle_create_course implements ai_tool {
                 'created' => false,
                 'requires_confirmation' => true,
                 'course' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_create_course', (object) [
+                    'name' => $fullname,
+                    'category' => $preview['category_name'],
+                ]),
                 'summary' => 'Ready to create Moodle course ' . $shortname . '. Call again with confirm=true to create.',
             ];
         }

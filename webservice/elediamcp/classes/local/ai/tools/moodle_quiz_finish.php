@@ -62,7 +62,9 @@ class moodle_quiz_finish implements ai_tool {
             . 'changed and Moodle grades the attempt. Returns the grade when the quiz shows it; it follows the '
             . 'review options of the quiz, and the gradebook can hide it separately (moodle_quiz_info reports '
             . 'that as grade_withheld). requires_manual_grading true means a teacher still grades some answers, '
-            . 'so the grade is provisional.';
+            . 'so the grade is provisional. With review_available true the user can see their answers and the '
+            . 'right answers with moodle_quiz_get_review. The preview holds quiz_name, answered and unanswered '
+            . 'questions.';
     }
 
     /**
@@ -94,12 +96,28 @@ class moodle_quiz_finish implements ai_tool {
     public static function output_schema(): array {
         return [
             'type' => 'object',
-            'required' => ['finished', 'requires_confirmation', 'state', 'unanswered', 'summary'],
+            'required' => ['finished', 'requires_confirmation', 'summary'],
             'properties' => [
                 'finished' => ['type' => 'boolean'],
                 'requires_confirmation' => ['type' => 'boolean'],
-                'state' => ['type' => 'string', 'enum' => ['inprogress', 'overdue', 'finished', 'abandoned']],
-                'unanswered' => ['type' => 'integer'],
+                'preview' => [
+                    'type' => 'object',
+                    'description' => 'Only with requires_confirmation=true: what the confirmation shows the user. '
+                        . 'The facts are here and not at the top level.',
+                    'properties' => [
+                        'quiz_name' => ['type' => 'string'],
+                        'answered' => ['type' => 'integer'],
+                        'unanswered' => ['type' => 'integer'],
+                        'card_summary' => [
+                            'type' => 'string',
+                            'description' => 'Plain text for the confirmation card, in the language of the user. '
+                                . 'Show this and not the English summary.',
+                        ],
+                    ],
+                ],
+                'state' => ['type' => 'string', 'enum' => ['inprogress', 'overdue', 'finished', 'abandoned'],
+                    'description' => 'Only after the attempt was submitted.'],
+                'unanswered' => ['type' => 'integer', 'description' => 'Only after the attempt was submitted.'],
                 'requires_manual_grading' => [
                     'type' => 'boolean',
                     'description' => 'True when a teacher still grades some answers: the grade is provisional.',
@@ -148,12 +166,29 @@ class moodle_quiz_finish implements ai_tool {
         $maxgrade = round((float) $attemptobj->get_quiz()->grade, 2);
 
         if (empty($arguments['confirm'])) {
+            $total = 0;
+            foreach ($attemptobj->get_slots() as $slot) {
+                if ($attemptobj->is_real_question((int) $slot)) {
+                    $total++;
+                }
+            }
+            $a = (object) [
+                'quiz' => format_string((string) $attemptobj->get_quiz()->name),
+                'answered' => max(0, $total - $unanswered),
+                'unanswered' => $unanswered,
+                'total' => $total,
+            ];
+            // What the confirmation shows is in `preview` only (#195): the card used to print state and the
+            // unanswered count from the top level, next to its text.
             return [
                 'finished' => false,
                 'requires_confirmation' => true,
-                'state' => (string) $attemptobj->get_state(),
-                'unanswered' => $unanswered,
-                'max_grade' => $maxgrade,
+                'preview' => [
+                    'quiz_name' => $a->quiz,
+                    'answered' => $a->answered,
+                    'unanswered' => $unanswered,
+                    'card_summary' => quiz_attempt_helper::person_string('cardsummary_quiz_finish', 'webservice_elediamcp', $a),
+                ],
                 'summary' => ($unanswered > 0
                         ? sprintf('%d question(s) are still unanswered. ', $unanswered)
                         : 'All questions are answered. ')
@@ -197,7 +232,7 @@ class moodle_quiz_finish implements ai_tool {
             'max_grade' => $maxgrade,
             'requires_manual_grading' => $manual,
             'review_available' => $reviewavailable,
-            'summary' => $summary . ($reviewavailable ? ' Use moodle_quiz_get_review for details.' : ''),
+            'summary' => $summary,
         ];
     }
 

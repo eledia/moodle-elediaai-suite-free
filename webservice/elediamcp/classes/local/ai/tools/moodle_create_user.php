@@ -153,6 +153,7 @@ class moodle_create_user implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'username' => ['type' => 'string'],
                         'firstname' => ['type' => 'string'],
                         'lastname' => ['type' => 'string'],
@@ -253,7 +254,10 @@ class moodle_create_user implements ai_tool {
                 'created' => false,
                 'requires_confirmation' => true,
                 'user' => null,
-                'preview' => $preview,
+                'preview' => $preview + card_summary::only('cardsummary_create_user', (object) [
+                    'username' => $preview['username'],
+                    'fullname' => trim($preview['firstname'] . ' ' . $preview['lastname']),
+                ]),
                 'summary' => 'Ready to create Moodle user ' . $record->username . '. Call again with confirm=true to create.',
             ];
         }

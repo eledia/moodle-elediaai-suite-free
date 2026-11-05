@@ -39,6 +39,24 @@ class moodle_generate_h5p implements ai_tool {
     /** @var string[] Supported H5P content type keys. */
     private const TYPES = ['dialogcards', 'blanks', 'singlechoice', 'multichoice'];
 
+    /** @var array<string, string> Spellings models and people use, by normalised form, mapped to a type. */
+    private const TYPE_ALIASES = [
+        'dialogcard' => 'dialogcards',
+        'flashcard' => 'dialogcards',
+        'flashcards' => 'dialogcards',
+        'karteikarten' => 'dialogcards',
+        'fillintheblanks' => 'blanks',
+        'fillintheblank' => 'blanks',
+        'fillblanks' => 'blanks',
+        'blank' => 'blanks',
+        'cloze' => 'blanks',
+        'lueckentext' => 'blanks',
+        'singlechoiceset' => 'singlechoice',
+        'multiplechoice' => 'multichoice',
+        'multiplechoiceset' => 'multichoice',
+        'multiplechoicequestion' => 'multichoice',
+    ];
+
     /**
      * Return the MCP tool name.
      *
@@ -63,14 +81,15 @@ class moodle_generate_h5p implements ai_tool {
      * @return string
      */
     public static function description(): string {
-        return 'Generates interactive H5P content (dialogcards, blanks, singlechoice or multichoice) as an '
-            . 'owner-bound review draft, then publishes that exact draft only after approval. '
-            . 'course content bank or as a course activity. Generation runs SERVER-SIDE through '
+        return 'Generates interactive H5P content of four types (dialogcards, blanks, singlechoice or '
+            . 'multichoice) as an owner-bound review draft, then publishes that exact draft only after approval, '
+            . 'either to the course content bank or as a course activity (see target). Generation runs SERVER-SIDE through '
             . 'the Moodle site\'s configured AI provider — pass only the topic and parameters, not '
             . 'the content itself. Optionally grounds the content in an existing course activity '
             . 'via source_cmid. Requires local/elediaai_h5pauthor:use in the course. Two-step flow: first '
             . 'call generates and returns the actual structured preview plus draft_token; call again with '
-            . 'that draft_token and confirm=true to publish it.';
+            . 'that draft_token and confirm=true to publish it. The preview also names the extra arguments '
+            . 'for the confirmed call in confirm_args: send them back unchanged.';
     }
 
     /**
@@ -90,9 +109,10 @@ class moodle_generate_h5p implements ai_tool {
                 ],
                 'type' => [
                     'type' => 'string',
-                    'enum' => self::TYPES,
-                    'description' => 'H5P content type: Dialog Cards (flashcards), Fill in the Blanks, '
-                        . 'or Single Choice Set quiz.',
+                    'description' => 'H5P content type, one of: dialogcards (Dialog Cards, flashcards), blanks '
+                        . '(Fill in the Blanks), singlechoice (Single Choice Set, one correct answer per question), '
+                        . 'multichoice (Multiple Choice, several correct answers). Common spellings such as '
+                        . '"Dialog Cards" or "fill in the blanks" are accepted.',
                 ],
                 'topic' => [
                     'type' => 'string',
@@ -131,7 +151,9 @@ class moodle_generate_h5p implements ai_tool {
                     'type' => 'string',
                     'enum' => ['contentbank', 'activity'],
                     'default' => 'contentbank',
-                    'description' => 'Where to publish: reusable content bank item or H5P course activity.',
+                    'description' => 'Where to publish. Use activity when the person wants the content visible '
+                        . 'to learners in the course (a course activity, optionally with section); use contentbank '
+                        . 'only when it should be stored for reuse and not appear in the course.',
                 ],
                 'section' => [
                     'type' => 'integer',
@@ -165,6 +187,14 @@ class moodle_generate_h5p implements ai_tool {
             'properties' => [
                 'created' => ['type' => 'boolean'],
                 'requires_confirmation' => ['type' => 'boolean'],
+                'confirm_args' => [
+                    'type' => 'object',
+                    'description' => 'Only in a preview: the arguments the confirmed call needs besides the '
+                        . 'preview\'s own. Send them back unchanged together with confirm=true.',
+                    'properties' => [
+                        'draft_token' => ['type' => 'string'],
+                    ],
+                ],
                 'item' => [
                     'type' => ['object', 'null'],
                     'properties' => [
@@ -177,6 +207,7 @@ class moodle_generate_h5p implements ai_tool {
                 'preview' => [
                     'type' => 'object',
                     'properties' => [
+                        'card_summary' => card_summary::schema(),
                         'course_fullname' => ['type' => 'string'],
                         'content_type' => ['type' => 'string'],
                         'h5p_library' => ['type' => 'string'],
@@ -207,6 +238,26 @@ class moodle_generate_h5p implements ai_tool {
     }
 
     /**
+     * Map the spelling of a content type to one of the supported types.
+     *
+     * Case, spaces, hyphens and underscores do not matter, and the usual English names and a few German
+     * ones are accepted ("Dialog Cards", "dialog_cards", "Fill in the Blanks"). Returns null for anything
+     * else, so a wrong type still fails with the list of supported types (#182).
+     *
+     * @param string $type What the caller sent.
+     * @return string|null One of TYPES, or null.
+     */
+    public static function normalise_type(string $type): ?string {
+        $key = \core_text::strtolower($type);
+        $key = preg_replace('/[\s_\-]+/u', '', $key) ?? '';
+        $key = strtr($key, ['ü' => 'ue', 'ä' => 'ae', 'ö' => 'oe']);
+        if (in_array($key, self::TYPES, true)) {
+            return $key;
+        }
+        return self::TYPE_ALIASES[$key] ?? null;
+    }
+
+    /**
      * Execute the tool for the authenticated user.
      *
      * @param array<string, mixed> $arguments Tool arguments.
@@ -218,11 +269,12 @@ class moodle_generate_h5p implements ai_tool {
             throw new tool_exception('local_elediaai_h5pauthor is not installed on this site.');
         }
 
-        $type = trim((string) ($arguments['type'] ?? ''));
-        if (!in_array($type, self::TYPES, true)) {
+        $typeinput = trim((string) ($arguments['type'] ?? ''));
+        $type = self::normalise_type($typeinput);
+        if ($type === null) {
             throw new tool_exception(
                 'Invalid type. Supported types: ' . implode(', ', self::TYPES) . '.',
-                ['type' => $type]
+                ['type' => $typeinput]
             );
         }
         $topic = trim((string) ($arguments['topic'] ?? ''));
@@ -331,11 +383,19 @@ class moodle_generate_h5p implements ai_tool {
         $preview['draft_token'] = $draft['drafttoken'];
         $preview['generated_content'] = $draft['payload'];
         $preview['expires'] = $draft['expires'];
+        $preview['card_summary'] = card_summary::text('cardsummary_generate_h5p', (object) [
+            'type' => card_summary::h5p_type_name($type),
+            'count' => $count,
+            'course' => $preview['course_fullname'],
+        ]);
         return [
             'created' => false,
             'requires_confirmation' => true,
             'item' => null,
             'preview' => $preview,
+            // The one argument the confirmed call needs besides the preview's own; the draft_token in the
+            // preview stays for agents that do not read confirm_args yet.
+            'confirm_args' => ['draft_token' => $draft['drafttoken']],
             'summary' => 'Generated an unpublished H5P draft for review. Inspect generated_content, then call '
                 . 'again with draft_token="' . $draft['drafttoken'] . '" and confirm=true to publish this exact draft.',
         ];
