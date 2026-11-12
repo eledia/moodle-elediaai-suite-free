@@ -66,30 +66,39 @@ Feature: Privacy guidelines, long-term memory opt-in and data deletion
   Scenario: Request deletion of all tutor data
     Given I log in as "student1"
     And I am on "Course 1" course homepage
-    And I set the field "I acknowledge the privacy guidelines." to "1"
-    And I click on "Agree and start" "button"
     When I click on "[data-action=privacy]" "css_element"
     And I set the field "Allow the tutor to remember information across conversations (long-term memory)" to "1"
     And I should see "Preference saved."
     And I click on "Delete all my tutor data" "button"
     And I click on "Yes, delete everything" "button"
-    Then I should see "Local tutor data deleted: 2 stored item(s)."
+    Then I should see "Local tutor data deleted: 1 stored item(s)."
     # A backend is configured here, so the tutor reports on what it asked the
     # service to delete rather than saying deletion is unsupported.
     And I should see "The external tutor service could not complete"
     When I reload the page
-    Then I should see "Before you use the tutor for the first time"
-    And the "Your message to the tutor" "field" should be disabled
+    Then the "Your message to the tutor" "field" should be enabled
 
   @javascript
-  Scenario: First use requires acknowledging the privacy guidelines
+  Scenario: By default the privacy guidelines are provided, not confirmed
+    # Art. 13 GDPR asks for information, not for confirmation (ai_suite#203).
     Given I log in as "student1"
+    And I am on "Course 1" course homepage
+    Then "[data-region=consent]" "css_element" should not exist
+    And the "Your message to the tutor" "field" should be enabled
+    When I click on "[data-action=privacy]" "css_element"
+    Then I should see "What is sent when you chat"
+
+  @javascript
+  Scenario: An institution can switch on a confirmation on first use
+    Given the following config values are set as admin:
+      | requireacknowledgement | 1 | block_elediaai_tutor |
+    And I log in as "student1"
     And I am on "Course 1" course homepage
     Then I should see "Before you use the tutor for the first time"
     And the "Your message to the tutor" "field" should be disabled
-    And the "Agree and start" "button" should be disabled
-    When I set the field "I acknowledge the privacy guidelines." to "1"
-    And I click on "Agree and start" "button"
+    And the "Confirm and start" "button" should be disabled
+    When I set the field "I have read the privacy guidelines." to "1"
+    And I click on "Confirm and start" "button"
     Then I should not see "Before you use the tutor for the first time"
     And the "Your message to the tutor" "field" should be enabled
     When I reload the page

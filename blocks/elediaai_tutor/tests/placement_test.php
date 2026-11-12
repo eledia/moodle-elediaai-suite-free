@@ -163,6 +163,7 @@ final class placement_test extends \advanced_testcase {
      */
     public function test_consent_gates_sending_not_looking(): void {
         $this->resetAfterTest();
+        set_config('requireacknowledgement', 1, 'block_elediaai_tutor');
         $course = $this->getDataGenerator()->create_course();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
         $blockcontext = $this->create_course_tutor_block((int) $course->id);
@@ -185,6 +186,24 @@ final class placement_test extends \advanced_testcase {
         consent::give((int) $student->id, \core\context\course::instance($course->id));
         $placement->require_send((int) $course->id, (int) $student->id);
         placement::forget_surface();
+    }
+
+    /**
+     * With the acknowledgement off (the default) a turn needs no consent.
+     *
+     * @return void
+     */
+    public function test_sending_needs_no_acknowledgement_by_default(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
+        $blockcontext = $this->create_course_tutor_block((int) $course->id);
+
+        $this->setUser($student);
+        placement::use_surface((int) $blockcontext->id, (int) $course->id);
+        (new placement())->require_send((int) $course->id, (int) $student->id);
+        placement::forget_surface();
+        $this->assertTrue(true);
     }
 
     /**

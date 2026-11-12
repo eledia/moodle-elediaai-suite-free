@@ -92,8 +92,8 @@ Feature: eLeDia.ai | Tutor chat block UI
     When I click on "[data-action=launch]" "css_element"
     Then ".elediaai-chat-modal" "css_element" should be visible
     And "textarea[data-region=input]" "css_element" should be visible
-    # Use the header close button: the backdrop (also data-action=close) is overlapped
-    # by the first-use consent panel and is not reliably clickable.
+    # Use the header close button: the backdrop (also data-action=close) lies
+    # under the panel and is not reliably clickable.
     When I click on "button[data-action=close]" "css_element"
     Then ".elediaai-chat-modal" "css_element" should not be visible
 

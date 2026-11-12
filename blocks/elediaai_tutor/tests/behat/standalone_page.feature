@@ -17,8 +17,8 @@ Feature: Standalone tutor chat page
   Scenario: Open the standalone chat page for global chat
     Given I log in as "student1"
     When I visit "/blocks/elediaai_tutor/view.php"
-    Then "[data-region=consent]" "css_element" should exist
-    And I should see "Before you use the tutor for the first time"
+    Then "textarea[data-region=input]" "css_element" should exist
+    And "[data-region=consent]" "css_element" should not exist
 
   @javascript
   Scenario: Global chat page respects the site toggle

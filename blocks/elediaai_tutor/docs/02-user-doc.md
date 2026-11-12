@@ -48,9 +48,8 @@ Key usage notes:
 - **New conversation** starts a fresh history.
 - When history is enabled, the history icon opens saved conversations.
 - In the data protection dialog, users can delete all of their local tutor
-  data: conversations, question analytics, consent, usage counters,
-  diagnostics and the long-term-memory preference. The first-use consent gate
-  is shown again afterwards. External deletion remains best-effort and its
+  data: conversations, question analytics, usage counters, diagnostics and
+  the long-term-memory preference. External deletion remains best-effort and its
   outcome is reported separately.
 - Deleting the Moodle account removes the same local tutor data automatically.
   If the external user-deletion tool is configured, Moodle requests deletion
@@ -176,7 +175,7 @@ https://YOURSITE/blocks/elediaai_tutor/view.php?courseid=N
 ```
 
 `?embedded=1` uses a reduced layout without Moodle chrome. Login, enrolment,
-capabilities, consent and limits apply just as they do on the web.
+capabilities and limits apply just as they do on the web.
 
 ---
 

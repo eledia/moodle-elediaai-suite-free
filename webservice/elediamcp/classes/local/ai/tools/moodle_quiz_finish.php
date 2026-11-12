@@ -20,6 +20,7 @@ namespace webservice_elediamcp\local\ai\tools;
 
 use mod_quiz\quiz_attempt;
 use moodle_exception;
+use question_state;
 use stdClass;
 use webservice_elediamcp\local\ai\ai_tool;
 use webservice_elediamcp\local\ai\tool_exception;
@@ -107,7 +108,11 @@ class moodle_quiz_finish implements ai_tool {
                     'properties' => [
                         'quiz_name' => ['type' => 'string'],
                         'answered' => ['type' => 'integer'],
-                        'unanswered' => ['type' => 'integer'],
+                        'unanswered' => ['type' => 'integer',
+                            'description' => 'Questions without an answer. Saved, not yet checked answers are not in it.'],
+                        'saved_unchecked' => ['type' => 'integer',
+                            'description' => 'Answers saved but not checked yet (questions with several tries). '
+                                . 'They count as answered and are graded on submit.'],
                         'card_summary' => [
                             'type' => 'string',
                             'description' => 'Plain text for the confirmation card, in the language of the user. '
@@ -172,10 +177,15 @@ class moodle_quiz_finish implements ai_tool {
                     $total++;
                 }
             }
+            $saved = $unanswered > 0 ? self::count_saved_unchecked($attemptobj) : 0;
+            // Moodle counts an answer that is saved but not checked yet (questions with several tries) as
+            // unanswered, although submitting grades it (#195). Those are answered for the person.
+            $empty = max(0, $unanswered - $saved);
             $a = (object) [
                 'quiz' => format_string((string) $attemptobj->get_quiz()->name),
-                'answered' => max(0, $total - $unanswered),
-                'unanswered' => $unanswered,
+                'answered' => max(0, $total - $empty),
+                'unanswered' => $empty,
+                'saved_unchecked' => $saved,
                 'total' => $total,
             ];
             // What the confirmation shows is in `preview` only (#195): the card used to print state and the
@@ -186,12 +196,16 @@ class moodle_quiz_finish implements ai_tool {
                 'preview' => [
                     'quiz_name' => $a->quiz,
                     'answered' => $a->answered,
-                    'unanswered' => $unanswered,
+                    'unanswered' => $empty,
+                    'saved_unchecked' => $saved,
                     'card_summary' => quiz_attempt_helper::person_string('cardsummary_quiz_finish', 'webservice_elediamcp', $a),
                 ],
-                'summary' => ($unanswered > 0
-                        ? sprintf('%d question(s) are still unanswered. ', $unanswered)
+                'summary' => ($empty > 0
+                        ? sprintf('%d question(s) are still unanswered. ', $empty)
                         : 'All questions are answered. ')
+                    . ($saved > 0
+                        ? sprintf('%d answer(s) are saved but not checked yet; submitting grades them. ', $saved)
+                        : '')
                     . 'After submitting, the answers cannot be changed. Call again with confirm=true to submit.',
             ];
         }
@@ -234,6 +248,37 @@ class moodle_quiz_finish implements ai_tool {
             'review_available' => $reviewavailable,
             'summary' => $summary,
         ];
+    }
+
+    /**
+     * Number of questions whose answer is saved but not checked yet.
+     *
+     * Moodle puts such a question in the state "todo", the same as an empty one, and
+     * get_number_of_unanswered_questions() counts both.
+     *
+     * @param quiz_attempt $attemptobj Attempt.
+     * @return int
+     */
+    private static function count_saved_unchecked(quiz_attempt $attemptobj): int {
+        $count = 0;
+        foreach ($attemptobj->get_slots() as $slot) {
+            if (!$attemptobj->is_real_question((int) $slot)) {
+                continue;
+            }
+            if ($attemptobj->get_question_state((int) $slot) !== question_state::$todo) {
+                continue;
+            }
+            $qa = $attemptobj->get_question_attempt((int) $slot);
+            $data = $qa->get_last_qt_data();
+            // Nothing saved: not asked, and some question types are not ready to judge an empty response.
+            if (!$data) {
+                continue;
+            }
+            if ($qa->get_question(false)->is_complete_response($data)) {
+                $count++;
+            }
+        }
+        return $count;
     }
 
     /**

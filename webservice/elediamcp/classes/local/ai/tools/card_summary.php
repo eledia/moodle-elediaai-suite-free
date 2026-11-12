@@ -38,7 +38,34 @@ final class card_summary {
      * @return string
      */
     public static function text(string $key, mixed $a = null): string {
-        return quiz_attempt_helper::person_string($key, 'webservice_elediamcp', $a);
+        return quiz_attempt_helper::person_string($key, 'webservice_elediamcp', self::plain($a));
+    }
+
+    /**
+     * The placeholders of a card as plain text (#201).
+     *
+     * The tools build names with format_string(), which returns HTML-escaped text: a course "A & B" arrives
+     * as "A &amp; B". The card is plain text that the browser escapes once more, so the entities would show.
+     * Only the card gets this; the fields for the model keep the escaped values.
+     *
+     * @param mixed $a Placeholders (object, array or string).
+     * @return mixed The same shape with the entities of string values decoded.
+     */
+    private static function plain(mixed $a): mixed {
+        if (is_string($a)) {
+            return html_entity_decode($a, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
+        if (is_array($a)) {
+            return array_map(static fn($value) => self::plain($value), $a);
+        }
+        if (is_object($a)) {
+            $copy = clone $a;
+            foreach (get_object_vars($copy) as $name => $value) {
+                $copy->{$name} = self::plain($value);
+            }
+            return $copy;
+        }
+        return $a;
     }
 
     /**

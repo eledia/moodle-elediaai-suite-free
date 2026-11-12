@@ -68,12 +68,27 @@ final class consent_test extends \advanced_testcase {
     }
 
     /**
-     * The gate throws for users without a consent record.
+     * Off by default: nobody is asked, nobody is refused (ai_suite#203).
      */
-    public function test_require_consent_throws(): void {
+    public function test_gate_is_off_by_default(): void {
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user();
 
+        $this->assertFalse(consent::is_required());
+        $this->assertTrue(consent::is_satisfied((int) $user->id));
+        consent::require_consent((int) $user->id);
+        $this->assertFalse(consent::has_consented((int) $user->id));
+    }
+
+    /**
+     * Switched on, the gate throws for users without a consent record.
+     */
+    public function test_require_consent_throws(): void {
+        $this->resetAfterTest();
+        set_config('requireacknowledgement', 1, 'block_elediaai_tutor');
+        $user = $this->getDataGenerator()->create_user();
+
+        $this->assertFalse(consent::is_satisfied((int) $user->id));
         $this->expectException(\moodle_exception::class);
         $this->expectExceptionMessage(get_string('error_consentrequired', 'block_elediaai_tutor'));
         consent::require_consent((int) $user->id);

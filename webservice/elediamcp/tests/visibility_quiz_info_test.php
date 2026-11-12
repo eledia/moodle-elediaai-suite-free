@@ -106,6 +106,7 @@ final class visibility_quiz_info_test extends advanced_testcase {
      * Control: with default review options the grade and the attempt marks stay visible.
      */
     public function test_marks_visible_by_default(): void {
+        global $DB;
         $this->resetAfterTest();
         [$course, $quiz] = $this->create_quiz();
         $student = $this->getDataGenerator()->create_and_enrol($course, 'student');
@@ -117,6 +118,12 @@ final class visibility_quiz_info_test extends advanced_testcase {
         $this->assertFalse($out['quizzes'][0]['grade_withheld']);
         $this->assertEqualsWithDelta(100.0, $out['attempts'][0]['grade'], 0.01);
         $this->assertFalse($out['attempts'][0]['grade_withheld']);
+        // The history carries the attempt id for the quiz tools, besides the running number (#195).
+        $this->assertSame(
+            (int) $DB->get_field('quiz_attempts', 'id', ['quiz' => $quiz->id, 'userid' => $student->id]),
+            $out['attempts'][0]['attempt_id']
+        );
+        $this->assertSame(1, $out['attempts'][0]['attempt']);
         $this->assertStringNotContainsString(self::HIDDEN_NOTE, $out['summary']);
     }
 

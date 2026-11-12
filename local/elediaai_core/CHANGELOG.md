@@ -4,6 +4,24 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.3.2] – 2026-11-12
+
+### Geaendert
+
+- Handbuch und Funktionsbeschreibung des Tutors: Die Bestaetigung der
+  Datenschutzhinweise ist optional und standardmaessig aus (ai_suite#203).
+
+
+## [1.3.1] – 2026-11-04
+
+### Behoben
+
+- #114: Eine Reservierung überschreibt keine zwischenzeitlich abgerechnete Nutzung mehr. `quota_manager::reserve_window()` las die ganze Zeile des Nutzungszählers und schrieb sie mit `update_record()` zurück; `commit_window()` ändert dieselben Zähler ohne den Quota-Lock. Wurde zwischen Lesen und Zurückschreiben eine Anfrage derselben Person abgerechnet, gingen `totaltokens`, `prompttokens`, `completiontokens` und `requestcount` verloren, und die schon freigegebene Reservierung erschien wieder. Der Verbrauch wurde dadurch zu niedrig erfasst (die Limits selbst wurden nicht umgangen). Jetzt erhöht ein atomares `UPDATE` nur `reservedtokens`. Die Schnittstelle (`reserve`, `commit`, `release` und die `*_for_action`-Varianten) ist unverändert, Aufrufer müssen nichts ändern.
+
+### Tests
+
+- Neu `tests/quota_manager_race_test.php`: Referenzablauf ohne Überschneidung und ein Ablauf, in dem eine Abrechnung zwischen dem Lesen und dem Schreiben einer Reservierung landet.
+
 ## [1.3.0] – 2026-11-04
 
 ### Hinzugefügt

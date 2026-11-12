@@ -176,9 +176,12 @@ class moodle_quiz_info implements ai_tool {
                     'description' => 'The user\'s own attempts; only when cmid was given.',
                     'items' => [
                         'type' => 'object',
-                        'required' => ['attempt', 'state', 'grade_withheld'],
+                        'required' => ['attempt_id', 'attempt', 'state', 'grade_withheld'],
                         'properties' => [
-                            'attempt' => ['type' => 'integer'],
+                            'attempt_id' => ['type' => 'integer',
+                                'description' => 'Id of the attempt: pass this, not attempt, to the quiz tools.'],
+                            'attempt' => ['type' => 'integer',
+                                'description' => 'Running number of the attempt (1, 2, ...). Not an id.'],
                             'state' => ['type' => 'string'],
                             'started_iso' => ['type' => ['string', 'null']],
                             'finished_iso' => ['type' => ['string', 'null']],
@@ -525,6 +528,7 @@ class moodle_quiz_info implements ai_tool {
                 }
             }
             $attempts[] = [
+                'attempt_id' => (int) $row->id,
                 'attempt' => (int) $row->attempt,
                 'state' => (string) $row->state,
                 'started_iso' => $started > 0 ? gmdate('c', $started) : null,

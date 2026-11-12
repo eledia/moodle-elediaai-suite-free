@@ -84,6 +84,7 @@ final class deletion_service_test extends \advanced_testcase {
      */
     public function test_complete_local_deletion_is_scoped_to_user(): void {
         $this->resetAfterTest();
+        set_config('requireacknowledgement', 1, 'block_elediaai_tutor');
         $alice = $this->getDataGenerator()->create_user();
         $bob = $this->getDataGenerator()->create_user();
         $this->seed_complete_local_data((int) $alice->id, 'alice');

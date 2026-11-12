@@ -210,6 +210,47 @@ final class card_summary_test extends advanced_testcase {
     }
 
     /**
+     * A name with "&" shows as typed on the card; the fields for the model keep the escaped value (#201).
+     */
+    public function test_card_shows_ampersand_in_names_as_typed(): void {
+        global $USER;
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course(['fullname' => 'Soll & Haben', 'numsections' => 2]);
+        $student = $this->getDataGenerator()->create_user(['firstname' => 'Stefan', 'lastname' => 'Student']);
+
+        $sections = moodle_manage_sections::execute(
+            ['course_id' => (int) $course->id, 'action' => 'create'],
+            $USER
+        );
+        $this->assertSame('A new section will be added to the course "Soll & Haben".', $sections['preview']['card_summary']);
+        $this->assertStringContainsString('Soll &amp; Haben', $sections['preview']['course_fullname']);
+
+        $activity = moodle_create_activity::execute([
+            'course_id' => (int) $course->id,
+            'type' => 'page',
+            'name' => 'Q & A',
+            'content' => '<p>Text</p>',
+            'section' => 1,
+        ], $USER);
+        $this->assertStringContainsString('the course "Soll & Haben"', $activity['preview']['card_summary']);
+        $this->assertStringContainsString('"Q & A"', $activity['preview']['card_summary']);
+        $this->assertStringNotContainsString('&amp;', $activity['preview']['card_summary']);
+        $this->assertSame('Soll &amp; Haben', $activity['preview']['course_fullname']);
+
+        $enrol = moodle_enrol_user::execute([
+            'user_id' => (int) $student->id,
+            'course_id' => (int) $course->id,
+            'role_shortname' => 'student',
+        ], $USER);
+        $this->assertSame(
+            'Stefan Student will be enrolled as Student in the course "Soll & Haben".',
+            $enrol['preview']['card_summary']
+        );
+        $this->assertSame('Soll &amp; Haben', $enrol['preview']['course_fullname']);
+    }
+
+    /**
      * A message to one person: the card names the recipient, not the message.
      */
     public function test_send_message_card(): void {

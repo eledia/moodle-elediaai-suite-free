@@ -615,6 +615,32 @@ final class quiz_attempt_tools_test extends advanced_testcase {
     }
 
     /**
+     * With several tries a saved answer is not checked yet; Moodle counts it as unanswered, the preview must not (#195).
+     */
+    public function test_finish_preview_counts_saved_unchecked_answers_as_answered(): void {
+        $quiz = $this->create_quiz(
+            [[['truefalse', 'true'], ['truefalse', 'true'], ['truefalse', 'true']]],
+            ['preferredbehaviour' => 'interactive']
+        );
+        $attemptid = $this->start($quiz);
+        moodle_quiz_save_answers::execute(
+            ['attempt_id' => $attemptid, 'answers' => [['slot' => 1, 'value' => '1'], ['slot' => 2, 'value' => '0']]],
+            $this->student
+        );
+
+        $preview = moodle_quiz_finish::execute(['attempt_id' => $attemptid], $this->student);
+
+        $this->assertSame(1, $preview['preview']['unanswered']);
+        $this->assertSame(2, $preview['preview']['saved_unchecked']);
+        $this->assertStringContainsString(
+            '2 of 3 questions are answered.',
+            $preview['preview']['card_summary']
+        );
+        $this->assertStringContainsString('1 question(s) are still unanswered', $preview['summary']);
+        $this->assertStringContainsString('2 answer(s) are saved but not checked yet', $preview['summary']);
+    }
+
+    /**
      * Confirmed finishing lets Moodle grade the attempt and records the quiz grade.
      */
     public function test_finish_with_confirm_grades_in_moodle(): void {

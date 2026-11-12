@@ -106,7 +106,7 @@ class ltm {
      * @return bool True when the server acknowledged the sync.
      */
     public static function sync_to_rag(int $userid, \context $context, ?adapter $adapter = null): bool {
-        if (!consent::has_consented($userid)) {
+        if (!consent::is_satisfied($userid)) {
             return false;
         }
 

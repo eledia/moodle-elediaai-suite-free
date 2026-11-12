@@ -19,10 +19,13 @@ declare(strict_types=1);
 namespace block_elediaai_tutor\local;
 
 /**
- * Documented privacy-guidelines acknowledgement (first-use consent).
+ * Optional documented acknowledgement before the first chat turn.
  *
- * Before the first chat turn every user must confirm that they acknowledge the
- * tutor's privacy guidelines. The confirmation is documented as one timestamped
+ * Off by default (ai_suite#203): privacy guidelines fulfil an information duty
+ * (Art. 13 GDPR) and need no confirmation. An institution that nevertheless
+ * wants a documented acknowledgement -- of usage rules or AI transparency
+ * notes, say -- switches it on with the admin setting requireacknowledgement.
+ * Then every user must confirm before the first chat turn. The confirmation is documented as one timestamped
  * row per user plus an audit event, and is enforced server-side (the UI gate
  * alone would not be evidence). The record is erased when the user is deleted
  * (event observer) or through the Privacy API; erasure re-arms the gate.
@@ -36,6 +39,25 @@ namespace block_elediaai_tutor\local;
 class consent {
     /** @var string Backing table. */
     public const TABLE = 'block_elediaai_tutor_consent';
+
+    /**
+     * Whether the site asks for the acknowledgement at all.
+     *
+     * @return bool
+     */
+    public static function is_required(): bool {
+        return (bool) get_config('block_elediaai_tutor', 'requireacknowledgement');
+    }
+
+    /**
+     * Whether the user may chat: the acknowledgement is off, or given.
+     *
+     * @param int $userid The user id.
+     * @return bool
+     */
+    public static function is_satisfied(int $userid): bool {
+        return !self::is_required() || self::has_consented($userid);
+    }
 
     /**
      * Whether the user has acknowledged the privacy guidelines.
@@ -96,14 +118,14 @@ class consent {
     }
 
     /**
-     * Enforce the gate: throw unless the user has consented.
+     * Enforce the gate: throw when it is on and the user has not consented.
      *
      * @param int $userid The acting user.
      * @return void
      * @throws \moodle_exception When the user has not acknowledged the guidelines.
      */
     public static function require_consent(int $userid): void {
-        if (!self::has_consented($userid)) {
+        if (!self::is_satisfied($userid)) {
             throw new \moodle_exception('error_consentrequired', 'block_elediaai_tutor');
         }
     }

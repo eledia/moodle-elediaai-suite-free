@@ -218,7 +218,7 @@ vendor/bin/phpcs --standard=moodle public/blocks/elediaai_tutor
 
 The conversation turns (questions and answers) are stored in Moodle by
 `local_elediaai_chatengine`, whose privacy provider exports and erases them.
-The block itself keeps the first-use consent, short redacted admin
-diagnostics and the long-term memory preference. A stateful
+The block itself keeps the confirmation on first use (only when that
+is switched on), short redacted admin diagnostics and the long-term memory preference. A stateful
 RAG/Tutor server keeps its own transcript according to its own policy. See
 [docs/privacy.md](docs/privacy.md).

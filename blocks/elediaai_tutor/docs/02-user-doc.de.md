@@ -20,9 +20,8 @@ Das Plugin selbst ist die Moodle-Oberfläche und der sichere Connector. Die eige
 
 1. Öffnen Sie einen Kurs oder eine Kursseite mit dem Block **eLeDia.ai Tutor**.
 2. Klicken Sie auf den Tutor-Button oder öffnen Sie den eingebetteten Chat.
-3. Bestätigen Sie die Datenschutzhinweise, falls diese zum ersten Mal angezeigt werden.
-4. Geben Sie eine Frage ein oder nutzen Sie eine vorgeschlagene Einstiegsfrage.
-5. Lesen Sie die Antwort und stellen Sie bei Bedarf eine Folgefrage.
+3. Geben Sie eine Frage ein oder nutzen Sie eine vorgeschlagene Einstiegsfrage.
+4. Lesen Sie die Antwort und stellen Sie bei Bedarf eine Folgefrage.
 
 Hinweise zur Bedienung:
 
@@ -83,7 +82,7 @@ Für einen funktionsfähigen Tutor müssen mindestens diese Punkte stimmen:
 | Chat-Tool-Name | MCP-Tool, das Chatantworten liefert, meist `tutor_chat`. |
 | Externer MCP-Service | Service aus MCP, über den nutzerbezogene Moodle-Tokens erzeugt werden. Nur für geerdete Antworten mit Wissensbasis erforderlich. |
 | Token-Lebensdauer | Gültigkeitsdauer der serverseitigen Moodle-MCP-Tokens. |
-| Datenschutztext | Hinweis, den Nutzer/innen vor dem ersten Chat bestätigen. |
+| Datenschutztext | Einrichtungsspezifischer Text der Datenschutzhinweise, jederzeit über das Schild im Tutor erreichbar. |
 | Globaler Chat / Kurs-Chat | Legt fest, ob allgemeine und kursbezogene Gespräche erlaubt sind. |
 
 Der reine LLM-Modus (Antworten ohne Retrieval und ohne Rückruf in Moodle) benötigt keinen externen MCP-Connector; er kommt zum Einsatz, wenn ein Kurs keine Wissensbasis hat.
@@ -121,12 +120,12 @@ Der Tutor arbeitet serverseitig. Der Browser spricht nur mit Moodle, nicht direk
 
 Wichtig für den Betrieb:
 
-- Nutzer/innen müssen die Datenschutzhinweise vor dem ersten Chat bestätigen.
+- Die Datenschutzhinweise werden bereitgestellt; Art. 13 DSGVO verlangt Information, keine Zustimmung. Wer trotzdem eine dokumentierte Kenntnisnahme braucht, schaltet „Bestätigung bei der ersten Nutzung verlangen“ ein (standardmäßig aus, ai_suite#203).
 - Moodle speichert nur notwendige lokale Referenzen, zum Beispiel Conversation-IDs und Vorschautexte.
 - Vollständige Transkripte liegen beim angebundenen Tutor-/RAG-Dienst, sofern dieser sie speichert.
 - „Alle meine Tutor-Daten löschen“ entfernt lokale Gesprächszeiger,
-  Fragenprotokolle, Consent, Nutzungszähler, Diagnostik und die LTM-Präferenz.
-  Danach ist die First-Use-Bestätigung erneut erforderlich. Wenn das Backend
+  Fragenprotokolle, Nutzungszähler, Diagnostik und die LTM-Präferenz.
+  Wenn das Backend
   Löschwerkzeuge bereitstellt, wird die externe Löschung zusätzlich best effort
   angefordert und ihr Ergebnis separat angezeigt.
 - Die reguläre Moodle-Kontolöschung entfernt dieselben lokalen Tutor-Daten

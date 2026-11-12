@@ -19,32 +19,48 @@ the other still held the data.
 
 What the block still holds itself:
 
-- `block_elediaai_tutor_consent` — the documented acknowledgement
+- `block_elediaai_tutor_consent` — the confirmations on first use, only when
+  that is switched on
 - `block_elediaai_tutor_diag` — short, redacted admin diagnostics
 - the long-term memory preference (a user preference)
 
 All of it is **exported** and **deleted** by the block's privacy provider for
 subject access and erasure requests, scoped to the system context.
 
-## First-use consent (documented)
+## Privacy guidelines: provided, not acknowledged
 
-Before the first chat turn every user must acknowledge the privacy guidelines
-in the chat panel. The guidelines text shown can be replaced with
-institution-specific content via the **Privacy guidelines text** admin setting
-(the memory opt-in and deletion controls always remain). The acknowledgement
-is:
+The privacy guidelines fulfil the information duty of Art. 13 GDPR. They are
+**provided**, always one click away (the shield in the chat header, under the
+dashboard greeting and in the conversation footer), and by default
+are **not confirmed**: no checkbox, no button, no gate before the first turn
+(ai_suite#203).
 
-- **Enforced server-side** — the block's placement refuses a turn without a
-  consent record before the engine sends anything, so the interface gate cannot
-  be bypassed.
-- **Documented** in table `block_elediaai_tutor_consent` (one row per user:
-  `userid`, `timecreated`) plus an auditable
-  `\block_elediaai_tutor\event\consent_given` event in the standard log.
-- **Deleted with the user**: the regular Moodle account-deletion flow invokes
-  the plugin's complete deletion service before and after the core
-  `user_deleted` event; the privacy provider also exports the consent timestamp
-  and deletes it on erasure requests. After erasure the gate re-arms and the
-  user is asked again.
+Up to 1.0.12 the tutor asked every user to confirm the guidelines before the
+first chat turn ("Agree and start"). Since 1.0.13 that is an admin setting,
+**Require confirmation on first use** (`requireacknowledgement`), and it is
+**off by default**: the GDPR does not ask for a confirmation, a confirmation in
+front of the chat can be mistaken for a consent the processing does not rest
+on, and a ticked box proves nothing the institution needs. Some institutions
+still want a documented acknowledgement, for instance of usage rules or AI
+transparency notes; they switch it on. Then:
+
+- the panel asks for the confirmation ("Confirm and start") before the first
+  turn, and the placement refuses a turn without one, server-side;
+- the confirmation is documented in `block_elediaai_tutor_consent` (one row
+  per user: `userid`, `timecreated`) plus the
+  `\block_elediaai_tutor\event\consent_given` event;
+- it is exported and erased like the rest; after "Delete all my tutor data"
+  the user is asked again.
+
+Rows already stored from earlier versions stay and are used again when the
+setting is switched on.
+
+The guidelines text shown can be replaced with institution-specific content via
+the **Privacy guidelines text** admin setting (the memory opt-in and deletion
+controls always remain).
+
+The **long-term memory** opt-in is unaffected: that one is a real consent,
+voluntary, off by default and revocable.
 
 ## Sent to the external RAG server
 
@@ -101,8 +117,8 @@ content itself.
 The chat header has a **Privacy guidelines** button that shows learners an AI
 accuracy warning, what is sent and stored, the long-term memory opt-in, and a
 **Delete all my tutor data** action. Deletion removes local conversation
-metadata, question analytics, documented consent, usage counters, diagnostics
-and the LTM preference. The first-use consent gate is re-armed immediately.
+metadata, question analytics, usage counters, diagnostics, the LTM preference
+and, if stored, the confirmation on first use.
 When the admin has configured a RAG delete tool, deletion is propagated to the
 external server too; unsupported or failed external deletion is reported
 separately and never blocks the local erase. Every request is recorded via the

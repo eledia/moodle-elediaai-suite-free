@@ -38,8 +38,8 @@ Feature: eLeDia.ai | Tutor course context gate
     And I log out
     And I log in as "student1"
     When I am on the "C1" "block_elediaai_tutor > coursechat" page
-    Then I should see "Before you use the tutor for the first time"
-    And ".elediaai-chat-page" "css_element" should exist
+    Then ".elediaai-chat-page" "css_element" should exist
+    And "textarea[data-region=input]" "css_element" should exist
 
   @javascript
   Scenario: Settings of a tutor block inside an activity open without a coding error

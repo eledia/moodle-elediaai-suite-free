@@ -140,7 +140,7 @@ vendor/bin/phpcs --standard=moodle blocks/elediaai_tutor
 
 Die Gesprächsschritte (Fragen und Antworten) speichert
 `local_elediaai_chatengine` in Moodle; dessen Privacy-Provider exportiert und
-löscht sie. Der Block selbst hält die Zustimmung bei der ersten Nutzung, kurze
-bereinigte Diagnosedaten für Admins und die Einstellung zum Langzeitgedächtnis.
+löscht sie. Der Block selbst hält die Bestätigung bei der ersten Nutzung (nur wenn
+eingeschaltet), kurze bereinigte Diagnosedaten für Admins und die Einstellung zum Langzeitgedächtnis.
 Ein zustandsbehafteter RAG-/Tutor-Server führt ein eigenes Transkript nach
 seinen eigenen Regeln. Details stehen in [docs/privacy.md](docs/privacy.md).

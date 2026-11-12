@@ -661,10 +661,16 @@ final class quota_manager {
 
             $now = time();
             if ($row) {
-                $row->reservedtokens = (int) $row->reservedtokens + $amount;
-                $row->component = $component;
-                $row->timemodified = $now;
-                $DB->update_record(self::TABLE, $row);
+                // Increment in the database instead of writing the row back: commit_window() settles the same
+                // counters without this lock, and a stale write-back would drop usage settled in between.
+                $DB->execute(
+                    'UPDATE {' . self::TABLE . '}
+                        SET reservedtokens = reservedtokens + :amount,
+                            component = :component,
+                            timemodified = :timemodified
+                      WHERE id = :id',
+                    ['amount' => $amount, 'component' => $component, 'timemodified' => $now, 'id' => $row->id]
+                );
             } else {
                 $DB->insert_record(self::TABLE, (object) ($params + [
                     'prompttokens' => 0,

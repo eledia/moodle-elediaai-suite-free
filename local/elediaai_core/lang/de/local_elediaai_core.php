@@ -209,7 +209,7 @@ $string['feature_tutor_desc'] = 'Persönlicher KI-Tutor für kontextbezogene Ler
 $string['feature_tutor_detail'] = 'Tutor soll Lernende stärker individuell begleiten als ein allgemeiner Chat. Die Funktion beantwortet Fragen im Kurskontext, unterstützt bei Verständnisproblemen und kann Lernpfade personalisierter machen. Didaktisch ist das interessant für selbstgesteuerte Lernphasen, in denen Lehrende nicht permanent verfügbar sind.';
 $string['feature_tutor_install_desc'] = 'Installieren Sie eLeDia.ai | Tutor, um kontextbezogene Lernbegleitung mit kursbewusstem Chat und gefuehrter Unterstuetzung zu nutzen.';
 $string['feature_tutor_key_1'] = 'Stellt einen lernendenseitigen KI-Tutor-Block mit kontextbezogener Gesprächsunterstützung bereit.';
-$string['feature_tutor_key_2'] = 'Unterstützt konfigurierbare Persona, Branding, Einwilligung und Long-Term-Memory-Optionen.';
+$string['feature_tutor_key_2'] = 'Unterstützt konfigurierbare Persona, Branding, Datenschutzhinweise und Long-Term-Memory-Optionen.';
 $string['feature_tutor_key_3'] = 'Kann an externe RAG-/MCP-Dienste anbinden, wenn diese separat installierten Plugins verfügbar sind.';
 $string['feature_tutor_name'] = 'KI-Tutor';
 $string['feature_tutorpremium_name'] = 'KI Tutor Premium';
@@ -329,7 +329,7 @@ $string['topic_suite_privacy_body'] = 'Jede KI-Anfrage läuft über den Moodle-S
 
 Was wo bleibt:
 
-- **In Moodle:** Zeiger auf Ihre Gespräche, Frage und Antwort ohne Ihren Namen, die Bestätigung der Datenschutzhinweise und Nutzungszähler. Das Kapitel „Was die KI-Suite protokolliert" sagt genau, was wohin geht und wie lange.
+- **In Moodle:** Zeiger auf Ihre Gespräche, Frage und Antwort ohne Ihren Namen, Nutzungszähler und, falls Ihre Einrichtung sie verlangt, Ihre Bestätigung der Datenschutzhinweise. Das Kapitel „Was die KI-Suite protokolliert" sagt genau, was wohin geht und wie lange.
 - **Beim KI-Dienst:** die Transkripte selbst — sofern der Dienst Ihrer Website sie überhaupt speichert.
 
 Sie können Ihre eigenen Daten entfernen lassen. Der Tutor hat einen Datenschutzbereich mit **Alle meine Tutor-Daten löschen**, und beim Löschen Ihres Moodle-Kontos verschwinden dieselben lokalen Einträge automatisch.

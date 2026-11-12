@@ -750,7 +750,9 @@ class TutorChat extends ChatPanel {
             if (toggle) {
                 toggle.checked = false;
             }
-            this.requireConsent();
+            if (this.config.acknowledgement) {
+                this.requireConsent();
+            }
             return null;
         }).catch(Notification.exception);
     }

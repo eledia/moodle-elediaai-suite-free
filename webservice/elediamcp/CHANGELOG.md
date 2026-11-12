@@ -5,6 +5,35 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.20.2] – 2026-11-10
+
+### Behoben
+
+- Bestätigungskarte des Kursautors (#201):
+  `confirmation_gate::display_title()` und der Abgleich von Karte und
+  Werkzeug kennen jetzt auch `moodle_generate_course` aus
+  `local_elediaai_coursegen`, das nicht in der Registry steht. Die Karte zeigt
+  „Kurs entwerfen“ statt des englischen Titels. Der englische Titel im
+  MCP-Katalog bleibt.
+- `preview.card_summary`: Namen mit „&“ erscheinen wie getippt („Soll & Haben“)
+  statt als „Soll &amp; Haben“. `card_summary::text()` dekodiert die
+  Platzhalter; die Felder für das Modell (`course_fullname` u. a.) bleiben
+  unverändert. Betrifft alle Werkzeuge mit Kartentext.
+
+## [1.20.1] – 2026-11-10
+
+### Behoben
+
+- `moodle_quiz_finish`: Die Vorschau zählt gespeicherte, noch nicht geprüfte
+  Antworten (Fragen mit mehreren Versuchen) nicht mehr als unbeantwortet
+  (#195). Moodle zählt sie im Status `todo` wie leere
+  Fragen, die Abgabe bewertet sie aber. `preview.unanswered` enthält nur noch
+  Fragen ohne Antwort, neu ist `preview.saved_unchecked`; `answered`, der
+  Kartentext und die englische `summary` folgen dem.
+- `moodle_quiz_info`: Die Versuchsliste nennt neben der laufenden Nummer
+  `attempt` jetzt `attempt_id`. Die Quiz-Werkzeuge erwarten die ID; das Modell
+  hatte die Nummer übergeben.
+
 ## [1.20.0] – 2026-11-05
 
 ### Hinzugefuegt

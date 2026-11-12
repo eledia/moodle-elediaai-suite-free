@@ -259,7 +259,8 @@ class widget {
         $allowstylechange = (int) registry::effective('allowstylechange', $instance) === 1 && !$dashboard;
 
         $uniqid = 'elediaai_tutor_' . uniqid();
-        $consented = consent::has_consented((int) $USER->id);
+        $acknowledgement = consent::is_required();
+        $consented = consent::is_satisfied((int) $USER->id);
 
         // Resolve institutional branding (per-instance overrides over the site
         // defaults). Two logos: the tutor logo (header + launcher) and the
@@ -391,6 +392,7 @@ class widget {
             'stylelocked' => !$allowstylechange && $answerstyle !== 'explain' && !$dashboard,
             'lockedlabel' => get_string('answerstyle_' . $answerstyle, 'block_elediaai_tutor'),
             'consented' => $consented,
+            'acknowledgement' => $acknowledgement,
             'starters' => $starters,
             'hasstarters' => !empty($starters),
             'dashboardmode' => $dashboard,
@@ -449,6 +451,7 @@ class widget {
             'answerstyle' => $answerstyle,
             'allowstylechange' => $allowstylechange,
             'consented' => $consented,
+            'acknowledgement' => $acknowledgement,
             'privacyhtml' => $privacyhtml,
             'ragmode' => $mode,
             'dashboardmode' => $dashboard,

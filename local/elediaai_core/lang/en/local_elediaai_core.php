@@ -209,7 +209,7 @@ $string['feature_tutor_desc'] = 'Personal AI tutor for contextual learner suppor
 $string['feature_tutor_detail'] = 'Tutor is intended to support learners more individually than a general chat. It answers questions in course context, helps with comprehension problems and can make learning paths more personal. Didactically, it is useful for self-directed learning phases where teachers are not continuously available.';
 $string['feature_tutor_install_desc'] = 'Install eLeDia.ai | Tutor to add contextual learner support with course-aware chat and guided assistance.';
 $string['feature_tutor_key_1'] = 'Provides a learner-facing AI tutor block with contextual conversation support.';
-$string['feature_tutor_key_2'] = 'Supports configurable persona, branding, consent and long-term memory options.';
+$string['feature_tutor_key_2'] = 'Supports configurable persona, branding, privacy guidelines and long-term memory options.';
 $string['feature_tutor_key_3'] = 'Can connect to external RAG/MCP services when those separately installed plugins are available.';
 $string['feature_tutor_name'] = 'AI Tutor';
 $string['feature_tutorpremium_name'] = 'AI Tutor Premium';
@@ -329,7 +329,7 @@ $string['topic_suite_privacy_body'] = 'Every AI request goes through the Moodle 
 
 What is kept where:
 
-- **In Moodle:** pointers to your conversations, the question and the answer without your name, the record that you confirmed the privacy notice, and usage counters. The chapter “What the AI suite records” says exactly what goes where and for how long.
+- **In Moodle:** pointers to your conversations, the question and the answer without your name, usage counters and, if your institution asks for it, your confirmation of the privacy guidelines. The chapter “What the AI suite records” says exactly what goes where and for how long.
 - **At the AI service:** the transcripts themselves, if the service your site uses stores them at all.
 
 You can have your own data removed. The tutor has a privacy area with **Delete all my tutor data**, and deleting your Moodle account removes the same local records automatically.

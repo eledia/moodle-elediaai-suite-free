@@ -159,6 +159,7 @@ final class copilot_service_test extends \advanced_testcase {
      */
     public function test_analyse_requires_consent(): void {
         $this->resetAfterTest();
+        set_config('requireacknowledgement', 1, 'block_elediaai_tutor');
         $this->configure_mcp_service();
 
         $course = $this->getDataGenerator()->create_course();

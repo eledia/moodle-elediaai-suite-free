@@ -382,6 +382,15 @@ if ($hassiteconfig) {
         ''
     ));
 
+    // Off by default: Art. 13 GDPR asks for information, not confirmation
+    // (ai_suite#203). For institutions that want a documented acknowledgement.
+    $settings->add(new admin_setting_configcheckbox(
+        'block_elediaai_tutor/requireacknowledgement',
+        get_string('setting_requireacknowledgement', 'block_elediaai_tutor'),
+        get_string('setting_requireacknowledgement_desc', 'block_elediaai_tutor'),
+        0
+    ));
+
     $settings->add(new admin_setting_confightmleditor(
         'block_elediaai_tutor/privacyguidelinestext',
         get_string('setting_privacyguidelinestext', 'block_elediaai_tutor'),

@@ -92,6 +92,15 @@ final class confirmation_gate {
     ];
 
     /**
+     * Tools of other plugins that show a confirmation card but are not in the registry.
+     *
+     * Their cards are named and matched like the registry's; the class has to exist when it is asked.
+     */
+    private const EXTERNAL_TOOLS = [
+        '\\local_elediaai_coursegen\\mcp\\moodle_generate_course',
+    ];
+
+    /**
      * Keys left out of the fingerprint.
      *
      * `confirm` is the very thing being decided. The draft and job tokens are
@@ -346,7 +355,7 @@ final class confirmation_gate {
         if ($label === '') {
             return null;
         }
-        foreach (\webservice_elediamcp\local\ai\registry::all() as $class) {
+        foreach (self::titled_tool_classes() as $class) {
             $name = (string) $class::name();
             if (!self::tool_answers_to($name, $label)) {
                 continue;
@@ -356,6 +365,25 @@ final class confirmation_gate {
                 ? get_string($key, 'webservice_elediamcp') : null;
         }
         return null;
+    }
+
+    /**
+     * The tool classes whose card gets a translated title.
+     *
+     * The registry, not tool_provider: naming a card has nothing to do with whether this edition offers
+     * the tool. Besides the registry these are tools of other plugins that show a confirmation card too
+     * but are not part of the registry (the course author, #201).
+     *
+     * @return string[] Class names.
+     */
+    private static function titled_tool_classes(): array {
+        $classes = \webservice_elediamcp\local\ai\registry::all();
+        foreach (self::EXTERNAL_TOOLS as $class) {
+            if (class_exists($class)) {
+                $classes[] = $class;
+            }
+        }
+        return $classes;
     }
 
     /**
@@ -369,9 +397,13 @@ final class confirmation_gate {
         if (strcasecmp($tool, $label) === 0) {
             return true;
         }
-        // The registry, not tool_provider: naming a card has nothing to do with
-        // whether this edition offers the tool.
-        $class = \webservice_elediamcp\local\ai\registry::find($tool);
+        $class = null;
+        foreach (self::titled_tool_classes() as $candidate) {
+            if ((string) $candidate::name() === $tool) {
+                $class = $candidate;
+                break;
+            }
+        }
         if ($class === null) {
             return false;
         }

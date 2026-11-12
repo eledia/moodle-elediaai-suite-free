@@ -291,6 +291,22 @@ final class confirmation_gate_test extends advanced_testcase {
     }
 
     /**
+     * The course author lives in local_elediaai_coursegen, not in the registry; its card is translated too (#201).
+     */
+    public function test_display_title_translates_the_course_author_card(): void {
+        $this->resetAfterTest();
+        $class = '\\local_elediaai_coursegen\\mcp\\moodle_generate_course';
+        if (!class_exists($class)) {
+            $this->markTestSkipped('local_elediaai_coursegen is not installed.');
+        }
+        $expected = get_string('cardtitle_moodle_generate_course', 'webservice_elediamcp');
+        $this->assertNotSame('', $expected);
+        $this->assertSame($expected, confirmation_gate::display_title($class::title()));
+        $this->assertSame($expected, confirmation_gate::display_title('moodle_generate_course'));
+        $this->assertSame($expected, confirmation_gate::display_title(' MOODLE_GENERATE_COURSE '));
+    }
+
+    /**
      * Only the chat engine's tokens are gated; other MCP clients keep working.
      */
     public function test_token_component_decides_the_gate(): void {

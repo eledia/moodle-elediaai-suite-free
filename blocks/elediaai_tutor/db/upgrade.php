@@ -355,5 +355,22 @@ function xmldb_block_elediaai_tutor_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026091901, 'block', 'elediaai_tutor');
     }
 
+    if ($oldversion < 2026111201) {
+        // Die Bestaetigung bei der ersten Nutzung ist seit ai_suite#203
+        // optional und standardmaessig aus. Ein Zwischenstand 2026111200 hatte
+        // die Tabelle geloescht; wer ihn installiert hatte, bekommt sie zurueck.
+        $table = new xmldb_table('block_elediaai_tutor_consent');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN_UNIQUE, ['userid'], 'user', ['id']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_block_savepoint(true, 2026111201, 'elediaai_tutor');
+    }
+
     return true;
 }

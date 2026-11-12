@@ -3,6 +3,28 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.13] – 2026-11-12
+
+### Geaendert
+
+- Die Datenschutzhinweise werden standardmaessig nur noch bereitgestellt,
+  nicht mehr bestaetigt (ai_suite#203). Der Absatz bei der ersten Nutzung mit
+  Haekchen und Knopf entfaellt, der Tutor ist ab dem ersten Oeffnen nutzbar.
+  Art. 13 DSGVO verlangt Information, keine Bestaetigung, und eine Zustimmung
+  vor der Nutzung liest sich wie eine Einwilligung, auf der die Verarbeitung
+  nicht beruht. Die Hinweise bleiben ueber das Schild in der Kopfzeile, unter
+  der Begruessung des Dashboards und im Gespraechsfuss erreichbar.
+- Wer eine dokumentierte Kenntnisnahme braucht, etwa von Nutzungsregeln oder
+  Hinweisen zur KI-Transparenz, schaltet die neue Einstellung „Bestaetigung bei
+  der ersten Nutzung verlangen“ (`requireacknowledgement`) ein. Dann gilt das
+  bisherige Verhalten: Abfrage im Panel, serverseitiges Gate fuer Chat und
+  Copilot, Speicherung mit Zeitstempel und Ereignis.
+- Neue Texte der Abfrage: „Ich habe die Datenschutzhinweise gelesen.“ und
+  „Bestaetigen und starten“ statt „Zustimmen und starten“.
+
+Gespeicherte Bestaetigungen bleiben erhalten. Das Langzeitgedaechtnis bleibt
+eine echte Einwilligung, freiwillig, standardmaessig aus und widerrufbar.
+
 ## [1.0.12] – 2026-11-05
 
 ### Geaendert
