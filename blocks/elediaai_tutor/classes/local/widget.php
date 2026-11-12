@@ -136,6 +136,40 @@ class widget {
     }
 
     /**
+     * The block instance that opts a course into the tutor.
+     *
+     * The site-wide launcher shows on pages of the course that have no block of
+     * their own, and it is that instance's tutor -- its name, logo, launcher
+     * style and settings (#207). With several instances the one on the course
+     * page itself wins, then the oldest; a block inside an activity counts
+     * when there is no other.
+     *
+     * @param int $courseid Course id (the site course for the front page).
+     * @return \stdClass|null The block_instances record, or null when the course has none.
+     */
+    public static function unlocking_instance(int $courseid): ?\stdClass {
+        global $DB;
+        $coursecontext = \core\context\course::instance($courseid, IGNORE_MISSING);
+        if (!$coursecontext) {
+            return null;
+        }
+        $like = $DB->sql_like('ctx.path', ':path');
+        $sql = "SELECT bi.*
+                  FROM {block_instances} bi
+                  JOIN {context} ctx ON ctx.id = bi.parentcontextid
+                 WHERE bi.blockname = :blockname
+                       AND (ctx.id = :coursectx OR {$like})
+              ORDER BY CASE WHEN ctx.id = :coursectx2 THEN 0 ELSE 1 END, bi.id";
+        $records = $DB->get_records_sql($sql, [
+            'blockname' => 'elediaai_tutor',
+            'coursectx' => $coursecontext->id,
+            'coursectx2' => $coursecontext->id,
+            'path' => $DB->sql_like_escape($coursecontext->path) . '/%',
+        ], 0, 1);
+        return $records ? reset($records) : null;
+    }
+
+    /**
      * Render the chat shell and queue its AMD initialisation.
      *
      * The caller is responsible for require_login and the use-capability check;
@@ -266,7 +300,7 @@ class widget {
         // defaults). Two logos: the tutor logo (header + launcher) and the
         // conversation avatar (per-message). Each: instance upload ?: site
         // upload ?: (avatar) the logo ?: the built-in eLeDia mark.
-        $brand = branding::resolve($instance);
+        $brand = branding::resolve($instance, $context);
         $defaultlogo = $OUTPUT->image_url('logo', 'block_elediaai_tutor')->out(false);
         $logourl = branding::instance_file_url($context, branding::INSTANCE_LOGO_FILEAREA)
             ?: branding::site_logo_url() ?: $defaultlogo;

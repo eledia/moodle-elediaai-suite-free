@@ -72,4 +72,22 @@ class behat_block_elediaai_tutor extends behat_base {
             );
         }
     }
+
+    /**
+     * Count the tutor widgets on the page: a placed block and the site-wide
+     * launcher each render one.
+     *
+     * @Then /^there should be "(?P<count_number>\d+)" tutor widgets? on the page$/
+     * @param int $count Expected number.
+     * @return void
+     */
+    public function there_should_be_tutor_widgets_on_the_page(int $count): void {
+        $actual = count($this->getSession()->getPage()->findAll('css', '[data-region="elediaai_tutor"]'));
+        if ($actual !== $count) {
+            throw new \Behat\Mink\Exception\ExpectationException(
+                "There are {$actual} tutor widgets on the page, expected {$count}.",
+                $this->getSession()
+            );
+        }
+    }
 }

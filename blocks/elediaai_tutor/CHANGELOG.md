@@ -3,6 +3,45 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.17] – 2026-11-12
+
+### Behoben
+
+- Startseite mit Tutor-Block zeigte zwei Launcher (ai_suite#207): den der
+  Blockinstanz und zusaetzlich den websiteweiten mit den Website-Standards.
+  Der websiteweite Tutor trat nur auf Kursseiten (`course-view-*`) zurueck,
+  die Startseite hat den Seitentyp `site-index`. Er tritt jetzt auf jeder
+  Seite zurueck, auf der ein Tutor-Block platziert ist; in Aktivitaeten
+  eines Kurses mit Block erscheint er weiterhin, damit der Chat beim
+  Navigieren nicht verloren geht.
+
+- Der websiteweite Launcher ist auf Seiten ohne eigenen Block jetzt der
+  Tutor der Blockinstanz, die den Kurs freischaltet: Name, Logo,
+  Launcher-Stil und Einstellungen dieser Instanz statt der Website-Standards
+  (#207). Er laeuft im Kontext dieses Blocks, wie auf der Seite, auf der der
+  Block steht. Bei mehreren Instanzen gilt die auf der Kursseite, sonst die
+  aelteste.
+
+Wer bis dahin den doppelten Launcher per „Zusaetzliches HTML“ ausgeblendet
+hat (`body#page-site-index #page-wrapper > .elediaai-chat-root`), kann den
+Eintrag nach dem Update entfernen.
+
+## [1.0.16] – 2026-11-12
+
+### Behoben
+
+- Start-Schaltflaeche, Persona (auch das, was ans Modell geht) und Fusszeile
+  wurden im Systemkontext aufgeloest, Begruessung und Einstiegsfragen im
+  Kontext der Seite (ai_suite#209). War der Filter „Mehrsprachiger Inhalt“
+  nur fuer einen Kurs eingeschaltet, blieben diese drei dort roh.
+  `branding::resolve()`, `persona()` und `footer_text()` nehmen jetzt den
+  Kontext mit; der Chat-Turn liest die Persona im Kontext des Blocks.
+- Auf dem Handy liegt das angedockte Fenster wieder als Leiste ueber die
+  ganze Breite, wie es die Chat-Engine vorsieht. Die feste Breite des Blocks
+  stand in der Kaskade spaeter und gewann: Das Fenster sass links buendig mit
+  einer Luecke rechts, bei jeder Breitenstufe (gefunden beim Test von #208
+  auf der Testinstanz).
+
 ## [1.0.15] – 2026-11-12
 
 ### Neu

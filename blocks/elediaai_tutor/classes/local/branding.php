@@ -78,11 +78,13 @@ class branding {
      *
      * @param array $instance Per-instance overrides keyed by
      *        registry key (e.g. 'brandaccent', 'launcherstyle', 'persona').
+     * @param \context|null $context Context the widget is shown in, for the
+     *        language filters of the texts (see {@see text}); system when null.
      * @return array{tokens: array<string,string>, accent: string, bubble: string,
      *         botbubble: string, launchlabel: string, launcherstyle: string,
      *         footermode: string, footertext: string}
      */
-    public static function resolve(array $instance = []): array {
+    public static function resolve(array $instance = [], ?\context $context = null): array {
         // 1. Assemble the design-token map from every token key in the registry.
         $tokens = [];
         foreach (registry::token_keys() as $key => $tokenname) {
@@ -103,7 +105,7 @@ class branding {
         }
 
         // 3. Launcher label: instance → site → built-in default string.
-        $launchlabel = trim(registry::effective_text('launchlabel', $instance));
+        $launchlabel = trim(registry::effective_text('launchlabel', $instance, $context));
         if ($launchlabel === '') {
             $launchlabel = get_string('launch', 'block_elediaai_tutor');
         }
@@ -129,7 +131,7 @@ class branding {
             'launchlabel' => $launchlabel,
             'launcherstyle' => $launcherstyle,
             'footermode' => self::footer_mode($instance),
-            'footertext' => self::footer_text($instance),
+            'footertext' => self::footer_text($instance, $context),
         ];
     }
 
@@ -158,12 +160,13 @@ class branding {
      * each resolved instance-over-site. Empty when nothing is configured.
      *
      * @param array $instance Per-instance overrides keyed by registry key.
+     * @param \context|null $context Context for the language filters; system when null.
      * @return array<string,string>
      */
-    public static function persona(array $instance = []): array {
+    public static function persona(array $instance = [], ?\context $context = null): array {
         $out = [];
         foreach (registry::persona_keys() as $key) {
-            $value = trim(registry::effective_text($key, $instance));
+            $value = trim(registry::effective_text($key, $instance, $context));
             if ($value === '') {
                 continue;
             }
@@ -307,14 +310,15 @@ class branding {
      * instance-over-site.
      *
      * @param array $instance Per-instance overrides keyed by registry key.
+     * @param \context|null $context Context for the language filters; system when null.
      * @return string
      */
-    public static function footer_text(array $instance = []): string {
+    public static function footer_text(array $instance = [], ?\context $context = null): string {
         switch (self::footer_mode($instance)) {
             case self::FOOTER_NONE:
                 return '';
             case self::FOOTER_CUSTOM:
-                $text = trim(registry::effective_text('footertext', $instance));
+                $text = trim(registry::effective_text('footertext', $instance, $context));
                 return $text !== '' ? $text : get_string('poweredby', 'block_elediaai_tutor');
             default:
                 return get_string('poweredby', 'block_elediaai_tutor');

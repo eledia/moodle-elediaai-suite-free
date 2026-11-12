@@ -1453,6 +1453,21 @@
     height: min(70vh, 560px); /* stylelint-disable-line csstree/validator */
 }
 
+/* On a phone the docked panel is a sheet across the full width, as the chat
+   engine's stylesheet intends. Its rule comes first in the cascade, so the
+   fixed width above won: the panel kept its desktop width, clamped to the
+   screen, sat flush left and left a gap on the right -- whatever width step
+   was chosen. */
+@media (max-width: 576px) {
+    .elediaai-chat-docked {
+        right: 0;
+        bottom: 0;
+        left: 0;
+        width: auto;
+        max-width: 100%;
+    }
+}
+
 /* --- Overlay: modal (centered + backdrop). ----------------------------- */
 .elediaai-chat-modal {
     position: fixed;

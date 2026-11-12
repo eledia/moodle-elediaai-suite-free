@@ -98,6 +98,24 @@ Feature: eLeDia.ai | Tutor chat block UI
     Then ".elediaai-chat-modal" "css_element" should not be visible
 
   @javascript
+  Scenario: The front page with a tutor block shows one launcher, not two
+    # The front page as the landing page, as on the site the bug was found on.
+    # Without enablemyhome Moodle 5.2 sends every visit to / on to the Dashboard.
+    Given the following config values are set as admin:
+      | defaultdisplaymode | docked | block_elediaai_tutor |
+      | defaulthomepage    | 0      |                      |
+      | enablemyhome       | 1      |                      |
+    And I log in as "admin"
+    And I am on site homepage
+    And I turn editing mode on
+    And I add the "eLeDia.ai | Tutor" block
+    And I turn editing mode off
+    When I am on site homepage
+    Then "body#page-site-index" "css_element" should exist
+    And there should be "1" tutor widget on the page
+    And ".block_elediaai_tutor [data-region=elediaai_tutor]" "css_element" should exist
+
+  @javascript
   Scenario: The site can open the floating windows wider
     Given the following config values are set as admin:
       | defaultdisplaymode | docked | block_elediaai_tutor |

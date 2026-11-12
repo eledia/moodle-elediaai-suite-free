@@ -137,6 +137,29 @@ final class text_test extends \advanced_testcase {
     }
 
     /**
+     * A language filter switched on for one course only resolves the texts
+     * shown there -- the launcher label and the persona included, which are
+     * not read in the page's own context otherwise.
+     */
+    public function test_filter_on_in_one_course_only(): void {
+        $this->resetAfterTest();
+        global $SESSION;
+        filter_set_global_state('multilang', TEXTFILTER_OFF);
+        set_config('filter_multilang_converted', 1);
+        $SESSION->forcelang = 'en';
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = \context_course::instance($course->id);
+        filter_set_local_state('multilang', $coursecontext->id, TEXTFILTER_ON);
+        \core_filters\filter_manager::reset_caches();
+        set_config('brandlaunchlabel', self::GREETING, 'block_elediaai_tutor');
+
+        $this->assertSame('Hello!', branding::resolve([], $coursecontext)['launchlabel']);
+        $this->assertSame('Hello!', branding::persona(['persona' => self::GREETING], $coursecontext)['name']);
+        // Elsewhere on the site the filter is off and the text stays as written.
+        $this->assertSame(self::GREETING, branding::resolve([])['launchlabel']);
+    }
+
+    /**
      * Saving a text keeps the multilang markup, so the other languages are
      * not lost on the way into the configuration.
      */

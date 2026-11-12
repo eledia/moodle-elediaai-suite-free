@@ -68,13 +68,26 @@ final class hook_callbacks {
         if ($context === null) {
             return;
         }
+
+        // The launcher is the tutor of the block that opted this course in: its
+        // name, logo, launcher style and settings, not the site defaults (#207).
+        // Rendered in that block's context, where its logo and avatar live and
+        // against which its chat turns run, as on the page the block sits on.
+        $instance = [];
+        if ($courseid > 0 && ($record = widget::unlocking_instance($courseid))) {
+            $config = $record->configdata ? unserialize_object(base64_decode($record->configdata)) : null;
+            $instance = (array) ($config ?? new \stdClass());
+            $instance['instanceid'] = (int) $record->id;
+            $instance['dashboard'] = false;
+            $context = \core\context\block::instance((int) $record->id);
+        }
         if (!has_capability('block/elediaai_tutor:use', $context)) {
             return;
         }
 
         // For the global hook, configuration problems are silent. The block and
         // configuration shell still surface actionable messages to managers.
-        if (widget::config_error($courseid) !== null) {
+        if (widget::config_error($courseid, $instance) !== null) {
             return;
         }
 
@@ -82,11 +95,12 @@ final class hook_callbacks {
         // region a teacher placed. Injected site-wide (outside any region, at the top
         // of the body) an inline panel would sit above the page, so fall back to the
         // docked launcher here. Non-inline modes stay as configured.
-        $mode = (string) registry::effective('displaymode', []);
+        $mode = (string) registry::effective('displaymode', $instance);
         if ($mode === 'embedded') {
             $mode = 'docked';
         }
-        $hook->add_html(widget::render($context, $courseid, ['displaymode' => $mode]));
+        $instance['displaymode'] = $mode;
+        $hook->add_html(widget::render($context, $courseid, $instance));
     }
 
     /**
@@ -153,6 +167,14 @@ final class hook_callbacks {
         if (str_starts_with((string) $PAGE->pagetype, 'course-view-')) {
             return false;
         }
+        // The same holds wherever a tutor block is placed on the page, not only
+        // on course pages. The front page (site-index) is a course page in
+        // everything but its page type: a block in its region rendered its own
+        // launcher with its own settings, and the site-wide one came on top
+        // with the site defaults -- two launchers (#207).
+        if (self::page_has_tutor_block()) {
+            return false;
+        }
         // Pages that never call set_url() (e.g. redirect interstitials) make
         // the $PAGE->url magic getter emit a debugging() notice, which the
         // dev-mode error handler escalates to a fatal error. No URL, no tutor.
@@ -161,6 +183,26 @@ final class hook_callbacks {
         }
         // Avoid injecting into the block's own admin/standalone pages.
         return strpos((string) $PAGE->url->get_path(), '/blocks/elediaai_tutor/') !== 0;
+    }
+
+    /**
+     * Whether a tutor block is placed on the current page.
+     *
+     * The theme has loaded the blocks by the time the top of the body is
+     * written; load_blocks() returns at once then, and loads them otherwise.
+     *
+     * @return bool
+     */
+    private static function page_has_tutor_block(): bool {
+        global $PAGE;
+
+        try {
+            $PAGE->blocks->load_blocks();
+        } catch (\Throwable $e) {
+            // A page without block regions has no block either.
+            return false;
+        }
+        return $PAGE->blocks->is_block_present('elediaai_tutor');
     }
 
     /**

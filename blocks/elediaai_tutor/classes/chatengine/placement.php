@@ -205,7 +205,10 @@ class placement implements placement_contract, user_request_framing {
 
     #[\Override]
     public function persona(int $instanceid): persona {
-        $fields = branding::persona((array) $this->instance_config($instanceid));
+        // The block's context, so a language filter switched on for one course
+        // only resolves the persona there too; system for a site placement.
+        $context = $instanceid > 0 ? \context_block::instance($instanceid, IGNORE_MISSING) : false;
+        $fields = branding::persona((array) $this->instance_config($instanceid), $context ?: null);
 
         return new persona(
             name: (string) ($fields['name'] ?? ''),

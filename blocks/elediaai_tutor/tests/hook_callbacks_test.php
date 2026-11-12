@@ -106,4 +106,112 @@ final class hook_callbacks_test extends \advanced_testcase {
         $this->assertTrue($this->sitewide_tutor_allowed());
         $this->assertDebuggingNotCalled();
     }
+
+    /**
+     * On the front page with a tutor block in its region the block owns the
+     * launcher; the site-wide one stays away (#207).
+     */
+    public function test_sitewide_tutor_steps_back_on_front_page_with_block(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $PAGE = $this->front_page();
+        $this->assertTrue($this->sitewide_tutor_allowed(), 'Without a block the front page gets the site-wide tutor.');
+
+        $PAGE->blocks->add_block('elediaai_tutor', $PAGE->blocks->get_default_region(), 0, false, 'site-index');
+        $PAGE = $this->front_page();
+        $this->assertFalse($this->sitewide_tutor_allowed());
+        $this->assertDebuggingNotCalled();
+    }
+
+    /**
+     * The block that opts a course in: the one on the course page wins over
+     * one inside an activity, then the oldest.
+     */
+    public function test_unlocking_instance_prefers_the_course_page(): void {
+        $this->resetAfterTest();
+        $gen = $this->getDataGenerator();
+        $course = $gen->create_course();
+        $this->assertNull(\block_elediaai_tutor\local\widget::unlocking_instance((int) $course->id));
+
+        $page = $gen->create_module('page', ['course' => $course->id]);
+        $inactivity = $this->add_tutor_block(\core\context\module::instance($page->cmid), 'mod-page-view');
+        $this->assertSame($inactivity, (int) \block_elediaai_tutor\local\widget::unlocking_instance((int) $course->id)->id);
+
+        $oncourse = $this->add_tutor_block(\core\context\course::instance($course->id), 'course-view-*');
+        $this->assertSame($oncourse, (int) \block_elediaai_tutor\local\widget::unlocking_instance((int) $course->id)->id);
+    }
+
+    /**
+     * On a page of the course without a block the site-wide launcher is the
+     * tutor of the course's block: its name, not the site default (#207).
+     */
+    public function test_sitewide_tutor_uses_the_unlocking_instance(): void {
+        global $PAGE;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        set_config('simulator', 1, 'local_elediaai_chatengine');
+        set_config('allowllmonly', 1, 'block_elediaai_tutor');
+        set_config('mcpserviceid', 0, 'local_elediaai_chatengine');
+        set_config('persona', 'Site tutor', 'block_elediaai_tutor');
+
+        $gen = $this->getDataGenerator();
+        $course = $gen->create_course();
+        $blockid = $this->add_tutor_block(\core\context\course::instance($course->id), 'course-view-*');
+        global $DB;
+        $configdata = base64_encode(serialize((object) ['persona' => 'Instance tutor', 'ragmode' => 'llmonly']));
+        $DB->set_field('block_instances', 'configdata', $configdata, ['id' => $blockid]);
+
+        $page = $gen->create_module('page', ['course' => $course->id]);
+        $PAGE = new \moodle_page();
+        $PAGE->set_cm(get_coursemodule_from_id('page', $page->cmid), $course);
+        $PAGE->set_pagetype('mod-page-view');
+        $PAGE->set_url(new \moodle_url('/mod/page/view.php', ['id' => $page->cmid]));
+
+        $hook = new \core\hook\output\before_standard_top_of_body_html_generation($PAGE->get_renderer('core'));
+        hook_callbacks::inject_sitewide_tutor($hook);
+        $html = $hook->get_output();
+        $this->assertStringContainsString('Instance tutor', $html);
+        $this->assertStringNotContainsString('Site tutor', $html);
+    }
+
+    /**
+     * Place a tutor block directly.
+     *
+     * @param \context $parent Parent context.
+     * @param string $pagetypepattern Page type pattern.
+     * @return int Block instance id.
+     */
+    private function add_tutor_block(\context $parent, string $pagetypepattern): int {
+        global $DB;
+        return (int) $DB->insert_record('block_instances', (object) [
+            'blockname' => 'elediaai_tutor',
+            'parentcontextid' => $parent->id,
+            'showinsubcontexts' => 0,
+            'pagetypepattern' => $pagetypepattern,
+            'defaultregion' => 'side-pre',
+            'defaultweight' => 0,
+            'configdata' => '',
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ]);
+    }
+
+    /**
+     * A fresh front page, as the theme sets it up before the body is written.
+     *
+     * @return \moodle_page
+     */
+    private function front_page(): \moodle_page {
+        $page = new \moodle_page();
+        $page->set_course(get_site());
+        $page->set_pagetype('site-index');
+        $page->set_pagelayout('frontpage');
+        $page->set_url(new \moodle_url('/'));
+        $page->blocks->add_region('side-pre');
+        $page->blocks->set_default_region('side-pre');
+        return $page;
+    }
 }
