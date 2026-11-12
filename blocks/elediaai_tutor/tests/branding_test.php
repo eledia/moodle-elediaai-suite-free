@@ -176,6 +176,36 @@ final class branding_test extends \advanced_testcase {
     }
 
     /**
+     * The window width is a step that becomes the two width tokens of the
+     * floating windows. Standard emits nothing, so the stylesheet widths
+     * stand; an instance can choose another step than the site; an unknown
+     * step is ignored; an explicit token is not overwritten.
+     */
+    public function test_window_width(): void {
+        $this->resetAfterTest();
+        $this->assertStringNotContainsString('--eac-docked-width', branding::css_variables(branding::resolve([])));
+
+        set_config('windowwidth', 'wide', 'block_elediaai_tutor');
+        $css = branding::css_variables(branding::resolve([]));
+        $this->assertStringContainsString('--eac-docked-width:480px;', $css);
+        $this->assertStringContainsString('--eac-modal-width:800px;', $css);
+
+        // Empty instance value follows the site, a set one wins.
+        $css = branding::css_variables(branding::resolve(['windowwidth' => '']));
+        $this->assertStringContainsString('--eac-docked-width:480px;', $css);
+        $css = branding::css_variables(branding::resolve(['windowwidth' => 'xwide']));
+        $this->assertStringContainsString('--eac-docked-width:600px;', $css);
+        $this->assertStringContainsString('--eac-modal-width:960px;', $css);
+        $css = branding::css_variables(branding::resolve(['windowwidth' => 'standard']));
+        $this->assertStringNotContainsString('--eac-docked-width', $css);
+
+        // A tampered value never reaches the inline style.
+        $this->assertSame([], branding::window_widths('9999px;}body{display:none'));
+        $css = branding::css_variables(branding::resolve(['windowwidth' => 'bogus']));
+        $this->assertStringNotContainsString('--eac-docked-width', $css);
+    }
+
+    /**
      * Footer customisation is ignored in the free block.
      */
     public function test_footer_modes_require_premium(): void {

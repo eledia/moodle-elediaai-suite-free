@@ -60,20 +60,20 @@ $string['config_launcherstyle'] = 'Stil der Start-Schaltfläche';
 $string['config_launcherstyle_help'] = 'Aussehen der Schaltfläche „Tutor öffnen“ in den Modi angedockt/modal/Vollbild für diesen Block. „Website-Standard verwenden“ folgt der Website-Einstellung.';
 $string['config_launcherstyle_site'] = 'Website-Standard verwenden';
 $string['config_launchlabel'] = 'Beschriftung der Startschaltfläche';
-$string['config_launchlabel_help'] = 'Überschreibt den Text der Startschaltfläche nur für diesen Block. Leer lassen, um die Website-Voreinstellung zu verwenden.';
+$string['config_launchlabel_help'] = 'Überschreibt den Text der Startschaltfläche nur für diesen Block. Leer lassen, um die Website-Voreinstellung zu verwenden. Auch mehrsprachig möglich, mit der Schreibweise des Filters „Mehrsprachiger Inhalt“: `<span lang="de" class="multilang">…</span><span lang="en" class="multilang">…</span>`; die Hilfe bei der Begrüßung erklärt das genauer.';
 $string['config_logo'] = 'Tutor-Logo (dieser Block)';
 $string['config_logo_help'] = 'Ein Logo für die Startschaltfläche und die Chat-Kopfzeile nur dieses Blocks. Leer lassen, um das Website-Logo zu verwenden.';
 $string['config_passcoursecontext'] = 'Kurskontext übergeben';
 $string['config_passcoursecontext_help'] = 'Wenn aktiviert und der Block sich auf einer Kursseite befindet, wird die aktuelle Kurs-ID an den Tutor übergeben, damit er kursspezifische Fragen beantworten kann. Der Tutor funktioniert weiterhin für allgemeine Fragen.';
 $string['config_persona'] = 'Bezeichnung der Assistenten-Persona';
 $string['config_promptstarters'] = 'Vorgeschlagene Fragen';
-$string['config_promptstarters_help'] = 'Vorgeschlagene Prompts als antippbare Chips, einer pro Zeile (höchstens 6 werden angezeigt). Zeilenformate: „fa-icon | Label | Prompt" oder „Label | Prompt" — das kurze Label ist die Beschriftung, der Prompt wird gesendet. Eine Zeile ohne „|" verwendet den ganzen Text für beides. Leer lassen, um die Website-Voreinstellung zu verwenden.';
+$string['config_promptstarters_help'] = 'Vorgeschlagene Prompts als antippbare Chips, einer pro Zeile (höchstens 6 werden angezeigt). Zeilenformate: „fa-icon | Label | Prompt" oder „Label | Prompt" — das kurze Label ist die Beschriftung, der Prompt wird gesendet. Eine Zeile ohne „|" verwendet den ganzen Text für beides. Leer lassen, um die Website-Voreinstellung zu verwenden. Auch mehrsprachig möglich, mit der Schreibweise des Filters „Mehrsprachiger Inhalt“: `<span lang="de" class="multilang">…</span><span lang="en" class="multilang">…</span>`; die Hilfe bei der Begrüßung erklärt das genauer. Bei den Einstiegsfragen steht jede Frage in einer eigenen Zeile mit eigenen Sprachblöcken.';
 $string['config_promptstarters_manager'] = 'Vorschlagsfragen (Manager/innen)';
-$string['config_promptstarters_manager_help'] = 'Dashboard-Pills für kursverwaltende Personen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet.';
+$string['config_promptstarters_manager_help'] = 'Dashboard-Pills für kursverwaltende Personen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet. Auch mehrsprachig möglich: jede Zeile mit eigenen Sprachblöcken, z. B. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; die Hilfe bei der Begrüßung erklärt das genauer.';
 $string['config_promptstarters_teacher'] = 'Vorschlagsfragen (Trainer/innen)';
 $string['config_promptstarters_student'] = 'Vorschlagsfragen (Lernende)';
-$string['config_promptstarters_teacher_help'] = 'Dashboard-Pills für Trainer/innen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet.';
-$string['config_promptstarters_student_help'] = 'Dashboard-Pills für Lernende, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet. Leer: Es gelten die eingebauten Pills für Lernende.';
+$string['config_promptstarters_teacher_help'] = 'Dashboard-Pills für Trainer/innen, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet. Auch mehrsprachig möglich: jede Zeile mit eigenen Sprachblöcken, z. B. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; die Hilfe bei der Begrüßung erklärt das genauer.';
+$string['config_promptstarters_student_help'] = 'Dashboard-Pills für Lernende, eine pro Zeile: „fa-icon | Label | Prompt" oder „Label | Prompt". Das kurze Label ist die Beschriftung, der Prompt wird gesendet. Leer: Es gelten die eingebauten Pills für Lernende. Auch mehrsprachig möglich: jede Zeile mit eigenen Sprachblöcken, z. B. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; die Hilfe bei der Begrüßung erklärt das genauer.';
 $string['config_ragmode'] = 'Antwortquelle';
 $string['config_ragmode_help'] = 'Verankert: Der Tutor antwortet aus den eingelesenen Materialien dieses Kurses (mit Quellenangaben). Nur LLM: Der Tutor antwortet aus dem Allgemeinwissen des Sprachmodells, ohne die Wissensbasis des Kurses zu durchsuchen. Hat der Kurs keine eingelesenen Inhalte, verwendet der Tutor automatisch den Nur-LLM-Modus.';
 $string['config_ragmode_nokb'] = 'Allgemeinwissen (nur LLM) — dieser Kurs hat keine eingelesene Wissensbasis, daher sind verankerte Antworten nicht verfügbar. Markieren Sie den Kurs für die Ingestion, um sie zu aktivieren.';
@@ -237,6 +237,21 @@ $string['ltm_saved'] = 'Einstellung gespeichert.';
 $string['managetutors'] = 'Tutoren';
 $string['managetutors_intro'] = 'Verwalten Sie Tutoren: Wenden Sie eine Vorlage oder einen gespeicherten Tutor auf die gesamte Website an, erstellen und bearbeiten Sie eigene Tutor-Designs, und importieren oder exportieren Sie Tutoren (Einstellungen + Bilder) als Paket. Jede Blockinstanz kann unten ebenfalls einen eigenen Tutor erhalten.';
 $string['messagelabel'] = 'Ihre Nachricht an den Tutor';
+$string['multilang_desc'] = 'Mehrsprachig möglich: jede Sprache in einen eigenen Block, z. B. <code>&lt;span lang="de" class="multilang"&gt;Hallo!&lt;/span&gt;&lt;span lang="en" class="multilang"&gt;Hello!&lt;/span&gt;</code> oder mit „Multi-Language Content (v2)“ <code>&#123;mlang de&#125;Hallo!&#123;mlang&#125;&#123;mlang en&#125;Hello!&#123;mlang&#125;</code>. Jede Person sieht den Text in ihrer Moodle-Sprache, auch das KI-Modell erhält nur diese. Bei Einstiegsfragen steht jede Frage in einer eigenen Zeile mit eigenen Sprachblöcken.';
+$string['multilang_filteroff'] = '<strong>Auf dieser Website ist derzeit kein Sprachfilter eingeschaltet</strong>, die Blöcke würden alle angezeigt. Schalten Sie den Filter „Mehrsprachiger Inhalt“ unter <a href="{$a}">Filter verwalten</a> ein.';
+$string['multilang_filteron'] = 'Ein Sprachfilter ist auf dieser Website eingeschaltet.';
+$string['multilanghint'] = 'Mehrsprachige Texte';
+$string['multilanghint_help'] = 'Dieser Text kann in mehreren Sprachen hinterlegt werden. Jede Person sieht ihn dann in der Sprache, die sie in Moodle eingestellt hat. Auch das KI-Modell erhält nur diese Sprache.
+
+Schreiben Sie dazu jede Sprache in einen eigenen Block, direkt hintereinander:
+
+`<span lang="de" class="multilang">Hallo! Wie kann ich helfen?</span><span lang="en" class="multilang">Hello! How can I help?</span>`
+
+Bei den Einstiegsfragen steht jede Frage in einer eigenen Zeile mit eigenen Sprachblöcken.
+
+Ist das Zusatzplugin „Multi-Language Content (v2)“ installiert, geht auch die kürzere Schreibweise &#123;mlang de&#125;Hallo!&#123;mlang&#125;&#123;mlang en&#125;Hello!&#123;mlang&#125;.
+
+Voraussetzung: Der Filter „Mehrsprachiger Inhalt“ bzw. „Multi-Language Content (v2)“ ist unter Website-Administration > Plugins > Filter > Filter verwalten eingeschaltet. „Alle Zeichenketten filtern“ muss dafür nicht aktiviert sein. Fehlt der Block für eine Sprache, zeigt Moodle den Block der Standardsprache bzw. den ersten Block.';
 $string['nav_back_to_course'] = 'Zurück zum Kurs';
 $string['nav_configuration'] = 'Dashboard';
 $string['nav_elediamcp'] = 'MCP';
@@ -516,6 +531,8 @@ $string['reg_tok_z_desc'] = 'Legt fest, ob der Tutor über anderen Seitenelement
 $string['reg_tokenhint'] = 'Ein beliebiger gültiger CSS-Wert für dieses Design-Token. Leer lassen, um den eingebauten Standard zu verwenden.';
 $string['reg_welcomemessage'] = 'Begrüßungsnachricht';
 $string['reg_welcomemessage_desc'] = 'Einleitende Nachricht oberhalb des Gesprächs.';
+$string['reg_windowwidth'] = 'Breite des Chatfensters';
+$string['reg_windowwidth_desc'] = 'Wie breit das angedockte Fenster und der Dialog aufgehen. Standard: 380 px / 640 px. Breit: 480 px / 800 px, mit mehr Platz für Tabellen und Code. Sehr breit: 600 px / 960 px. Auf kleinen Bildschirmen wird das Fenster nie breiter als der Bildschirm. Vollbild und Eingebettet bleiben unverändert.';
 $string['reggroup_accent'] = 'Akzentfarben';
 $string['reggroup_bubbles'] = 'Nachrichtenblasen';
 $string['reggroup_knowledge'] = 'Wissensbasis';
@@ -735,6 +752,9 @@ $string['tutor_untitled'] = 'Unbenannter Tutor';
 $string['unavailable_user'] = 'Der Tutor ist derzeit nicht verfügbar. Bitte versuchen Sie es später erneut.';
 $string['ungroundedbadge'] = 'Allgemeine Antwort';
 $string['ungroundedbadge_title'] = 'Diese Antwort basiert nicht auf der Wissensbasis — prüfen Sie wichtige Fakten nach.';
+$string['windowwidth_standard'] = 'Standard';
+$string['windowwidth_wide'] = 'Breit';
+$string['windowwidth_xwide'] = 'Sehr breit';
 $string['copilot_open_insights'] = 'Kurs-Einblicke öffnen';
 $string['copilot_page_intro'] = 'Die KI-Deutung dessen, was Ihre Lernenden gefragt haben. Die Zahlen, die Lückenliste und die Fragen selbst stehen jetzt in den Kurs-Einblicken der Suite; diese Seite hält die Deutung, weil ihre Erzeugung einen echten Chat-Turn mit der Ratenbegrenzung des Tutors (und seiner Bestätigung bei der ersten Nutzung, falls eingeschaltet) auslöst.';
 $string['copilot_page_title'] = 'KI-Deutung der Fragen';

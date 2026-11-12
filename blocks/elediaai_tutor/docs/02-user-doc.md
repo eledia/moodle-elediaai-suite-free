@@ -159,8 +159,24 @@ The settings include, among others:
 - Colors, surfaces, lines, typography and shadows.
 - Message bubbles and status states.
 - Launcher button, footer, logo and avatar.
+- Chat window width: standard, wide or extra wide for the docked panel and the dialog, for example when answers often contain tables or code.
 - Persona, system prompt, greeting and suggested questions.
 - Governance over which values may be overridden per block instance.
+
+Greeting, persona, prompt starters, dashboard greeting, launcher label and
+footer can be provided in several languages. Each person sees the language
+they have set in Moodle, and the AI model receives only that one. Write each
+language in a block of its own:
+
+```
+<span lang="de" class="multilang">Hallo! Wie kann ich helfen?</span><span lang="en" class="multilang">Hello! How can I help?</span>
+```
+
+With the add-on "Multi-Language Content (v2)" the form
+`{mlang de}Hallo!{mlang}{mlang en}Hello!{mlang}` works as well. The filter
+"Multi-language content" (or v2) has to be switched on under *Site
+administration > Plugins > Filters > Manage filters*; "Filter all strings" is
+not required.
 
 ---
 

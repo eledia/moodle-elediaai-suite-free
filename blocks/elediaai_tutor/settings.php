@@ -149,11 +149,40 @@ if ($hassiteconfig) {
         }
         return (string) ($entry['token'] ?? $key);
     };
-    $regdesc = function (string $key): string {
-        if (get_string_manager()->string_exists('reg_' . $key . '_desc', 'block_elediaai_tutor')) {
-            return get_string('reg_' . $key . '_desc', 'block_elediaai_tutor');
+    // Text fields accept the "Multi-language content" markup. The settings
+    // page has no help icons, so the hint goes under the description, together
+    // with whether a language filter is on -- the question otherwise comes back.
+    // Built on first use: during the initial install the filter tables the
+    // status reads do not exist yet, and the closure is not called there.
+    $multilanghint = static function (): string {
+        static $hint = null;
+        if (during_initial_install()) {
+            return '';
         }
-        return get_string('reg_tokenhint', 'block_elediaai_tutor');
+        if ($hint === null) {
+            $hint = html_writer::div(
+                get_string('multilang_desc', 'block_elediaai_tutor') . ' ' .
+                get_string(
+                    \block_elediaai_tutor\local\text::language_filter_enabled()
+                        ? 'multilang_filteron' : 'multilang_filteroff',
+                    'block_elediaai_tutor',
+                    (new moodle_url('/admin/filters.php'))->out(false)
+                ),
+                'form-text text-muted small mt-1'
+            );
+        }
+        return $hint;
+    };
+    $regdesc = function (string $key) use ($multilanghint): string {
+        if (get_string_manager()->string_exists('reg_' . $key . '_desc', 'block_elediaai_tutor')) {
+            $desc = get_string('reg_' . $key . '_desc', 'block_elediaai_tutor');
+        } else {
+            $desc = get_string('reg_tokenhint', 'block_elediaai_tutor');
+        }
+        if (!empty(registry::get($key)['multilang'])) {
+            $desc .= $multilanghint();
+        }
+        return $desc;
     };
     // Registry key => [storedfile config name, file area] for the image settings.
     $filemap = [

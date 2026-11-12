@@ -193,5 +193,8 @@ class tutor_edit_form extends moodleform {
                 }
                 break;
         }
+        if (!empty($entry['multilang'])) {
+            \block_elediaai_tutor\local\formhelper::add_registry_help($mform, $name, $key, $entry);
+        }
     }
 }

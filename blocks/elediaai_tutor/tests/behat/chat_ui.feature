@@ -98,6 +98,24 @@ Feature: eLeDia.ai | Tutor chat block UI
     Then ".elediaai-chat-modal" "css_element" should not be visible
 
   @javascript
+  Scenario: The site can open the floating windows wider
+    Given the following config values are set as admin:
+      | defaultdisplaymode | docked | block_elediaai_tutor |
+    And I log in as "teacher1"
+    And I am on "Course 1" course homepage with editing mode on
+    And I add the "eLeDia.ai | Tutor" block
+    And I log out
+    And I log in as "student1"
+    And I am on "Course 1" course homepage
+    When I click on "[data-action=launch]" "css_element"
+    Then the tutor window should be "380" pixels wide
+    And the following config values are set as admin:
+      | windowwidth | wide | block_elediaai_tutor |
+    And I reload the page
+    And I click on "[data-action=launch]" "css_element"
+    And the tutor window should be "480" pixels wide
+
+  @javascript
   Scenario: The chat can be opened in full-screen mode
     Given the following config values are set as admin:
       | defaultdisplaymode | fullscreen | block_elediaai_tutor |

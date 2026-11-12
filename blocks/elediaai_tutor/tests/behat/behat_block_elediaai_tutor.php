@@ -49,4 +49,27 @@ class behat_block_elediaai_tutor extends behat_base {
                 throw new Exception("Unrecognised block_elediaai_tutor page type '{$type}'.");
         }
     }
+
+    /**
+     * Check the rendered width of the open tutor window.
+     *
+     * Measures the box the browser actually laid out, not the inline style: a
+     * token that is set but lost to a stronger rule would pass a style check
+     * and still leave the window as narrow as before.
+     *
+     * @Then /^the tutor window should be "(?P<width_number>\d+)" pixels wide$/
+     * @param int $width Expected width in CSS pixels.
+     * @return void
+     */
+    public function the_tutor_window_should_be_pixels_wide(int $width): void {
+        $actual = (int) round((float) $this->evaluate_script(
+            "return document.querySelector('.elediaai-chat-panel:not([hidden])').getBoundingClientRect().width;"
+        ));
+        if ($actual !== $width) {
+            throw new \Behat\Mink\Exception\ExpectationException(
+                "The tutor window is {$actual}px wide, expected {$width}px.",
+                $this->getSession()
+            );
+        }
+    }
 }

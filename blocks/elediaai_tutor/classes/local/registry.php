@@ -46,6 +46,7 @@ namespace block_elediaai_tutor\local;
  *   sendtorag    — whether this value is sent to the RAG server (persona)
  *   sitekey      — the site config key when it differs from the registry key
  *   exposedefault— default value of the expose_<key> admin checkbox
+ *   multilang    — free text resolved to the user's language (text, textarea)
  *
  * The registry key doubles as the per-instance config field name
  * (`config_<key>`); the site config key is the same unless `sitekey` overrides
@@ -220,6 +221,20 @@ class registry {
             ],
             'exposedefault' => true,
         ]);
+        // How wide the floating windows open. A step rather than a pixel field:
+        // one choice covers the docked panel and the dialog together, and nobody
+        // has to know what 380px looks like. branding::resolve() turns the step
+        // into --eac-docked-width / --eac-modal-width; 'standard' emits nothing,
+        // so the widths in styles.css stand.
+        $entries['windowwidth'] = self::entry('conversation', 'select', [
+            'default' => 'standard',
+            'options' => [
+                'standard' => 'windowwidth_standard',
+                'wide' => 'windowwidth_wide',
+                'xwide' => 'windowwidth_xwide',
+            ],
+            'exposedefault' => true,
+        ]);
         $entries['historyenabled'] = self::entry('conversation', 'checkbox', [
             'default' => 1, 'exposedefault' => true,
         ]);
@@ -325,6 +340,9 @@ class registry {
             'sendtorag' => false,
             'sitekey' => null,
             'premiumfeature' => null,
+            // Free text people read or the model gets: resolved to the user's
+            // language through text::localise() (see effective_text()).
+            'multilang' => in_array($type, ['text', 'textarea'], true),
             // Every optical/persona/behaviour setting is overridable per instance
             // by default; the admin removes exposure where they want site-wide
             // control. Footer is the one opt-in exception (see below).
@@ -624,6 +642,23 @@ class registry {
             }
         }
         return security::get_config(self::sitekey($key), self::default_for($key));
+    }
+
+    /**
+     * The effective value of a text key, in the current user's language.
+     *
+     * The same precedence as {@see effective()}, then the language filters
+     * (see {@see text}). Everything that shows a configured text or sends it
+     * to the model reads it through here; exports and forms keep reading the
+     * raw value, so the other languages are not lost on the way.
+     *
+     * @param string $key Registry key.
+     * @param array $instance Per-instance overrides keyed by registry key.
+     * @param \context|null $context Context the text is shown in; system when null.
+     * @return string
+     */
+    public static function effective_text(string $key, array $instance = [], ?\context $context = null): string {
+        return text::localise((string) self::effective($key, $instance), $context);
     }
 
     /**

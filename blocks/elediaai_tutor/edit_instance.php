@@ -284,13 +284,7 @@ class block_elediaai_tutor_instance_shell_form extends moodleform {
                 break;
         }
 
-        if (get_string_manager()->string_exists($field . '_help', 'block_elediaai_tutor')) {
-            $mform->addHelpButton($field, $field, 'block_elediaai_tutor');
-        } else if (get_string_manager()->string_exists('reg_' . $key . '_help', 'block_elediaai_tutor')) {
-            // A registry key may bring its own help under its registry name,
-            // so one text serves every form the registry is rendered in.
-            $mform->addHelpButton($field, 'reg_' . $key, 'block_elediaai_tutor');
-        }
+        \block_elediaai_tutor\local\formhelper::add_registry_help($mform, $field, $key, $entry);
     }
 
     /**

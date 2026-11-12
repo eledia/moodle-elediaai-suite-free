@@ -238,13 +238,13 @@ class widget {
         $historyenabled = ((int) registry::effective('historyenabled', $instance) === 1)
             && has_capability('block/elediaai_tutor:viewhistory', $context)
             && !$dashboard;
-        $welcome = (string) registry::effective('welcomemessage', $instance);
+        $welcome = registry::effective_text('welcomemessage', $instance, $context);
         if (trim($welcome) === '') {
             // On the dashboard the hero greeting carries the opening, so an
             // unset welcome stays empty instead of the built-in default.
             $welcome = $dashboard ? '' : get_string('default_welcome', 'block_elediaai_tutor');
         }
-        $persona = (string) registry::effective('persona', $instance);
+        $persona = registry::effective_text('persona', $instance, $context);
         if (trim($persona) === '') {
             $persona = get_string('default_persona', 'block_elediaai_tutor');
         }
@@ -300,7 +300,7 @@ class widget {
         $briefingprompt = '';
         if ($dashboard) {
             if ((int) registry::effective('dashboardgreetingenabled', $instance) === 1) {
-                $dashboardgreeting = trim((string) registry::effective('dashboardgreeting', $instance));
+                $dashboardgreeting = trim(registry::effective_text('dashboardgreeting', $instance, $context));
                 if ($dashboardgreeting === '') {
                     $dashboardgreeting = get_string('default_dashboardgreeting', 'block_elediaai_tutor');
                 }
@@ -319,7 +319,7 @@ class widget {
                 $dashboardgreeting = str_replace('{firstname}', $firstname, $dashboardgreeting);
             }
             if ((int) registry::effective('briefingenabled', $instance) === 1) {
-                $briefingprompt = trim((string) registry::effective('briefingprompt', $instance));
+                $briefingprompt = trim(registry::effective_text('briefingprompt', $instance, $context));
                 if ($briefingprompt === '') {
                     $briefingprompt = get_string('default_briefingprompt', 'block_elediaai_tutor');
                 }
@@ -347,7 +347,7 @@ class widget {
             };
             $startersraw = '';
             foreach ($chain as $starterskey) {
-                $startersraw = (string) registry::effective($starterskey, $instance);
+                $startersraw = registry::effective_text($starterskey, $instance, $context);
                 if (trim($startersraw) !== '') {
                     break;
                 }
@@ -356,7 +356,7 @@ class widget {
                 $startersraw = get_string(self::default_starters_key($audience), 'block_elediaai_tutor');
             }
         } else {
-            $startersraw = (string) registry::effective('promptstarters', $instance);
+            $startersraw = registry::effective_text('promptstarters', $instance, $context);
         }
         $starters = self::parse_starters($startersraw);
 

@@ -26,7 +26,9 @@
 namespace local_elediaai_core;
 
 use advanced_testcase;
+use core_ai\aiactions\generate_image;
 use core_ai\aiactions\generate_text;
+use core_ai\aiactions\responses\response_generate_image;
 use core_ai\aiactions\responses\response_generate_text;
 use core_ai\manager;
 use local_elediaai_core\local\quota_manager;
@@ -188,6 +190,82 @@ final class quota_aware_ai_manager_test extends advanced_testcase {
             IGNORE_MULTIPLE
         );
         $this->assertSame((int) $turn->id, (int) $record->turnid);
+    }
+
+    /**
+     * Ein erzeugtes Bild hat einen Beleg: Typ image, SHA-256 der Datei (#113).
+     *
+     * Der Anbieter reicht das Bild als `draftfile` durch, es hat keinen Text.
+     * Vorher kam nur `generatedcontent` in den Nachweis, ein Bild blieb ohne Beleg.
+     */
+    public function test_a_generated_image_leaves_a_receipt_bound_to_its_file(): void {
+        global $DB;
+
+        if (!class_exists('\\local_aitransparency\\provenance')) {
+            $this->markTestSkipped('Ohne local_aitransparency gibt es keinen Nachweis.');
+        }
+
+        // Ein Bild kostet mehr als das Tageslimit der uebrigen Tests.
+        set_config('quota_student_day', 100000, 'local_elediaai_core');
+        $user = $this->getDataGenerator()->create_user();
+        $this->setUser($user);
+        $bytes = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+        );
+        $file = get_file_storage()->create_file_from_string([
+            'contextid' => \context_user::instance($user->id)->id,
+            'component' => 'user',
+            'filearea' => 'draft',
+            'itemid' => file_get_unused_draft_itemid(),
+            'filepath' => '/',
+            'filename' => 'bild.png',
+        ], $bytes);
+        $action = new generate_image(
+            contextid: \context_system::instance()->id,
+            userid: $user->id,
+            prompttext: 'Ein Bild',
+            quality: 'standard',
+            aspectratio: 'landscape',
+            numimages: 1,
+            style: 'natural',
+        );
+        $response = new response_generate_image(true);
+        $response->set_response_data(['draftfile' => $file, 'model' => 'bild-modell']);
+        $manager = $this->createMock(manager::class);
+        $manager->method('process_action')->willReturn($response);
+
+        $uuid = null;
+        quota_aware_ai_manager::process_action($action, 'format_elediaai', 20, [], $manager, null, $uuid);
+
+        $this->assertNotNull($uuid);
+        $record = $DB->get_record('local_aitransparency_rec', ['uuid' => $uuid]);
+        $this->assertSame('image', $record->assettype);
+        $this->assertSame(hash('sha256', $bytes), $record->contenthash);
+        $this->assertSame('format_elediaai', $record->component);
+    }
+
+    /**
+     * Eine Antwort ohne Text und ohne Datei bleibt ohne Beleg.
+     */
+    public function test_a_response_without_text_or_file_leaves_no_receipt(): void {
+        global $DB;
+
+        if (!class_exists('\\local_aitransparency\\provenance')) {
+            $this->markTestSkipped('Ohne local_aitransparency gibt es keinen Nachweis.');
+        }
+
+        [, $action] = $this->action();
+        $response = new response_generate_text(true);
+        $response->set_response_data(['generatedcontent' => '  ', 'model' => 'm']);
+        $manager = $this->createMock(manager::class);
+        $manager->method('process_action')->willReturn($response);
+
+        $before = $DB->count_records('local_aitransparency_rec');
+        $uuid = null;
+        quota_aware_ai_manager::process_action($action, 'local_elediaai_strategy', 20, [], $manager, null, $uuid);
+
+        $this->assertNull($uuid);
+        $this->assertSame($before, $DB->count_records('local_aitransparency_rec'));
     }
 
     /**

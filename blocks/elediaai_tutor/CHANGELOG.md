@@ -3,6 +3,47 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.15] – 2026-11-12
+
+### Neu
+
+- Die einstellbaren Texte sind mehrsprachig (ai_suite#209): Begruessung,
+  Persona-Name und -Felder, Einstiegsfragen (Kurs und Dashboard),
+  Dashboard-Begruessung, Briefing-Prompt, Start-Schaltflaeche und Fusszeile
+  verstehen die Schreibweise des Filters „Mehrsprachiger Inhalt“
+  (`<span lang="de" class="multilang">…</span>`) und von filter_multilang2
+  (`{mlang de}…{mlang}`). Jede Person sieht den Text in ihrer Sprache.
+- Bisher lief ueber die Begruessung gar kein Filter (`'filter' => false`),
+  ueber die einzeiligen Texte nur mit „Alle Zeichenketten filtern“, ueber die
+  Start-Schaltflaeche nie. Neu wendet `text::localise()` nur die Sprachfilter
+  an, unabhaengig von „Alle Zeichenketten filtern“; Glossar- und
+  Aktivitaetslinks bleiben aus den Tutor-Texten heraus.
+- Was an das Modell geht (Persona-Felder, Briefing-Prompt, abgeschickte
+  Einstiegsfrage), wird vorher ebenso aufgeloest, damit das Modell nicht
+  beide Sprachen auf einmal bekommt.
+- Hilfetexte: Jedes Textfeld in Instanz- und Profilformular hat eine Hilfe
+  zur Schreibweise, die Website-Einstellungen zeigen sie unter der
+  Beschreibung samt Hinweis, ob ein Sprachfilter eingeschaltet ist.
+
+Ist kein Sprachfilter aktiv, bleiben die Texte unveraendert. Formulare und
+Export lesen weiter den Rohwert, die anderen Sprachen gehen also nicht
+verloren.
+
+## [1.0.14] – 2026-11-12
+
+### Neu
+
+- Einstellung „Breite des Chatfensters“ (`windowwidth`, ai_suite#208) mit den
+  Stufen Standard, Breit und Sehr breit. Sie gilt fuer das angedockte Fenster
+  (380 / 480 / 600 px) und den Dialog (640 / 800 / 960 px). Bisher war die
+  Breite fest, und 380 px sind knapp, sobald Antworten Tabellen oder Code
+  enthalten. Eine Stufe statt zweier Pixelfelder, weil sie beide Fenster
+  zusammen regelt und niemand wissen muss, wie 380 px aussehen; genaue Werte
+  gehen weiter ueber das eigene CSS (`--eac-docked-width`, `--eac-modal-width`).
+- Die Einstellung ist wie die anderen Darstellungswerte pro Instanz
+  ueberschreibbar. Auf kleinen Bildschirmen bleibt das Fenster innerhalb des
+  Bildschirms; Vollbild und Eingebettet bleiben unveraendert.
+
 ## [1.0.13] – 2026-11-12
 
 ### Geaendert

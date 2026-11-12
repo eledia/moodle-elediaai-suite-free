@@ -1443,7 +1443,8 @@
     position: fixed;
     right: 1.25rem;
     bottom: 1.25rem;
-    width: 380px;
+    /* Set by the "Chat window width" setting (branding::window_widths()). */
+    width: var(--eac-docked-width, 380px);
     max-width: calc(100vw - 2rem);
     z-index: var(--eac-z);
 }
@@ -1464,7 +1465,7 @@
 }
 
 .elediaai-chat-modal .elediaai-chat-window {
-    width: min(640px, 100%); /* stylelint-disable-line csstree/validator */
+    width: min(var(--eac-modal-width, 640px), 100%); /* stylelint-disable-line csstree/validator */
     height: min(80vh, 720px); /* stylelint-disable-line csstree/validator */
     position: relative;
     z-index: 1;

@@ -4,13 +4,22 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.3.3] – 2026-11-12
+
+### Behoben
+
+- #113: Ein von der KI erzeugtes Bild hat jetzt einen Herkunftsnachweis. `quota_aware_ai_manager` schrieb den Nachweis nur für Text (`generatedcontent`); ein Bild, das der Anbieter als Datei (`draftfile`) liefert, blieb ohne Beleg. Jetzt wird für das Bild ein Nachweis vom Typ `image` angelegt, gebunden an den SHA-256-Hash der Datei (die Datei ist die Fassung nach dem Wasserzeichen). Andere Dateien erhalten den Typ `file`. Eine Antwort ohne Text und ohne Datei bleibt ohne Nachweis, wie bisher. Die Schnittstelle ist unverändert; ohne `local_aitransparency` gibt es weiterhin keinen Nachweis und keinen Fehler.
+
+### Tests
+
+- `quota_aware_ai_manager_test`: Bild-Nachweis mit Typ und Dateihash; Antwort ohne Text und Datei schreibt nichts.
+
 ## [1.3.2] – 2026-11-12
 
 ### Geaendert
 
 - Handbuch und Funktionsbeschreibung des Tutors: Die Bestaetigung der
   Datenschutzhinweise ist optional und standardmaessig aus (ai_suite#203).
-
 
 ## [1.3.1] – 2026-11-04
 

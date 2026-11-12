@@ -110,7 +110,18 @@ Tutor-Profile beschreiben, wie ein Tutor wirken und antworten soll. Sie bündeln
 - Begrüßung und Einstiegsfragen.
 - System-Prompt und Antwortstil.
 - Farben, Avatar, Nachrichtenblasen und Start-Schaltfläche.
+- Breite des Chatfensters: Standard, Breit oder Sehr breit für das angedockte Fenster und den Dialog, etwa wenn Antworten oft Tabellen oder Code enthalten.
 - Governance-Regeln, welche Werte pro Blockinstanz überschrieben werden dürfen.
+
+### Mehrsprachige Texte
+
+Begrüßung, Persona, Einstiegsfragen, Dashboard-Begrüßung, Start-Schaltfläche und Fußzeile lassen sich in mehreren Sprachen hinterlegen. Jede Person sieht dann die Sprache, die sie in Moodle eingestellt hat; auch das KI-Modell erhält nur diese. Jede Sprache steht in einem eigenen Block:
+
+```
+<span lang="de" class="multilang">Hallo! Wie kann ich helfen?</span><span lang="en" class="multilang">Hello! How can I help?</span>
+```
+
+Mit dem Zusatzplugin „Multi-Language Content (v2)“ geht auch `{mlang de}Hallo!{mlang}{mlang en}Hello!{mlang}`. Voraussetzung ist, dass der Filter „Mehrsprachiger Inhalt“ (bzw. v2) unter *Website-Administration > Plugins > Filter > Filter verwalten* eingeschaltet ist; „Alle Zeichenketten filtern“ ist nicht nötig. Die Hilfe-Icons an den Textfeldern zeigen dasselbe Beispiel.
 
 Ein websiteweiter Standard-Tutor sorgt für ein konsistentes Erlebnis. Einzelne Blockinstanzen können davon abweichen, wenn Administrator/innen die jeweiligen Überschreibungen erlauben.
 

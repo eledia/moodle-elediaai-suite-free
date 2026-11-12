@@ -49,4 +49,31 @@ class formhelper {
             'MoodleQuickForm_eatcolour'
         );
     }
+
+    /**
+     * Add the help button for a registry field.
+     *
+     * A field-specific help wins, then the registry key's own help. A text
+     * field without either gets the help on multilingual text: those fields
+     * accept the "Multi-language content" markup, and nobody finds that out
+     * from an empty text box.
+     *
+     * @param \MoodleQuickForm $mform The form.
+     * @param string $field Form element name.
+     * @param string $key Registry key.
+     * @param array $entry Registry descriptor.
+     * @return void
+     */
+    public static function add_registry_help(\MoodleQuickForm $mform, string $field, string $key, array $entry): void {
+        $strings = get_string_manager();
+        if ($strings->string_exists($field . '_help', 'block_elediaai_tutor')) {
+            $mform->addHelpButton($field, $field, 'block_elediaai_tutor');
+        } else if ($strings->string_exists('reg_' . $key . '_help', 'block_elediaai_tutor')) {
+            // A registry key may bring its own help under its registry name,
+            // so one text serves every form the registry is rendered in.
+            $mform->addHelpButton($field, 'reg_' . $key, 'block_elediaai_tutor');
+        } else if (!empty($entry['multilang'])) {
+            $mform->addHelpButton($field, 'multilanghint', 'block_elediaai_tutor');
+        }
+    }
 }

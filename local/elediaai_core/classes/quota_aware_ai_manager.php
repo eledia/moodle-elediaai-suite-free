@@ -420,13 +420,24 @@ final class quota_aware_ai_manager {
             return null;
         }
 
+        // Text belegt sich ueber den Text selbst, ein Bild ueber seine Datei:
+        // der Anbieter reicht sie als `draftfile` durch, nach dem Wasserzeichen.
         $content = (string) ($responsedata['generatedcontent'] ?? '');
+        $assettype = 'text';
+        $file = null;
         if (trim($content) === '') {
-            // Nichts erzeugt, nichts nachzuweisen.
-            return null;
+            $file = $responsedata['draftfile'] ?? null;
+            if (!$file instanceof \stored_file || $file->is_directory()) {
+                // Nichts erzeugt, nichts nachzuweisen.
+                return null;
+            }
+            $content = null;
+            $assettype = str_starts_with((string) $file->get_mimetype(), 'image/') ? 'image' : 'file';
         }
 
         try {
+            // Der Hash der Datei, nicht Moodles contenthash: der ist SHA-1, der Nachweis fuehrt SHA-256.
+            $contenthash = $file === null ? null : self::file_sha256($file);
             return \local_aitransparency\provenance::record(
                 new \local_aitransparency\record_request(
                     component: $component,
@@ -435,8 +446,9 @@ final class quota_aware_ai_manager {
                     model: (string) ($responsedata['model'] ?? ''),
                     userid: $userid,
                     contextid: (int) ($action->get_configuration('contextid') ?? 0),
-                    assettype: 'text',
+                    assettype: $assettype,
                     content: $content,
+                    contenthash: $contenthash,
                     registerid: $registerid,
                     turnid: $turnid,
                 )
@@ -447,6 +459,26 @@ final class quota_aware_ai_manager {
                 DEBUG_DEVELOPER
             );
             return null;
+        }
+    }
+
+    /**
+     * SHA-256 of a stored file's bytes, read as a stream.
+     *
+     * @param \stored_file $file The file.
+     * @return string SHA-256 hex.
+     */
+    private static function file_sha256(\stored_file $file): string {
+        $handle = $file->get_content_file_handle();
+        if ($handle === false) {
+            throw new \RuntimeException('The generated file cannot be read.');
+        }
+        try {
+            $context = hash_init('sha256');
+            hash_update_stream($context, $handle);
+            return hash_final($context);
+        } finally {
+            fclose($handle);
         }
     }
 

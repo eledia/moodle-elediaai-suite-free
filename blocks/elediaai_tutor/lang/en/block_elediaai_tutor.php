@@ -60,20 +60,20 @@ $string['config_launcherstyle'] = 'Launcher button style';
 $string['config_launcherstyle_help'] = 'How the "open the tutor" button looks in docked/modal/fullscreen modes for this block. "Use site default" follows the site setting.';
 $string['config_launcherstyle_site'] = 'Use site default';
 $string['config_launchlabel'] = 'Launcher label';
-$string['config_launchlabel_help'] = 'Overrides the launcher button text for this block only. Leave empty to use the site default.';
+$string['config_launchlabel_help'] = 'Overrides the launcher button text for this block only. Leave empty to use the site default. Multilingual text is possible as well, written the way the "Multi-language content" filter expects: `<span lang="de" class="multilang">…</span><span lang="en" class="multilang">…</span>`; the help next to the welcome message explains it in detail.';
 $string['config_logo'] = 'Tutor logo (this block)';
 $string['config_logo_help'] = 'A logo for the launcher and chat header of this block only. Leave empty to use the site logo.';
 $string['config_passcoursecontext'] = 'Pass course context';
 $string['config_passcoursecontext_help'] = 'When enabled and the block is on a course page, the current course id is sent to the tutor so it can answer course-specific questions. The tutor still works for general questions.';
 $string['config_persona'] = 'Assistant persona label';
 $string['config_promptstarters'] = 'Prompt starters';
-$string['config_promptstarters_help'] = 'Suggested prompts shown as tappable chips, one per line (at most 6 are shown). Line formats: "fa-icon | Label | Prompt" or "Label | Prompt" — the short label is the button text, the prompt is what gets sent. A line without "|" uses the whole text as both. Leave empty to use the site default.';
+$string['config_promptstarters_help'] = 'Suggested prompts shown as tappable chips, one per line (at most 6 are shown). Line formats: "fa-icon | Label | Prompt" or "Label | Prompt" — the short label is the button text, the prompt is what gets sent. A line without "|" uses the whole text as both. Leave empty to use the site default. Multilingual text is possible as well, written the way the "Multi-language content" filter expects: `<span lang="de" class="multilang">…</span><span lang="en" class="multilang">…</span>`; the help next to the welcome message explains it in detail. For prompt starters, each question goes on a line of its own with its own language blocks.';
 $string['config_promptstarters_manager'] = 'Prompt starters (managers)';
-$string['config_promptstarters_manager_help'] = 'Dashboard pills for users who manage courses, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent.';
+$string['config_promptstarters_manager_help'] = 'Dashboard pills for users who manage courses, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent. Multilingual text is possible as well: each line with its own language blocks, e.g. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; the help next to the welcome message explains it in detail.';
 $string['config_promptstarters_teacher'] = 'Prompt starters (teachers)';
 $string['config_promptstarters_student'] = 'Prompt starters (students)';
-$string['config_promptstarters_teacher_help'] = 'Dashboard pills for teachers, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent.';
-$string['config_promptstarters_student_help'] = 'Dashboard pills for learners, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent. Leave empty for the built-in learner pills.';
+$string['config_promptstarters_teacher_help'] = 'Dashboard pills for teachers, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent. Multilingual text is possible as well: each line with its own language blocks, e.g. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; the help next to the welcome message explains it in detail.';
+$string['config_promptstarters_student_help'] = 'Dashboard pills for learners, one per line: "fa-icon | Label | Prompt" or "Label | Prompt". The short label is the button text, the prompt is what gets sent. Leave empty for the built-in learner pills. Multilingual text is possible as well: each line with its own language blocks, e.g. `<span lang="de" class="multilang">Ideen | Gib mir drei Ideen</span><span lang="en" class="multilang">Ideas | Give me three ideas</span>`; the help next to the welcome message explains it in detail.';
 $string['config_ragmode'] = 'Answer source';
 $string['config_ragmode_help'] = 'Grounded: the tutor answers from this course\'s ingested materials (with citations). LLM-only: the tutor answers from the language model\'s general knowledge without searching the course knowledge base. If the course has no ingested content, the tutor uses LLM-only automatically.';
 $string['config_ragmode_nokb'] = 'General knowledge (LLM only) — this course has no ingested knowledge base, so grounded answers are not available. Mark the course for ingestion to enable them.';
@@ -237,6 +237,21 @@ $string['ltm_saved'] = 'Preference saved.';
 $string['managetutors'] = 'Tutors';
 $string['managetutors_intro'] = 'Manage tutors: apply a preset or a saved tutor to the whole site, create and edit your own tutor designs, and import or export tutors (settings + images) as a bundle. Each block instance can also be given its own tutor below.';
 $string['messagelabel'] = 'Your message to the tutor';
+$string['multilang_desc'] = 'Multilingual text is possible: each language in a block of its own, e.g. <code>&lt;span lang="de" class="multilang"&gt;Hallo!&lt;/span&gt;&lt;span lang="en" class="multilang"&gt;Hello!&lt;/span&gt;</code> or, with "Multi-Language Content (v2)", <code>&#123;mlang de&#125;Hallo!&#123;mlang&#125;&#123;mlang en&#125;Hello!&#123;mlang&#125;</code>. Each person sees the text in their Moodle language, and the AI model receives only that one. For prompt starters, each question goes on a line of its own with its own language blocks.';
+$string['multilang_filteroff'] = '<strong>No language filter is currently switched on on this site</strong>, so all blocks would be shown. Switch on the filter "Multi-language content" under <a href="{$a}">Manage filters</a>.';
+$string['multilang_filteron'] = 'A language filter is switched on on this site.';
+$string['multilanghint'] = 'Multilingual text';
+$string['multilanghint_help'] = 'This text can be provided in several languages. Each person then sees it in the language they have set in Moodle. The AI model also receives only that language.
+
+Write each language in a block of its own, one directly after the other:
+
+`<span lang="de" class="multilang">Hallo! Wie kann ich helfen?</span><span lang="en" class="multilang">Hello! How can I help?</span>`
+
+For prompt starters, each question goes on a line of its own with its own language blocks.
+
+If the add-on "Multi-Language Content (v2)" is installed, the shorter form &#123;mlang de&#125;Hallo!&#123;mlang&#125;&#123;mlang en&#125;Hello!&#123;mlang&#125; works as well.
+
+Requirement: the filter "Multi-language content" or "Multi-Language Content (v2)" is switched on under Site administration > Plugins > Filters > Manage filters. "Filter all strings" does not need to be enabled. If the block for a language is missing, Moodle shows the block of the default language or the first block.';
 $string['nav_back_to_course'] = 'Back to course';
 $string['nav_configuration'] = 'Dashboard';
 $string['nav_elediamcp'] = 'MCP';
@@ -516,6 +531,8 @@ $string['reg_tok_z_desc'] = 'Controls whether the tutor floats above other page 
 $string['reg_tokenhint'] = 'Any valid CSS value for this design token. Leave blank to use the built-in default.';
 $string['reg_welcomemessage'] = 'Welcome message';
 $string['reg_welcomemessage_desc'] = 'Opening message shown above the conversation.';
+$string['reg_windowwidth'] = 'Chat window width';
+$string['reg_windowwidth_desc'] = 'How wide the docked panel and the dialog open. Standard: 380 px / 640 px. Wide: 480 px / 800 px, with more room for tables and code. Extra wide: 600 px / 960 px. On small screens the window never grows beyond the screen. Full screen and embedded are not affected.';
 $string['reggroup_accent'] = 'Accent colours';
 $string['reggroup_bubbles'] = 'Message bubbles';
 $string['reggroup_knowledge'] = 'Knowledge base';
@@ -735,6 +752,9 @@ $string['tutor_untitled'] = 'Untitled tutor';
 $string['unavailable_user'] = 'The tutor is currently unavailable. Please try again later.';
 $string['ungroundedbadge'] = 'General answer';
 $string['ungroundedbadge_title'] = 'This answer is not based on the knowledge base — double-check important facts.';
+$string['windowwidth_standard'] = 'Standard';
+$string['windowwidth_wide'] = 'Wide';
+$string['windowwidth_xwide'] = 'Extra wide';
 $string['copilot_open_insights'] = 'Open course insights';
 $string['copilot_page_intro'] = 'The AI analysis of what your learners asked. The numbers, the gap list and the questions themselves now live in the suite’s course insights; this page holds the interpretation, because generating it runs a real chat turn with the tutor’s rate limit (and its confirmation on first use, if switched on).';
 $string['copilot_page_title'] = 'AI analysis of the questions';

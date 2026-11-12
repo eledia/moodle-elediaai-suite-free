@@ -103,7 +103,7 @@ class branding {
         }
 
         // 3. Launcher label: instance → site → built-in default string.
-        $launchlabel = trim((string) self::effective_value('launchlabel', $instance));
+        $launchlabel = trim(registry::effective_text('launchlabel', $instance));
         if ($launchlabel === '') {
             $launchlabel = get_string('launch', 'block_elediaai_tutor');
         }
@@ -112,6 +112,13 @@ class branding {
         $launcherstyle = (string) self::effective_value('launcherstyle', $instance);
         if (!isset(registry::get('launcherstyle')['options'][$launcherstyle])) {
             $launcherstyle = (string) registry::default_for('launcherstyle');
+        }
+
+        // 5. Window width: a step from the registry, written as the two width
+        // tokens of the floating windows. An explicit token from a preset or
+        // import is not overwritten.
+        foreach (self::window_widths((string) self::effective_value('windowwidth', $instance)) as $name => $value) {
+            $tokens[$name] = $tokens[$name] ?? $value;
         }
 
         return [
@@ -127,6 +134,24 @@ class branding {
     }
 
     /**
+     * The width tokens for a window-width step.
+     *
+     * Empty for 'standard' and for anything unknown, so the widths in
+     * styles.css stand. The docked panel and the dialog grow together: a site
+     * that wants room for tables wants it in both.
+     *
+     * @param string $step Registry value of 'windowwidth'.
+     * @return array<string,string> Token name => CSS length.
+     */
+    public static function window_widths(string $step): array {
+        $widths = [
+            'wide' => ['--eac-docked-width' => '480px', '--eac-modal-width' => '800px'],
+            'xwide' => ['--eac-docked-width' => '600px', '--eac-modal-width' => '960px'],
+        ];
+        return $widths[$step] ?? [];
+    }
+
+    /**
      * The effective persona for transmission to the RAG server.
      *
      * Returns only the populated sub-fields (name/role/tone/audience/instructions),
@@ -138,7 +163,7 @@ class branding {
     public static function persona(array $instance = []): array {
         $out = [];
         foreach (registry::persona_keys() as $key) {
-            $value = trim((string) self::effective_value($key, $instance));
+            $value = trim(registry::effective_text($key, $instance));
             if ($value === '') {
                 continue;
             }
@@ -289,7 +314,7 @@ class branding {
             case self::FOOTER_NONE:
                 return '';
             case self::FOOTER_CUSTOM:
-                $text = trim((string) registry::effective('footertext', $instance));
+                $text = trim(registry::effective_text('footertext', $instance));
                 return $text !== '' ? $text : get_string('poweredby', 'block_elediaai_tutor');
             default:
                 return get_string('poweredby', 'block_elediaai_tutor');
