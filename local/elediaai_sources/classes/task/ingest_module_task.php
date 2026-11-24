@@ -75,7 +75,10 @@ class ingest_module_task extends \core\task\adhoc_task {
                 mtrace("  [local_elediaai_sources] Course {$data->courseid} now counts as ingested.");
             }
 
-            if ($result['success']) {
+            if (($result['status'] ?? '') === 'queued') {
+                mtrace("  [local_elediaai_sources] Ingestion accepted for cmid {$data->cmid}; "
+                    . "processing not yet confirmed.");
+            } else if ($result['success']) {
                 mtrace("  [local_elediaai_sources] Ingestion succeeded for cmid {$data->cmid}.");
             } else {
                 mtrace("  [local_elediaai_sources] Ingestion result for cmid {$data->cmid}: "

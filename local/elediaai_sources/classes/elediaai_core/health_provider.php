@@ -113,6 +113,50 @@ final class health_provider implements health_provider_contract {
             detail: get_string('health_formats_detail', self::COMPONENT, implode(', ', $formate)),
         );
 
+        // Was die Pipeline angenommen, aber noch nicht bestaetigt hat, zaehlt
+        // getrennt von echten Fehlern (#232, REQ-012). Warten ist kein Fehler,
+        // deshalb OK statt Warnung.
+        $module = \local_elediaai_sources\course_state::module_counts();
+        if ($module['processing'] > 0) {
+            $pruefungen[] = new check(
+                id: 'processing',
+                component: self::COMPONENT,
+                label: get_string('health_processing', self::COMPONENT),
+                status: check::STATUS_OK,
+                detail: get_string('health_processing_detail', self::COMPONENT, $module['processing']),
+            );
+        }
+        if ($module['error'] > 0) {
+            $pruefungen[] = new check(
+                id: 'errors',
+                component: self::COMPONENT,
+                label: get_string('health_errors', self::COMPONENT),
+                status: check::STATUS_WARNING,
+                detail: get_string('health_errors_detail', self::COMPONENT, (object) [
+                    'total' => $module['error'],
+                    'exhausted' => $module['exhausted'],
+                ]),
+                actionurl: new moodle_url('/local/elediaai_sources/reindex.php'),
+                actionlabel: get_string('health_errors_action', self::COMPONENT),
+            );
+        }
+
+        // Ein Dauerausfall der Status-API aendert keinen Status (OPEN-001);
+        // sichtbar wird er hier, nicht nur auf einzelnen Kursseiten.
+        $statusproblem = \local_elediaai_sources\cm_state::status_check_problem($ziel::id());
+        if ($statusproblem !== null) {
+            $pruefungen[] = new check(
+                id: 'statussync',
+                component: self::COMPONENT,
+                label: get_string('health_statussync', self::COMPONENT),
+                status: check::STATUS_WARNING,
+                detail: get_string('health_statussync_detail', self::COMPONENT, (object) [
+                    'since' => userdate($statusproblem['since']),
+                    'reason' => $statusproblem['reason'],
+                ]),
+            );
+        }
+
         // Ausstehende Kurse sind kein Fehler, aber der Grund, warum ein Tutor
         // gerade nicht aus dem Kurs antwortet -- und das sucht sonst niemand hier.
         if ($offen > 0) {

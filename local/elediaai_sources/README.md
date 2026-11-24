@@ -241,6 +241,28 @@ Course state is persisted in `local_elediaai_sources_course`. A course is marked
 modules do not count as errors, so empty or unsupported courses do not get
 queued forever.
 
+### Confirmed by the destination (since 1.6.0)
+
+The eLeDia.ai Ingestion API answers an upsert with `202 Accepted`: the job is
+stored, not yet processed. Such an activity is recorded as **queued**, not as
+indexed. The scheduled task `status_sync_task` (every five minutes) reads the
+processing status back through `POST /documents/status/batch` — only for
+documents still in flight, at most 500 ids per request — and turns an activity
+**indexed** once all its documents succeeded, or **error** with the pipeline's
+reason once one failed. Errors the pipeline cannot recover from (parsing,
+validation, empty content and similar) are not retried until the content
+changes; other errors are retried by the nightly reconcile. A document still
+open 24 hours after acceptance becomes **not confirmed** and is retried. A
+failing status API changes nothing but shows "status not available".
+
+A course counts as ingested (`course_state::is_ingested()`, read by the tutor)
+only after the first confirmed document; until then it stays pending. The
+activity page shows the new states with their reasons, the course status and
+counters, and refreshes them once after loading and on its **Refresh status**
+button (throttled to one check per course every 30 seconds). The per-document
+state lives in `local_elediaai_sources_docstate`. LiteRAG answers
+synchronously and is not affected. See `docs/api-specification.md` (v1.6).
+
 ## What Gets Indexed
 
 The plugin indexes content from released courses only. It never indexes:

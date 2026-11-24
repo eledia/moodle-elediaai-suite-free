@@ -39,4 +39,12 @@ $functions = [
         'ajax' => true,
         'capabilities' => 'local/elediaai_sources:selectactivities',
     ],
+    'local_elediaai_sources_refresh_course_status' => [
+        'classname' => \local_elediaai_sources\external\refresh_course_status::class,
+        'description' => 'Check the processing status of a course\'s documents in flight (throttled) and return it.',
+        // Write: the check stores what the destination answered.
+        'type' => 'write',
+        'ajax' => true,
+        'capabilities' => 'local/elediaai_sources:selectactivities',
+    ],
 ];

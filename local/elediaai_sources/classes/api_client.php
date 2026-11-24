@@ -61,7 +61,7 @@ class api_client {
      *
      * @param string $url The absolute request URL.
      * @param array $payload The JSON payload.
-     * @return array Result with keys 'success', 'http_code', 'response', 'error'.
+     * @return array Result with keys 'success', 'http_code', 'response', 'error', 'headers'.
      */
     public function post(string $url, array $payload): array {
         $target = $this->resolve_target($url);
@@ -71,6 +71,7 @@ class api_client {
             'http_code' => 0,
             'response' => '',
             'error' => '',
+            'headers' => [],
         ];
 
         for ($attempt = 1; $attempt <= self::MAX_RETRIES; $attempt++) {
@@ -119,7 +120,7 @@ class api_client {
      * settings page that shows the result.
      *
      * @param string $url The absolute request URL.
-     * @return array Result with keys 'success', 'http_code', 'response', 'error'.
+     * @return array Result with keys 'success', 'http_code', 'response', 'error', 'headers'.
      */
     public function get(string $url): array {
         $target = $this->resolve_target($url);
@@ -141,9 +142,13 @@ class api_client {
     /**
      * Build the common result row from a finished cURL call.
      *
+     * The response headers travel along because a status answer carries its
+     * polling advice in `Retry-After` (ai_suite#232). Callers that do not need
+     * them ignore the field.
+     *
      * @param \curl $curl The finished cURL wrapper.
      * @param string|bool $response The raw response body.
-     * @return array Result with keys 'success', 'http_code', 'response', 'error'.
+     * @return array Result with keys 'success', 'http_code', 'response', 'error', 'headers'.
      */
     private function result_from(\curl $curl, $response): array {
         $info = $curl->get_info();
@@ -155,7 +160,36 @@ class api_client {
             'http_code' => $httpcode,
             'response' => is_string($response) ? $response : '',
             'error' => $errno ? $curl->error : '',
+            'headers' => self::normalise_headers($curl->getResponse()),
         ];
+    }
+
+    /**
+     * Response headers with lowercase names and one string value each.
+     *
+     * Moodle's wrapper keeps the status line under its protocol name and
+     * collects repeated headers into an array; the last value wins here, as
+     * it does for the headers this plugin reads.
+     *
+     * @param mixed $headers What {@see \curl::getResponse()} returned.
+     * @return array<string, string> Header values keyed by lowercase name.
+     */
+    public static function normalise_headers($headers): array {
+        if (!is_array($headers)) {
+            return [];
+        }
+
+        $normalised = [];
+        foreach ($headers as $name => $value) {
+            if (!is_string($name) || $name === '' || str_starts_with(strtoupper($name), 'HTTP/')) {
+                continue;
+            }
+            if (is_array($value)) {
+                $value = end($value);
+            }
+            $normalised[strtolower($name)] = trim((string) $value);
+        }
+        return $normalised;
     }
 
     /**

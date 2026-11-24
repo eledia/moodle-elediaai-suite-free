@@ -18,6 +18,7 @@ namespace local_elediaai_sources;
 
 use local_elediaai_sources\sink\sink;
 use local_elediaai_sources\sink\sink_manager;
+use local_elediaai_sources\sink\status_reporting_sink;
 
 /**
  * Ingestion manager — orchestrates content extraction and RAG API submission.
@@ -384,8 +385,16 @@ class ingestion_manager {
         // alone until someone forces a reindex. Without this the quarter-hourly
         // reconcile would walk into the same error forever, and the course
         // would never stop counting as unfinished.
+        //
+        // Except when the pipeline refused the content itself (an encrypted
+        // PDF, too many pages): then new content is no retry of the old one
+        // and goes out once it differs from what was refused (OPEN-004). The
+        // hash decides that further down.
+        $refusedcontent = false;
         if ($force) {
             cm_state::reset_attempts((int) $cm->id);
+        } else if (cm_state::exhausted_by_pipeline((int) $cm->id)) {
+            $refusedcontent = true;
         } else if (cm_state::is_exhausted((int) $cm->id)) {
             return [
                 'cmid' => $cm->id,
@@ -401,7 +410,7 @@ class ingestion_manager {
         // Multi-document extractors (e.g. a Folder with several files) emit one
         // document per sub-item; everything else maps to a single document.
         if ($extractor instanceof multi_document_extractor) {
-            return $this->ingest_multi($cm, $extractor, $modulename, $force);
+            return $this->ingest_multi($cm, $extractor, $modulename, $force, $refusedcontent);
         }
 
         // Extract content (single document).
@@ -462,6 +471,10 @@ class ingestion_manager {
         }
 
         $contenthash = cm_state::aggregate_hash([$prepared['hash']]);
+        $refused = $this->refused_unchanged($cm, $refusedcontent, $modulesourceid, $contenthash, $modulename);
+        if ($refused !== null) {
+            return $refused;
+        }
         $current = cm_state::is_current(
             (int) $cm->id,
             $modulesourceid,
@@ -480,7 +493,16 @@ class ingestion_manager {
         }
 
         $result = $this->send_document($cm, $prepared, $modulename);
-        if (!empty($result['success'])) {
+        if (($result['status'] ?? '') === 'queued') {
+            cm_state::record_queued(
+                (int) $cm->course,
+                (int) $cm->id,
+                $modulesourceid,
+                $contenthash,
+                $this->sink::id(),
+                [['sourceid' => $prepared['sourceid'], 'jobid' => $result['jobid'] ?? null]]
+            );
+        } else if (!empty($result['success'])) {
             cm_state::record_success(
                 (int) $cm->course,
                 (int) $cm->id,
@@ -515,13 +537,15 @@ class ingestion_manager {
      * @param multi_document_extractor $extractor The extractor.
      * @param string $modulename The formatted module name.
      * @param bool $force Re-send even content the state records as unchanged.
+     * @param bool $refusedcontent The pipeline refused the module's last content (OPEN-004).
      * @return array Aggregated result array.
      */
     private function ingest_multi(
         \cm_info $cm,
         multi_document_extractor $extractor,
         string $modulename,
-        bool $force = false
+        bool $force = false,
+        bool $refusedcontent = false
     ): array {
         try {
             $documents = $extractor->extract_documents($cm);
@@ -610,6 +634,10 @@ class ingestion_manager {
 
         $modulesourceid = source_id_helper::build($cm);
         $contenthash = cm_state::aggregate_hash($hashes);
+        $refused = $this->refused_unchanged($cm, $refusedcontent, $modulesourceid, $contenthash, $modulename);
+        if ($refused !== null) {
+            return $refused;
+        }
         $current = cm_state::is_current(
             (int) $cm->id,
             $modulesourceid,
@@ -647,16 +675,23 @@ class ingestion_manager {
 
         $sent = 0;
         $failed = 0;
+        $accepted = [];
         foreach ($prepared as $prep) {
             $res = $this->send_document($cm, $prep, $modulename);
             if (!empty($res['success'])) {
                 $sent++;
+                if (($res['status'] ?? '') === 'queued') {
+                    $accepted[] = ['sourceid' => $prep['sourceid'], 'jobid' => $res['jobid'] ?? null];
+                }
             } else {
                 $failed++;
             }
         }
 
         $ok = $failed === 0 && $sent > 0;
+        // An asynchronous destination only accepted the set; the module is
+        // indexed once every document is confirmed (D-a).
+        $queued = $ok && $accepted !== [];
         $summary = get_string(
             'ingestionmultisummary',
             'local_elediaai_sources',
@@ -669,7 +704,16 @@ class ingestion_manager {
                 count($notices)
             );
         }
-        if ($ok) {
+        if ($queued) {
+            cm_state::record_queued(
+                (int) $cm->course,
+                (int) $cm->id,
+                $modulesourceid,
+                $contenthash,
+                $this->sink::id(),
+                $accepted
+            );
+        } else if ($ok) {
             cm_state::record_success(
                 (int) $cm->course,
                 (int) $cm->id,
@@ -690,9 +734,47 @@ class ingestion_manager {
             'cmid' => $cm->id,
             'module_name' => $modulename,
             'success' => $ok,
-            'status' => $ok ? 'success' : 'error',
+            'status' => $queued ? 'queued' : ($ok ? 'success' : 'error'),
             'message' => $summary,
         ];
+    }
+
+    /**
+     * Skip content the pipeline refused before and that has not changed since.
+     *
+     * Only asked for a module whose budget the pipeline spent by refusing its
+     * content (OPEN-004). Unchanged, it stays skipped -- a re-send would fail
+     * the same way (AC-004). Changed, it gets a fresh budget and goes out:
+     * that is new content, not a retry.
+     *
+     * @param \cm_info $cm The course module.
+     * @param bool $refusedcontent Whether the pipeline refused the last content.
+     * @param string $modulesourceid The module-level source id.
+     * @param string $contenthash The aggregate hash of the current content.
+     * @param string $modulename The formatted module name.
+     * @return array|null A skip result, or null when the module may be sent.
+     */
+    private function refused_unchanged(
+        \cm_info $cm,
+        bool $refusedcontent,
+        string $modulesourceid,
+        string $contenthash,
+        string $modulename
+    ): ?array {
+        if (!$refusedcontent) {
+            return null;
+        }
+        if (cm_state::holds_hash((int) $cm->id, $modulesourceid, $contenthash, $this->sink::id())) {
+            return [
+                'cmid' => $cm->id,
+                'module_name' => $modulename,
+                'success' => false,
+                'status' => 'skipped',
+                'message' => get_string('pipelinerefusedunchanged', 'local_elediaai_sources'),
+            ];
+        }
+        cm_state::reset_attempts((int) $cm->id);
+        return null;
     }
 
     /**
@@ -826,6 +908,27 @@ class ingestion_manager {
                 'success' => false,
                 'status' => 'skipped',
                 'message' => $reason,
+            ];
+        }
+
+        // An asynchronous destination answers 202 with a job: stored, not
+        // processed (ai_suite#232). Accepted is reported as success of the
+        // transport, but with status "queued", so nothing counts it as
+        // indexed before the destination confirms it. The job id is kept
+        // when the answer carries one; without it the status is still found
+        // through the source id.
+        if ($apiresult['success'] && $this->sink instanceof status_reporting_sink) {
+            $jobid = is_array($response) && is_scalar($response['job_id'] ?? null)
+                ? trim((string) $response['job_id'])
+                : '';
+            mtrace(get_string('ingestionqueued', 'local_elediaai_sources', $loginfo));
+            return [
+                'cmid' => $cm->id,
+                'module_name' => $modulename,
+                'success' => true,
+                'status' => 'queued',
+                'jobid' => $jobid !== '' ? $jobid : null,
+                'message' => get_string('ingestionqueued', 'local_elediaai_sources', $loginfo),
             ];
         }
 
@@ -1120,7 +1223,7 @@ class ingestion_manager {
      *
      * @param \stdClass|null $state The state row, or null.
      * @param string $activesinkid The destination that would be written now.
-     * @return string One of: absent, otherdestination, lastattemptfailed, indexed.
+     * @return string One of: absent, otherdestination, queued, lastattemptfailed, indexed.
      */
     private static function comparison_state(?\stdClass $state, string $activesinkid): string {
         if ($state === null) {
@@ -1132,6 +1235,10 @@ class ingestion_manager {
         }
         if ($state->laststatus === cm_state::STATUS_EMPTY) {
             return 'absent';
+        }
+        if ($state->laststatus === cm_state::STATUS_QUEUED) {
+            // Accepted, not yet confirmed: neither failed nor indexed.
+            return 'queued';
         }
         if ($state->laststatus !== cm_state::STATUS_SUCCESS) {
             return 'lastattemptfailed';

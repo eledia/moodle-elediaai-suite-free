@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/elediaai_sources/db" VERSION="20260823" COMMENT="AI Sources plugin schema."
+<XMLDB PATH="local/elediaai_sources/db" VERSION="20261124" COMMENT="AI Sources plugin schema."
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -44,11 +44,11 @@
         <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course module."/>
         <FIELD NAME="sink" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Destination id the content was sent to."/>
         <FIELD NAME="sourceid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Module-level source id at ingest time; freezes the tenant so later deletes stay exact."/>
-        <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="sha1 over the final document tuples; empty until a successful upsert."/>
-        <FIELD NAME="laststatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="success, error, or empty (worked through, nothing to send)."/>
+        <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="sha1 over the final document tuples of the set last accepted by the destination; empty until an upsert was accepted. For a destination that confirms asynchronously the hash is written on acceptance, not on confirmation."/>
+        <FIELD NAME="laststatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="success (confirmed in the index), queued (accepted, confirmation pending), error, or empty (worked through, nothing to send)."/>
         <FIELD NAME="attempts" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Consecutive failed attempts. Reset by a success. Once it reaches the retry limit the module is skipped until a forced reindex, so one broken document cannot stall the course every reconcile run."/>
         <FIELD NAME="lasterror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Last error message when laststatus is error; why there was nothing to send when it is empty."/>
-        <FIELD NAME="timeingested" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When content last reached the index."/>
+        <FIELD NAME="timeingested" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When content last reached the index, as confirmed by the destination."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last row change."/>
       </FIELDS>
       <KEYS>
@@ -57,6 +57,37 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="courseid" UNIQUE="false" FIELDS="courseid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_sources_docstate" COMMENT="Per sent document of a module, as reported by a destination that confirms asynchronously: job id, pipeline status and the bookkeeping of the status check. One row per (sub-)document of the set last accepted; replaced on every accepted send and removed with the module state row.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course, for status checks per course and course-level cleanup."/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The course module whose state row this document belongs to."/>
+        <FIELD NAME="sourceid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The source id the document was sent under (module or sub-document)."/>
+        <FIELD NAME="ordinal" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Send order within the module, so the first failure can be named."/>
+        <FIELD NAME="jobid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="Job id from the upsert answer or last_job_id from the status."/>
+        <FIELD NAME="remotestatus" TYPE="char" LENGTH="20" NOTNULL="true" SEQUENCE="false" COMMENT="Pipeline status: queued, running, succeeded, failed, deleted or unknown."/>
+        <FIELD NAME="errortype" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false" COMMENT="error_type reported by the pipeline."/>
+        <FIELD NAME="errormessage" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="error_message reported by the pipeline."/>
+        <FIELD NAME="attemptcount" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Processing attempts the pipeline reports."/>
+        <FIELD NAME="maxattempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Processing attempts the pipeline allows; 0 when not reported."/>
+        <FIELD NAME="nextretryat" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="When the pipeline retries next; 0 when no retry is scheduled."/>
+        <FIELD NAME="statuscheckedat" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Last successful status check."/>
+        <FIELD NAME="timelastcheck" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Last status check attempt, successful or not; throttles checks from the course page."/>
+        <FIELD NAME="nextcheck" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Earliest next status check (backoff)."/>
+        <FIELD NAME="checkfailures" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Consecutive failed status checks."/>
+        <FIELD NAME="checkerror" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Why the last status check failed; null after a successful one."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the destination accepted the document; the confirmation timeout counts from here."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last row change."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="sourceid" UNIQUE="true" FIELDS="sourceid" COMMENT="One row per sent source id."/>
+        <INDEX NAME="cmid" UNIQUE="false" FIELDS="cmid"/>
+        <INDEX NAME="courseid-nextcheck" UNIQUE="false" FIELDS="courseid, nextcheck"/>
       </INDEXES>
     </TABLE>
   </TABLES>

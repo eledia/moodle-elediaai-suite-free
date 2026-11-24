@@ -250,6 +250,31 @@ Der Kurszustand wird in `local_elediaai_sources_course` gespeichert. Ein Kurs be
 wurde. `skipped`-Module gelten nicht als Fehler, damit leere oder nicht
 unterstuetzte Kurse nicht endlos eingeplant werden.
 
+### Vom Ziel bestaetigt (ab 1.6.0)
+
+Die eLeDia.ai Ingestion-API beantwortet den Upsert mit `202 Accepted`: Der
+Job ist gespeichert, aber noch nicht verarbeitet. Eine solche Aktivitaet gilt
+als **In Warteschlange**, nicht als indexiert. Der geplante Task
+`status_sync_task` (alle fuenf Minuten) liest den Verarbeitungsstatus ueber
+`POST /documents/status/batch` zurueck -- nur fuer Dokumente in Bearbeitung,
+hoechstens 500 IDs je Anfrage -- und setzt eine Aktivitaet auf **Indexiert**,
+sobald alle ihre Dokumente erfolgreich sind, oder auf **Fehler** mit dem Grund
+der Pipeline, sobald eines gescheitert ist. Fehler, die ein erneuter Versand
+nicht behebt (Parsing, Validierung, leerer Inhalt u. ae.), werden erst nach
+einer Inhaltsaenderung erneut gesendet; alle anderen beim naechtlichen
+Abgleich. Ein Dokument, das 24 Stunden nach der Annahme noch offen ist, wird
+**Nicht bestaetigt** und erneut gesendet. Eine gestoerte Status-API aendert
+nichts ausser der Anzeige "Status nicht verfuegbar".
+
+Ein Kurs gilt erst nach dem ersten bestaetigten Dokument als indexiert
+(`course_state::is_ingested()`, vom Tutor gelesen); bis dahin bleibt er
+ausstehend. Die Aktivitaetenseite zeigt die neuen Zustaende mit Grund, den
+Kursstatus und Zaehler und aktualisiert sie einmal nach dem Laden sowie ueber
+den Knopf **Status aktualisieren** (hoechstens eine Abfrage je Kurs und 30
+Sekunden). Der Zustand je Dokument liegt in `local_elediaai_sources_docstate`.
+LiteRAG antwortet synchron und ist nicht betroffen. Vertrag:
+`docs/api-specification.md` (v1.6).
+
 ## Was wird indexiert?
 
 Das Plugin indexiert nur Inhalte aus freigegebenen Kursen. Nicht indexiert

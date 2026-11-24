@@ -94,6 +94,14 @@ Die Einstellungsseite zeigt oben den Indexierungsstand:
   **Freigegebene Kurse jetzt indexieren** plant sie als Hintergrundaufgaben ein.
 - **Freigegebene Kurse sind indexiert** — es wartet nichts.
 
+Der Zustandsbericht der Suite meldet zusätzlich (ab 1.6.0), wie viele
+Aktivitäten gerade in der Pipeline **verarbeitet** werden (kein Fehler), wie
+viele **mit Fehler** gescheitert sind (davon ohne weitere automatische
+Versuche) und ob der **Verarbeitungsstatus** der Ingestion-API seit einem
+bestimmten Zeitpunkt nicht abrufbar ist. Die Abfrage übernimmt die geplante
+Aufgabe „Verarbeitungsstatus der KI Quellen-Dokumente bestätigen" (alle fünf
+Minuten); sie lässt sich in der Aufgabenliste wie jede andere abschalten.
+
 ## Kurse freigeben
 
 Die Aufnahme ist Opt-in: ohne Markierung wird nichts gesendet. Drei Wege führen
@@ -114,11 +122,10 @@ in die Wissensbasis gelangt. Zwei Wege, dieselbe Entscheidung:
 - **Kursseite „KI Quellen"** (über die Kursnavigation): alle Aktivitäten nach
   Kursabschnitten gruppiert, je Zeile ein Schalter. Umlegen wirkt sofort;
   Aktivitätstypen ohne Extractor sind gedimmt und als „Nicht unterstützt"
-  gekennzeichnet. Dazu je Zeile der Indexstatus — **Indexiert** (Zeitpunkt im
-  Tooltip), **Fehler** (Meldung im Tooltip) oder **Unbekannt**, wenn keine
-  Aufnahme verbucht ist. Je Abschnitt gibt es **Alle aufnehmen / Alle
-  ausschließen**, je entschiedener Zeile **Zurücksetzen** auf den
-  Site-Standard, und oben ein Filterfeld für lange Kurse.
+  gekennzeichnet. Dazu je Zeile der Indexstatus unter dem Namen (siehe
+  „Indexstatus einer Aktivität" unten). Je Abschnitt gibt es **Alle
+  aufnehmen / Alle ausschließen**, je entschiedener Zeile **Zurücksetzen** auf
+  den Site-Standard, und oben ein Filterfeld für lange Kurse.
 - **Bearbeitungsformular der Aktivität**: Abschnitt „eLeDia.ai | KI Quellen"
   mit dem Haken „In die Wissensbasis des KI-Tutors aufnehmen".
 
@@ -141,6 +148,34 @@ Die Regeln dahinter:
 - **Duplizieren/Wiederherstellen** überträgt die Entscheidung mit. Der
   Indexzustand wandert nicht mit — die Kopie gilt zunächst als nicht
   indexiert, bis sie aufgenommen wurde.
+
+### Indexstatus einer Aktivität
+
+„Indexiert" heißt seit Version 1.6.0: **vom Ziel bestätigt**. Die eLeDia.ai
+Ingestion-API nimmt ein Dokument zunächst nur an und verarbeitet es danach;
+erst ihre Rückmeldung macht daraus „Indexiert". Mit LiteRAG als Ziel ist ein
+Dokument wie bisher sofort indexiert.
+
+| Anzeige | Bedeutung |
+|---|---|
+| **In Warteschlange** | Vom Ziel angenommen, Verarbeitung noch nicht bestätigt. Steht ein „Nächster Versuch: …" darunter, wiederholt die Pipeline gerade einen vorübergehenden Fehler. |
+| **In Verarbeitung** | Die Pipeline verarbeitet das Dokument gerade. |
+| **Indexiert** | Bestätigt im Index (Zeitpunkt im Tooltip). Bei Verzeichnissen und SCORM erst, wenn **alle** Dateien bestätigt sind. |
+| **Fehler** | Die Verarbeitung ist gescheitert. Darunter steht ein lesbarer Grund (z. B. „Die Datei konnte nicht gelesen werden …" bei einer verschlüsselten PDF) und die Originalmeldung der Pipeline. Vorübergehende Fehler werden beim nächsten nächtlichen Abgleich erneut gesendet; nicht lesbare Inhalte erst, wenn die Datei geändert wurde. |
+| **Nicht bestätigt** | Das Ziel hat das Dokument angenommen, aber 24 Stunden lang nicht bestätigt. Es wird beim nächsten Abgleich erneut gesendet. |
+| **Status nicht verfügbar** | Die Statusabfrage beim Ziel ist gescheitert. Angezeigt wird der zuletzt bekannte Stand; die Seite nennt, wann zuletzt erfolgreich geprüft wurde. |
+| **Nichts zu indizieren** / **Unbekannt** / **Verborgen** | wie bisher |
+
+Oben auf der Seite stehen der **Kursstatus** (In Verarbeitung, Teilweise
+indexiert, Indexiert, Fehler oder Noch nichts indexiert) und die Zähler
+**Indexiert / In Verarbeitung / Fehler**.
+
+Der Status wird alle fünf Minuten im Hintergrund abgefragt. Sind Dokumente in
+Bearbeitung, fragt die Seite außerdem direkt nach dem Öffnen einmal nach und
+aktualisiert die Zeilen ohne Neuladen. Der Knopf **Status aktualisieren**
+erscheint nur, solange Dokumente in Bearbeitung sind, und tut dasselbe auf
+Abruf. Pro Kurs wird höchstens alle 30 Sekunden gefragt; ein schnellerer
+Klick zeigt den gespeicherten Stand und sagt, wann es wieder geht.
 
 ## Probelauf einer Aktivität
 

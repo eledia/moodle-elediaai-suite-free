@@ -150,6 +150,9 @@ if ($purgeoldsink && confirm_sesskey()) {
         $status = $result['status'] ?? '';
         if ($status === 'success') {
             $hassuccess = true;
+        } else if ($status === 'queued') {
+            // Accepted, not yet confirmed (#232): outstanding, not a success.
+            $haspending = true;
         } else if ($status === 'error') {
             $cmid = (int) ($result['cmid'] ?? 0);
             if ($cmid === 0 || !\local_elediaai_sources\cm_state::is_exhausted($cmid)) {
@@ -165,7 +168,10 @@ if ($purgeoldsink && confirm_sesskey()) {
             $courseid,
             $hassuccess || $wasingested
                 || \local_elediaai_sources\course_state::has_indexed_documents($courseid),
-            $haspending
+            $haspending || \local_elediaai_sources\cm_state::has_queued_modules(
+                $courseid,
+                \local_elediaai_sources\sink\sink_manager::active()::id()
+            )
         );
     } else {
         \local_elediaai_sources\course_state::mark_purged($courseid);
@@ -181,13 +187,21 @@ if ($purgeoldsink && confirm_sesskey()) {
     $table->attributes['class'] = 'generaltable table-striped table-hover table-sm';
 
     $successcount = 0;
+    $queuedcount = 0;
     foreach ($results as $result) {
         $row = new html_table_row();
 
         $modname = $result['module_name'] ?? get_string('unknownmodule', 'local_elediaai_sources', $result['cmid']);
         $row->cells[] = $modname;
 
-        if ($result['success']) {
+        if (($result['status'] ?? '') === 'queued') {
+            $row->cells[] = html_writer::tag(
+                'span',
+                get_string('statusqueued', 'local_elediaai_sources'),
+                ['class' => 'badge badge-info bg-info text-dark']
+            );
+            $queuedcount++;
+        } else if ($result['success']) {
             $row->cells[] = html_writer::tag(
                 'span',
                 get_string('statussuccess', 'local_elediaai_sources'),
@@ -218,6 +232,9 @@ if ($purgeoldsink && confirm_sesskey()) {
         echo $OUTPUT->notification(get_string('reindexcomplete', 'local_elediaai_sources'), 'warning');
     } else {
         echo $OUTPUT->notification(get_string('reindexsuccess', 'local_elediaai_sources', $successcount), 'success');
+    }
+    if ($queuedcount > 0) {
+        echo $OUTPUT->notification(get_string('reindexqueued', 'local_elediaai_sources', $queuedcount), 'info');
     }
     echo html_writer::end_tag('div');
 

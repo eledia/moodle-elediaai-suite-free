@@ -18,6 +18,7 @@ namespace local_elediaai_sources\output;
 
 use local_elediaai_sources\activity_gate;
 use local_elediaai_sources\cm_state;
+use local_elediaai_sources\course_state;
 use local_elediaai_sources\ingestion_manager;
 use renderable;
 use renderer_base;
@@ -55,9 +56,11 @@ class activities_page implements renderable, templatable {
         $modinfo = get_fast_modinfo($this->course);
         $decisions = activity_gate::decisions((int) $this->course->id);
         $states = cm_state::for_course((int) $this->course->id);
+        $documents = cm_state::documents_by_module((int) $this->course->id);
         $optout = activity_gate::mode() === activity_gate::MODE_OPTOUT;
         $manager = new ingestion_manager();
 
+        $statuses = [];
         $sections = [];
         foreach ($modinfo->get_sections() as $sectionnum => $cmids) {
             $rows = [];
@@ -82,6 +85,13 @@ class activities_page implements renderable, templatable {
                     $bulkcmids[] = (int) $cm->id;
                 }
 
+                $status = self::status_fields(
+                    $states[(int) $cm->id] ?? null,
+                    ingestion_manager::visible_to_learners($cm),
+                    $documents[(int) $cm->id] ?? []
+                );
+                $statuses[] = $status;
+
                 $rows[] = [
                     'cmid' => (int) $cm->id,
                     'name' => $name,
@@ -101,10 +111,7 @@ class activities_page implements renderable, templatable {
                         ['cmid' => (int) $cm->id]
                     ))->out(false),
                     'previewaria' => get_string('preview_aria', 'local_elediaai_sources', $plainname),
-                ] + $this->status_fields(
-                    $states[(int) $cm->id] ?? null,
-                    ingestion_manager::visible_to_learners($cm)
-                );
+                ] + $status;
             }
 
             if (empty($rows)) {
@@ -131,6 +138,56 @@ class activities_page implements renderable, templatable {
             'modedefault' => $optout ? 1 : 0,
             'sections' => $sections,
             'hassections' => !empty($sections),
+        ] + self::summary_fields($statuses, $documents);
+    }
+
+    /**
+     * Course status, counters and the "not available" notice for the page head (REQ-014).
+     *
+     * Counted from the rows the page shows, so the numbers add up to what a
+     * teacher sees below them. Read from the database only: the page never
+     * waits for the destination; the status script asks after rendering.
+     *
+     * @param array[] $statuses Status fields of every row, see {@see status_fields()}.
+     * @param array<int, \stdClass[]> $documents Document rows by cmid.
+     * @return array Context for the summary region.
+     */
+    public static function summary_fields(array $statuses, array $documents): array {
+        $counts = ['indexed' => 0, 'processing' => 0, 'error' => 0];
+        $inflight = false;
+        $unavailable = false;
+        foreach ($statuses as $status) {
+            if ($status['status'] === 'indexed') {
+                $counts['indexed']++;
+            } else if (in_array($status['status'], ['queued', 'processing'], true)) {
+                $counts['processing']++;
+            } else if (in_array($status['status'], ['error', 'unconfirmed'], true)) {
+                $counts['error']++;
+            }
+            $inflight = $inflight || !empty($status['inflight']);
+            $unavailable = $unavailable || !empty($status['unavailable']);
+        }
+
+        $lastchecked = 0;
+        foreach ($documents as $docs) {
+            foreach ($docs as $doc) {
+                $lastchecked = max($lastchecked, (int) $doc->statuscheckedat);
+            }
+        }
+
+        $coursestatus = course_state::display_status($counts);
+        return [
+            'coursestatus' => $coursestatus,
+            'coursestatuslabel' => get_string('coursestatus_' . $coursestatus, 'local_elediaai_sources'),
+            'countindexed' => $counts['indexed'],
+            'countprocessing' => $counts['processing'],
+            'counterror' => $counts['error'],
+            'hasinflight' => $inflight,
+            'statusunavailable' => $unavailable,
+            'lastchecked' => $lastchecked,
+            'lastcheckedtext' => $lastchecked > 0
+                ? get_string('activities_lastchecked', 'local_elediaai_sources', userdate($lastchecked))
+                : '',
         ];
     }
 
@@ -168,18 +225,37 @@ class activities_page implements renderable, templatable {
      * says, and an index entry from before it was hidden is removed. Its
      * status says so instead of "unknown" (G-08), in the words of the dry run.
      *
+     * "Indexed" means confirmed by the destination (ai_suite#232). Accepted
+     * but unconfirmed is "queued", or "processing" while the pipeline works on
+     * a document. The reason of a failure, the next retry and "status not
+     * available" are visible text in `statusdetail` -- a title attribute
+     * alone reaches neither keyboard nor screen reader users.
+     *
+     * Public and static because the status refresh of the page returns the
+     * same fields for the same rows: one method, one wording.
+     *
      * @param \stdClass|null $state The cm_state row, or null.
      * @param bool $learnervisible Whether learners can see the activity.
-     * @return array status, statuslabel, statusclass, statustitle.
+     * @param \stdClass[] $documents The module's document rows, in send order.
+     * @return array status, statuslabel, statusclass, statustitle, statusdetail,
+     *               statusreason, inflight, unavailable.
      */
-    private function status_fields(?\stdClass $state, bool $learnervisible = true): array {
+    public static function status_fields(?\stdClass $state, bool $learnervisible = true, array $documents = []): array {
+        $fields = [
+            'statustitle' => '',
+            'statusdetail' => '',
+            'statusreason' => '',
+            'inflight' => false,
+            'unavailable' => false,
+        ];
+
         if (!$learnervisible) {
             return [
                 'status' => 'hidden',
                 'statuslabel' => get_string('activities_status_hidden', 'local_elediaai_sources'),
                 'statusclass' => 'badge-secondary bg-secondary',
                 'statustitle' => get_string('activityhidden', 'local_elediaai_sources'),
-            ];
+            ] + $fields;
         }
 
         if ($state === null) {
@@ -187,8 +263,7 @@ class activities_page implements renderable, templatable {
                 'status' => 'unknown',
                 'statuslabel' => get_string('activities_status_unknown', 'local_elediaai_sources'),
                 'statusclass' => 'badge-light bg-light text-dark',
-                'statustitle' => '',
-            ];
+            ] + $fields;
         }
 
         if ($state->laststatus === cm_state::STATUS_EMPTY) {
@@ -197,7 +272,7 @@ class activities_page implements renderable, templatable {
                 'statuslabel' => get_string('activities_status_empty', 'local_elediaai_sources'),
                 'statusclass' => 'badge-secondary bg-secondary',
                 'statustitle' => (string) ($state->lasterror ?? ''),
-            ];
+            ] + $fields;
         }
 
         if ($state->laststatus === cm_state::STATUS_SUCCESS) {
@@ -206,14 +281,100 @@ class activities_page implements renderable, templatable {
                 'statuslabel' => get_string('activities_status_indexed', 'local_elediaai_sources'),
                 'statusclass' => 'badge-success bg-success',
                 'statustitle' => userdate((int) $state->timeingested),
-            ];
+            ] + $fields;
+        }
+
+        if ($state->laststatus === cm_state::STATUS_QUEUED) {
+            return self::queued_fields($documents) + $fields;
+        }
+
+        foreach ($documents as $doc) {
+            if ($doc->errortype === cm_state::ERRORTYPE_UNCONFIRMED) {
+                return [
+                    'status' => 'unconfirmed',
+                    'statuslabel' => get_string('activities_status_unconfirmed', 'local_elediaai_sources'),
+                    'statusclass' => 'badge-danger bg-danger',
+                    'statustitle' => (string) ($state->lasterror ?? ''),
+                    'statusdetail' => get_string('status_unconfirmed', 'local_elediaai_sources'),
+                ] + $fields;
+            }
+        }
+
+        $lasterror = trim((string) ($state->lasterror ?? ''));
+        $detail = $lasterror;
+        $reason = '';
+        $errortype = self::first_failure_type($documents);
+        $key = 'pipelineerror_' . strtolower((string) $errortype);
+        if ($errortype !== null && get_string_manager()->string_exists($key, 'local_elediaai_sources')) {
+            $detail = get_string($key, 'local_elediaai_sources');
+            $reason = $lasterror;
         }
 
         return [
             'status' => 'error',
             'statuslabel' => get_string('activities_status_error', 'local_elediaai_sources'),
             'statusclass' => 'badge-danger bg-danger',
-            'statustitle' => (string) ($state->lasterror ?? ''),
+            'statustitle' => $lasterror,
+            'statusdetail' => $detail,
+            'statusreason' => $reason,
+        ] + $fields;
+    }
+
+    /**
+     * Status fields of a module the destination accepted but has not confirmed.
+     *
+     * @param \stdClass[] $documents The module's document rows.
+     * @return array
+     */
+    private static function queued_fields(array $documents): array {
+        $running = false;
+        $nextretry = 0;
+        $unavailable = false;
+        $checked = 0;
+        foreach ($documents as $doc) {
+            if (!in_array($doc->remotestatus, cm_state::REMOTE_INFLIGHT, true)) {
+                continue;
+            }
+            $running = $running || $doc->remotestatus === cm_state::REMOTE_RUNNING;
+            if ((int) $doc->nextretryat > time()) {
+                $nextretry = $nextretry === 0 ? (int) $doc->nextretryat : min($nextretry, (int) $doc->nextretryat);
+            }
+            $unavailable = $unavailable || trim((string) ($doc->checkerror ?? '')) !== '';
+            $checked = max($checked, (int) $doc->statuscheckedat);
+        }
+
+        $detail = '';
+        if ($unavailable) {
+            $detail = $checked > 0
+                ? get_string('activities_status_unavailable', 'local_elediaai_sources', userdate($checked))
+                : get_string('activities_status_unavailable_never', 'local_elediaai_sources');
+        } else if ($nextretry > 0) {
+            $detail = get_string('activities_nextretry', 'local_elediaai_sources', userdate($nextretry));
+        }
+
+        $status = $running ? 'processing' : 'queued';
+        return [
+            'status' => $status,
+            'statuslabel' => get_string('activities_status_' . $status, 'local_elediaai_sources'),
+            'statusclass' => 'badge-info bg-info text-dark',
+            'statusdetail' => $detail,
+            'inflight' => true,
+            'unavailable' => $unavailable,
         ];
+    }
+
+    /**
+     * The pipeline error type of the first failed document, in send order (D-a).
+     *
+     * @param \stdClass[] $documents The module's document rows.
+     * @return string|null
+     */
+    private static function first_failure_type(array $documents): ?string {
+        foreach ($documents as $doc) {
+            if ($doc->remotestatus === cm_state::REMOTE_FAILED && trim((string) ($doc->errortype ?? '')) !== '') {
+                return (string) $doc->errortype;
+            }
+        }
+        return null;
     }
 }

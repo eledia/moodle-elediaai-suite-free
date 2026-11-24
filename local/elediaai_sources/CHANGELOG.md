@@ -7,6 +7,67 @@ Format angelehnt an Keep a Changelog.
 Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 `local_ragingest` erschienen und nennen ihn deshalb weiterhin.
 
+## [1.6.0] – 2026-11-24
+
+### Geändert
+
+- **„Indexiert" heißt jetzt „vom Ziel bestätigt"** (ai_suite#232). Die
+  Ingestion-API antwortet auf den Upsert mit `202 Accepted` und meint damit
+  nur „Job gespeichert". Bisher galt jede `2xx`-Antwort als indexiert, auch
+  für Dateien, an denen die Pipeline danach scheiterte (verschlüsselte PDF,
+  zu viele Seiten). Eine angenommene Aktivität steht jetzt auf **In
+  Warteschlange** und wird erst mit der Bestätigung der Pipeline
+  **Indexiert** — bei Verzeichnissen und SCORM erst, wenn alle Dateien
+  bestätigt sind. Scheitert eine Datei, wird die Aktivität **Fehler** mit dem
+  Grund des ersten Fehlschlags.
+- **Kursstatus:** Ein Kurs gilt erst nach dem ersten bestätigten Dokument als
+  indexiert und bleibt ausstehend, solange etwas in Bearbeitung ist.
+  „Teilweise indexiert", wenn bestätigte und gescheiterte Aktivitäten
+  zusammenkommen.
+- **Wiederholung:** Vorübergehende Pipeline-Fehler laufen in den bestehenden
+  Neuversand (nächtlicher Abgleich, 5 Versuche). Nicht behebbare Fehler
+  (`ParsingError`, `ValidationError`, `EmptyContentError`,
+  `PermanentEmbeddingError`, `ContentTypeNotSupportedError`,
+  `DocumentTooLargeError`, `CleaningError`, `ChunkingError`) werden nicht
+  wiederholt; die Aktivität geht erst mit geändertem Inhalt erneut hinaus.
+- **Kurslöschung** entfernt auch Dokumente von Kursen, deren Inhalte nur
+  angenommen, aber noch nicht bestätigt sind.
+- **LiteRAG** antwortet synchron und ist unverändert: dort heißt `2xx`
+  weiterhin indexiert.
+
+### Neu
+
+- Geplanter Task **„Verarbeitungsstatus der KI Quellen-Dokumente
+  bestätigen"** (`status_sync_task`, alle 5 Minuten): fragt über
+  `POST /documents/status/batch` nur Dokumente in Bearbeitung ab, höchstens
+  500 IDs je Anfrage, mit Backoff und `Retry-After`. Ohne Dokumente in
+  Bearbeitung kein Request.
+- Tabelle `local_elediaai_sources_docstate` je gesendetem Dokument (Job-ID,
+  Pipeline-Status, Fehler, nächster Versuch, Prüfzeit, Backoff).
+- **Aktivitätenseite:** neue Zustände In Warteschlange, In Verarbeitung,
+  Nicht bestätigt (24 h ohne Bestätigung), Status nicht verfügbar; Grund und
+  nächster Versuch als sichtbarer Text statt nur im Tooltip; Kursstatus und
+  Zähler Indexiert / In Verarbeitung / Fehler. Die Seite fragt nach dem
+  Laden einmal nach und bietet **Status aktualisieren** (je Kurs höchstens
+  alle 30 s, Webservice `local_elediaai_sources_refresh_course_status`).
+- **Zustandsbericht:** Dokumente in Verarbeitung (kein Fehler), Aktivitäten
+  mit Fehler und ein Ausfall der Status-API werden getrennt gemeldet.
+- Vertrag `docs/api-specification.md` v1.6 (Statusabfrage, Mapping,
+  Abrufkadenz).
+
+### Hinweise zum Upgrade
+
+- Keine Datenmigration. Bestehende „Indexiert"-Einträge bleiben stehen und
+  werden nie nachgeprüft.
+- Neu oder geändert gesendete Inhalte gelten erst nach der Bestätigung als
+  indexiert, also nach bis zu fünf Minuten plus Verarbeitungszeit. Bis dahin
+  zeigt der KI-Tutor einen neu freigegebenen Kurs als „freigegeben, noch
+  nicht indexiert".
+- Eine Pipeline ohne Status-Endpunkt lässt Dokumente in Warteschlange; der
+  Zustandsbericht meldet dann „Status nicht verfügbar".
+- Ein Rückbau auf 1.5.0 braucht eine neue Versionsnummer; der alte Code
+  zeigt Aktivitäten in Warteschlange als Fehler und sendet sie erneut.
+
 ## [1.5.0] – 2026-11-24
 
 ### Geändert

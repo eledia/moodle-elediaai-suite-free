@@ -47,6 +47,21 @@ class course_state {
     /** @var string Backing table. */
     private const TABLE = 'local_elediaai_sources_course';
 
+    /** @var string Course display: documents are still being processed. */
+    public const DISPLAY_PROCESSING = 'processing';
+
+    /** @var string Course display: some documents are indexed, some failed. */
+    public const DISPLAY_PARTIAL = 'partial';
+
+    /** @var string Course display: indexed, nothing failed or open. */
+    public const DISPLAY_INDEXED = 'indexed';
+
+    /** @var string Course display: nothing indexed, something failed. */
+    public const DISPLAY_ERROR = 'error';
+
+    /** @var string Course display: nothing in the index and nothing pending. */
+    public const DISPLAY_NONE = 'none';
+
     /**
      * Whether at least one document of the course is in the *current* index.
      *
@@ -261,9 +276,14 @@ class course_state {
      * old backend is often unreachable, and a failing purge must not block the
      * switch. Clearing the old destination is a manual job.
      *
+     * Documents an asynchronous destination accepted but has not confirmed
+     * keep the course pending (TD-014): a run over such a course reports
+     * them as unchanged, and taking that for "finished" would let the course
+     * count as complete before anything is confirmed.
+     *
      * @param int $courseid The course id.
      * @param ingestion_manager|null $manager Optional injected manager (tests).
-     * @return string One of 'reindexed', 'partial', 'reindex_failed', 'purged', 'noop'.
+     * @return string One of 'reindexed', 'partial', 'queued', 'reindex_failed', 'purged', 'noop'.
      */
     public static function reconcile(int $courseid, ?ingestion_manager $manager = null): string {
         $desired = course_gate::should_ingest($courseid);
@@ -294,12 +314,16 @@ class course_state {
         // module state is asked as well (AI-80).
         $ingested = self::has_success_result($results) || $wasingested
             || self::has_indexed_documents($courseid);
-        $pending = self::has_retryable_error($results);
+        $retryable = self::has_retryable_error($results);
+        $pending = $retryable || cm_state::has_queued_modules($courseid, sink_manager::active()::id());
 
         self::set_ingested($courseid, $ingested, $pending);
 
         if ($pending) {
-            return $ingested ? 'partial' : 'reindex_failed';
+            if ($ingested) {
+                return 'partial';
+            }
+            return $retryable ? 'reindex_failed' : 'queued';
         }
         // Nothing outstanding. Anything that failed has spent its budget; a
         // course that simply had nothing to send counts as done.
@@ -411,6 +435,91 @@ class course_state {
 
         self::set_ingested($courseid, true, (int) $record->pending === 1);
         return true;
+    }
+
+    /**
+     * Carry the course flags along after the status check changed module states.
+     *
+     * The status check (ai_suite#232) settles modules without a reconcile
+     * run, so the course row would otherwise keep saying "pending" after the
+     * last document was confirmed, or "finished" while a retryable failure
+     * waits for the next reconcile. `pending` is derived from the module rows:
+     * a module still queued or a failure worth retrying (TD-014). `ingested`
+     * stays one-way, as in {@see sync_from_index()}: it is raised, never
+     * lowered here.
+     *
+     * Only a course marked for ingestion that already has a row for the
+     * current target is touched. Without one the reconcile has not seen the
+     * course yet and will index all of it.
+     *
+     * @param int $courseid The course id.
+     * @return bool True when the row changed.
+     */
+    public static function refresh_from_module_state(int $courseid): bool {
+        $record = self::record($courseid);
+        if ($record === null || !course_gate::should_ingest($courseid)) {
+            return false;
+        }
+
+        $summary = cm_state::summary_by_course(sink_manager::active()::id(), $courseid)[$courseid]
+            ?? ['success' => 0, 'queued' => 0, 'retryable' => 0, 'exhausted' => 0];
+        $ingested = (int) $record->ingested === 1 || $summary['success'] > 0;
+        $pending = $summary['queued'] > 0 || $summary['retryable'] > 0;
+
+        if ($ingested === ((int) $record->ingested === 1) && $pending === ((int) $record->pending === 1)) {
+            return false;
+        }
+        self::set_ingested($courseid, $ingested, $pending);
+        return true;
+    }
+
+    /**
+     * The course's status for the display, from its module counters (REQ-011).
+     *
+     * "Indexed" only when at least one module is confirmed and none is still
+     * queued; "partly indexed" when confirmed and failed modules meet;
+     * "being processed" as long as anything is queued.
+     *
+     * @param array{indexed: int, processing: int, error: int} $counts Module counters,
+     *        see {@see cm_state::counts_from_rows()}.
+     * @return string One of the DISPLAY_* constants.
+     */
+    public static function display_status(array $counts): string {
+        $indexed = (int) ($counts['indexed'] ?? 0);
+        $processing = (int) ($counts['processing'] ?? 0);
+        $error = (int) ($counts['error'] ?? 0);
+
+        if ($processing > 0) {
+            return self::DISPLAY_PROCESSING;
+        }
+        if ($indexed > 0 && $error > 0) {
+            return self::DISPLAY_PARTIAL;
+        }
+        if ($indexed > 0) {
+            return self::DISPLAY_INDEXED;
+        }
+        if ($error > 0) {
+            return self::DISPLAY_ERROR;
+        }
+        return self::DISPLAY_NONE;
+    }
+
+    /**
+     * Site-wide module counters of the active destination, for the status report.
+     *
+     * One grouped query (REQ-012): modules being processed are counted apart
+     * from failed ones, and of the failed ones those given up on.
+     *
+     * @return array{processing: int, error: int, exhausted: int}
+     */
+    public static function module_counts(): array {
+        $counts = ['processing' => 0, 'error' => 0, 'exhausted' => 0];
+        foreach (cm_state::summary_by_course(sink_manager::active()::id()) as $course) {
+            $counts['processing'] += $course['queued'];
+            $counts['error'] += $course['retryable'] + $course['exhausted'];
+            $counts['exhausted'] += $course['exhausted'];
+        }
+        return $counts;
     }
 
     /**

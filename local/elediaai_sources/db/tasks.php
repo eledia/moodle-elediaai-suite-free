@@ -45,4 +45,16 @@ $tasks = [
         'month' => '*',
         'dayofweek' => '0',
     ],
+    [
+        // Confirms documents the destination accepted but has not processed
+        // yet (ai_suite#232). Asks only about documents in flight; with none
+        // a run is a single query.
+        'classname' => 'local_elediaai_sources\task\status_sync_task',
+        'blocking' => 0,
+        'minute' => '*/5',
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
 ];

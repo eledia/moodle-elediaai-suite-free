@@ -310,5 +310,46 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026112401, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026112402) {
+        // Per sent document of a module, as an asynchronous destination reports
+        // it (ai_suite#232): the pipeline's 202 only means "job stored", so the
+        // job id and the status read back later need a place of their own. One
+        // row per (sub-)document, because a Folder sends several and a module
+        // only counts as indexed once all of them are.
+        //
+        // No data migration: existing success rows stay success and get no
+        // document rows, so the status check never touches them (no backfill).
+        $table = new xmldb_table('local_elediaai_sources_docstate');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('sourceid', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL);
+        $table->add_field('ordinal', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('jobid', XMLDB_TYPE_CHAR, '64');
+        $table->add_field('remotestatus', XMLDB_TYPE_CHAR, '20', null, XMLDB_NOTNULL);
+        $table->add_field('errortype', XMLDB_TYPE_CHAR, '100');
+        $table->add_field('errormessage', XMLDB_TYPE_TEXT);
+        $table->add_field('attemptcount', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('maxattempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('nextretryat', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('statuscheckedat', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('timelastcheck', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('nextcheck', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('checkfailures', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('checkerror', XMLDB_TYPE_CHAR, '255');
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('sourceid', XMLDB_INDEX_UNIQUE, ['sourceid']);
+        $table->add_index('cmid', XMLDB_INDEX_NOTUNIQUE, ['cmid']);
+        $table->add_index('courseid-nextcheck', XMLDB_INDEX_NOTUNIQUE, ['courseid', 'nextcheck']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026112402, 'local', 'elediaai_sources');
+    }
+
     return true;
 }

@@ -66,7 +66,11 @@ class hook_callbacks {
             return;
         }
 
-        if (!course_state::is_ingested($courseid)) {
+        // A course whose documents were accepted but not yet confirmed is not
+        // "ingested" yet (ai_suite#232) -- its documents may still land in
+        // the index, so it is cleared all the same.
+        $queued = cm_state::has_queued_modules($courseid, sink\sink_manager::active()::id());
+        if (!course_state::is_ingested($courseid) && !$queued) {
             return;
         }
 

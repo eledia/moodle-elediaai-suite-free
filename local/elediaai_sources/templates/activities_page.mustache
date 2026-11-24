@@ -27,7 +27,14 @@
     * hassections - Whether there is anything to show.
     * sections - Array of {name, plainname, activities[], bulkcmids, hasbulk}; each
       activity carries cmid, name, plainname, modname, iconurl, supported, included,
-      excluded, explicit, status fields, previewurl and aria labels.
+      excluded, explicit, status fields (see local_elediaai_sources/activity_status),
+      previewurl and aria labels.
+    * coursestatus, coursestatuslabel, countindexed, countprocessing, counterror,
+      statusunavailable, lastcheckedtext - Course status head, see
+      local_elediaai_sources/status_summary.
+    * hasinflight - Whether documents are still being processed; only then the
+      status is refreshed after loading.
+    * lastchecked - Unix time of the last successful status check, 0 when none.
 
     Example context (json):
     {
@@ -35,6 +42,15 @@
         "intro": "Choose which activities are sent.",
         "modeinfo": "New activities are included automatically.",
         "modedefault": 1,
+        "coursestatus": "processing",
+        "coursestatuslabel": "Being processed",
+        "countindexed": 1,
+        "countprocessing": 1,
+        "counterror": 0,
+        "statusunavailable": false,
+        "hasinflight": true,
+        "lastchecked": 0,
+        "lastcheckedtext": "",
         "hassections": true,
         "sections": [{
             "name": "Course materials &amp; content",
@@ -55,6 +71,9 @@
                 "statuslabel": "Indexed",
                 "statusclass": "badge-success bg-success",
                 "statustitle": "23 August 2026",
+                "statusdetail": "",
+                "statusreason": "",
+                "inflight": false,
                 "previewurl": "https://example.com/local/elediaai_sources/preview.php?cmid=5",
                 "previewaria": "Dry run for Welcome page",
                 "togglearia": "Toggle ingestion of Welcome page",
@@ -69,6 +88,17 @@
     <div class="alert alert-info les-activities-mode" role="note">{{modeinfo}}</div>
 
     <div class="les-activities-live sr-only" aria-live="polite" data-region="status"></div>
+
+    <div class="les-activities-statushead mb-3">
+        <div class="les-activities-statussummary" data-region="statussummary" tabindex="-1" aria-busy="false">
+            {{> local_elediaai_sources/status_summary }}
+        </div>
+        {{#hasinflight}}
+            <button type="button" class="btn btn-secondary mt-2" data-action="refresh-status">
+                {{#str}} activities_refresh, local_elediaai_sources {{/str}}
+            </button>
+        {{/hasinflight}}
+    </div>
 
     {{^hassections}}
         <p class="text-muted">{{#str}} activities_nosections, local_elediaai_sources {{/str}}</p>
@@ -111,9 +141,10 @@
                         <div class="les-activity-label flex-grow-1">
                             <span class="les-activity-name" data-region="name">{{{name}}}</span>
                             <span class="les-activity-type text-muted">{{modname}}</span>
+                            <div class="les-activity-status mt-1" data-region="activitystatus" data-cmid="{{cmid}}">
+                                {{> local_elediaai_sources/activity_status }}
+                            </div>
                         </div>
-                        <span class="badge {{statusclass}} les-activity-badge" data-region="statusbadge"
-                            {{#statustitle}}title="{{statustitle}}"{{/statustitle}}>{{statuslabel}}</span>
                         <span class="badge badge-warning bg-warning text-dark les-activity-badge {{^excluded}}hidden{{/excluded}}"
                             data-region="excludedbadge" {{^excluded}}hidden{{/excluded}}>
                             {{#str}} activities_excluded_badge, local_elediaai_sources {{/str}}
@@ -154,5 +185,8 @@
 {{#js}}
 require(['local_elediaai_sources/activity_toggle'], function(toggle) {
     toggle.init();
+});
+require(['local_elediaai_sources/status_refresh'], function(refresh) {
+    refresh.init({{courseid}}, {{#hasinflight}}true{{/hasinflight}}{{^hasinflight}}false{{/hasinflight}});
 });
 {{/js}}

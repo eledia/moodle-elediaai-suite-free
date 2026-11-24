@@ -213,6 +213,14 @@ class preview_page implements renderable, templatable {
             )];
         }
 
+        if ($report['comparison'] === 'queued') {
+            return ['comparisontext' => get_string(
+                'preview_index_queued',
+                'local_elediaai_sources',
+                userdate((int) $state->timemodified)
+            )];
+        }
+
         if ($report['comparison'] === 'lastattemptfailed') {
             return ['comparisontext' => get_string(
                 'preview_index_lastattemptfailed',
