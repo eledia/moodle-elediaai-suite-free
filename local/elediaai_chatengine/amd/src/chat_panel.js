@@ -70,6 +70,18 @@ const NO_RETRY = [
 /** @var {number} Longest outline shown unfolded on a confirmation card. */
 const OUTLINE_OPEN_MAX = 6;
 
+/**
+ * What the session pointer holds after "new conversation" (#183).
+ *
+ * The wish for a fresh conversation has to outlive the page: until the first
+ * turn has opened it, a reload or the next page would otherwise find no
+ * pointer, ask for the current conversation and show - and continue - the old
+ * one.
+ *
+ * @type {string}
+ */
+const NEW_THREAD = 'new';
+
 /** @var {object} Cached localised strings. */
 const strings = {};
 
@@ -122,6 +134,10 @@ export class ChatPanel {
 
         this.threadId = 0;
         this.pendingNewThread = false;
+        // Raised by every "new conversation". A reply carries the value from
+        // when its request left; one from before the reset must not bring the
+        // old conversation back (#183).
+        this.resetGeneration = 0;
         this.busy = false;
         this.lastUserMessage = '';
         this.previousFocus = null;
@@ -644,6 +660,7 @@ export class ChatPanel {
      * @return {void}
      */
     dispatch(message, extra) {
+        const generation = this.resetGeneration;
         this.setBusy(true);
         this.showTyping();
         this.setStatus(strings.thinking);
@@ -653,10 +670,10 @@ export class ChatPanel {
         // else, and any failure before the first fragment, falls back to the
         // buffered call.
         if (this.config.streaming && this.streamUrl() && window.ReadableStream && window.fetch) {
-            this.dispatchStreaming(message, extra);
+            this.dispatchStreaming(message, extra, generation);
             return;
         }
-        this.dispatchBuffered(message, extra);
+        this.dispatchBuffered(message, extra, generation);
     }
 
     /**
@@ -667,9 +684,10 @@ export class ChatPanel {
      *
      * @param {string} message The user message.
      * @param {object} [extra] Additional arguments for the turn.
+     * @param {number} [generation] resetGeneration when the turn was sent.
      * @return {void}
      */
-    dispatchStreaming(message, extra) {
+    dispatchStreaming(message, extra, generation) {
         const args = Object.assign(this.turnArgs(message), extra || {});
         const params = new URLSearchParams(Object.assign({sesskey: M.cfg.sesskey}, args));
 
@@ -763,7 +781,7 @@ export class ChatPanel {
                             settled = true;
                             const data = parsed.data;
                             finish();
-                            this.rememberThread(data.threadid);
+                            this.rememberThread(data.threadid, generation);
                             // The final frame is authoritative: it replaces the
                             // streamed text rather than extending it.
                             replaceLive(() => this.appendAssistant(
@@ -797,7 +815,7 @@ export class ChatPanel {
             // Nothing was rendered yet, so the buffered path can simply retry.
             finish();
             replaceLive(() => null);
-            this.dispatchBuffered(message, extra);
+            this.dispatchBuffered(message, extra, generation);
         });
     }
 
@@ -943,9 +961,10 @@ export class ChatPanel {
      *
      * @param {string} message The user message.
      * @param {object} [extra] Additional arguments for the turn.
+     * @param {number} [generation] resetGeneration when the turn was sent.
      * @return {void}
      */
-    dispatchBuffered(message, extra) {
+    dispatchBuffered(message, extra, generation) {
         this.setBusy(true);
         this.showTyping();
         this.setStatus(strings.thinking);
@@ -957,7 +976,7 @@ export class ChatPanel {
             this.hideTyping();
             this.setBusy(false);
             this.setStatus('');
-            this.rememberThread(response.threadid);
+            this.rememberThread(response.threadid, generation);
             return this.appendAssistant(
                 response.answerhtml,
                 response.sources || [],
@@ -984,11 +1003,18 @@ export class ChatPanel {
      * empty thread behind. A placement calls this from whatever control it
      * offers for it.
      *
+     * The wish is kept in the session pointer as well (#183). Removing the
+     * pointer said "no conversation known", and the next page load answered
+     * that with the most recent conversation - the very one this left. And
+     * the generation is raised, so that a reply still on its way for the old
+     * conversation cannot make it the active one again.
+     *
      * @return {void}
      */
     startNewThread() {
+        this.resetGeneration = (this.resetGeneration || 0) + 1;
         this.threadId = 0;
-        this.saveThreadPointer(0);
+        this.saveThreadPointer(NEW_THREAD);
         this.historyLoaded = false;
         this.pendingNewThread = true;
     }
@@ -1002,12 +1028,21 @@ export class ChatPanel {
      * by the first attempt would let the second one land in the old
      * conversation after all.
      *
+     * A reply to a turn sent before the last "new conversation" names the
+     * old conversation; adopting it would undo the reset (#183). Its answer is
+     * still shown, since it is what was asked, but the next turn opens the
+     * new conversation.
+     *
      * @param {number} threadid The conversation id.
+     * @param {number} [generation] resetGeneration when the turn was sent.
      * @return {void}
      */
-    rememberThread(threadid) {
+    rememberThread(threadid, generation) {
         const id = parseInt(threadid || 0, 10);
         if (id <= 0) {
+            return;
+        }
+        if (generation !== undefined && generation !== this.resetGeneration) {
             return;
         }
         this.pendingNewThread = false;
@@ -1028,7 +1063,8 @@ export class ChatPanel {
     /**
      * Remember the active conversation across page loads.
      *
-     * @param {number} threadid The conversation id, or 0 to forget it.
+     * @param {number|string} threadid The conversation id, NEW_THREAD for a
+     *     new conversation not yet opened, or 0 to forget it.
      * @return {void}
      */
     saveThreadPointer(threadid) {
@@ -1049,12 +1085,21 @@ export class ChatPanel {
      * @return {void}
      */
     restoreThread() {
-        let stored = 0;
+        let raw = '';
         try {
-            stored = parseInt(window.sessionStorage.getItem(this.threadKey()) || '0', 10);
+            raw = window.sessionStorage.getItem(this.threadKey()) || '';
         } catch (e) {
-            stored = 0;
+            raw = '';
         }
+        if (raw === NEW_THREAD) {
+            // "New conversation" was asked for and no turn has opened it yet.
+            // Loading the current conversation here would show the old one and
+            // send the next turn into it.
+            this.pendingNewThread = true;
+            this.raiseLiveRegion();
+            return;
+        }
+        const stored = parseInt(raw || '0', 10) || 0;
         if (!stored && !this.config.autoloadhistory) {
             this.raiseLiveRegion();
             return;
@@ -1071,10 +1116,17 @@ export class ChatPanel {
      */
     loadHistory(retried) {
         const asked = this.threadId || 0;
+        const generation = this.resetGeneration;
         Ajax.call([{
             methodname: this.methods().history,
             args: {component: this.component, instanceid: this.instanceid, threadid: asked}
         }])[0].then((response) => {
+            if (generation !== this.resetGeneration) {
+                // "New conversation" was pressed while this was on its way.
+                // Neither the old turns nor the old thread id belong in the
+                // panel any more (#183).
+                return null;
+            }
             this.historyLoaded = true;
             this.threadId = parseInt(response.threadid || 0, 10);
             if (!this.threadId) {
@@ -1094,18 +1146,27 @@ export class ChatPanel {
                 // fresh one, so the citations and the origin badge are decided
                 // in exactly one place. Rendering history through a second,
                 // simpler path is what silently dropped both.
-                (chain, item) => chain.then(() => (item.role === 'assistant'
-                    ? this.appendAssistant(item.html, item.sources || [], false, null, item.origin || '', item.aigenerated)
-                    : this.appendMessage({
-                        isuser: true,
-                        sendername: strings.you,
-                        html: item.html,
-                        copylabel: strings.copy,
-                        retrylabel: strings.retry
-                    }))),
+                // A reset in the middle of the replay stops it there (#183).
+                (chain, item) => chain.then(() => {
+                    if (generation !== this.resetGeneration) {
+                        return null;
+                    }
+                    return item.role === 'assistant'
+                        ? this.appendAssistant(item.html, item.sources || [], false, null, item.origin || '', item.aigenerated)
+                        : this.appendMessage({
+                            isuser: true,
+                            sendername: strings.you,
+                            html: item.html,
+                            copylabel: strings.copy,
+                            retrylabel: strings.retry
+                        });
+                }),
                 Promise.resolve()
             );
             return rendered.then(() => {
+                if (generation !== this.resetGeneration) {
+                    return null;
+                }
                 this.setStatus(strings.resumed);
                 // Der wiederhergestellte Verlauf wird in einem Zug aufgebaut.
                 // Jede Blase meldet sich zwar einzeln, aber erst hier steht

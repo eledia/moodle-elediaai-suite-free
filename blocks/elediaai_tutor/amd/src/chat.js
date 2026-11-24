@@ -515,6 +515,10 @@ class TutorChat extends ChatPanel {
      */
     newConversation() {
         if (!this.threadId && this.log.querySelectorAll('[data-region="message"]').length === 0) {
+            // An empty panel is not proof of an empty conversation: with the
+            // history switched off it shows nothing of one that still goes on
+            // on the server. The wish is recorded all the same (#183).
+            this.startNewThread();
             this.input.focus();
             return;
         }

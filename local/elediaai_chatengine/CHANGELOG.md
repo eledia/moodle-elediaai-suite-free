@@ -3,6 +3,22 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.5.9] – 2026-11-24
+
+### Behoben
+
+- „Neues Gespraech“ haelt ueber ein Neuladen und einen Seitenwechsel
+  (ai_suite#183). Der Wunsch lebte nur in der Seite: Wer danach neu lud
+  oder weiterklickte, bekam das alte Gespraech angezeigt, und der naechste
+  Beitrag ging hinein. Er steht jetzt im Sitzungszeiger (`'new'` statt der
+  Thread-ID); `restoreThread()` laedt dann keinen Verlauf, sondern schickt
+  den naechsten Beitrag mit `newthread`.
+- Antworten, die nach „Neues Gespraech“ noch eintreffen (ein laufender
+  Beitrag oder der Verlauf vom Seitenaufbau), machen das alte Gespraech
+  nicht mehr wieder zum aktiven. Eine Zaehlung je Zuruecksetzen
+  (`resetGeneration`) erkennt sie; ein spaeter Verlauf wird verworfen, eine
+  spaete Antwort noch angezeigt, aber ihr Thread nicht uebernommen.
+
 ## [1.5.8] – 2026-11-24
 
 ### Neu

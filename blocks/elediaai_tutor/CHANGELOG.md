@@ -3,6 +3,17 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.21] – 2026-11-24
+
+### Behoben
+
+- „Neues Gespraech“ (Plus) beginnt wirklich ein neues Gespraech
+  (ai_suite#183). Bei ausgeschaltetem Verlauf zeigte das Fenster nach dem
+  Neuladen nichts, das Gespraech lief auf dem Server aber weiter; das Plus
+  kehrte bei leerem Fenster frueh zurueck und meldete den Wunsch nicht. Es
+  tut das jetzt immer. Dass der Wunsch ein Neuladen und spaete Antworten
+  ueberlebt, kommt aus `local_elediaai_chatengine` 1.5.9.
+
 ## [1.0.20] – 2026-11-24
 
 ### Neu
