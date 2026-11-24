@@ -47,7 +47,7 @@ $indexurl = new moodle_url('/local/elediaai_core/index.php');
 
 $PAGE->set_url($url);
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout('report');
 $PAGE->set_title(get_string('audit_heading', 'local_elediaai_core'));
 $PAGE->set_heading('');
 

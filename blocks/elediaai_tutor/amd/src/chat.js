@@ -54,6 +54,11 @@ const STRING_DEFS = [
     ['you', 'senderyou'],
     ['privacytitle', 'privacyguidelines'],
     ['ltmsaved', 'ltm_saved'],
+    ['ltmofftitle', 'ltm_off_confirm_title'],
+    ['ltmoffconfirm', 'ltm_off_confirm'],
+    ['ltmoffbutton', 'ltm_off_confirmbutton'],
+    ['ltmofflook', 'ltm_off_lookfirst'],
+    ['memorytitle', 'memory_view_title'],
     ['deletetitle', 'deleteall_confirm_title'],
     ['deleteconfirm', 'deleteall_confirm'],
     ['deletebutton', 'deleteall_confirmbutton'],
@@ -598,6 +603,7 @@ class TutorChat extends ChatPanel {
         Templates.render('block_elediaai_tutor/privacy_info', {
             uniqid: this.config.uniqid,
             ltmenabled: this.ltmEnabled,
+            memoryview: !!this.config.memoryview,
             candelete: !!this.config.candelete,
             // Institution-specific guidelines, already formatted/sanitised
             // server-side; replaces the built-in informational sections.
@@ -650,7 +656,14 @@ class TutorChat extends ChatPanel {
         const root = modal.getRoot()[0];
         const toggle = root.querySelector('[data-region="ltm-toggle"]');
         if (toggle) {
-            toggle.addEventListener('change', () => this.saveLtm(toggle, root));
+            toggle.addEventListener('change', () => this.changeLtm(toggle, root));
+        }
+        const viewbtn = root.querySelector('[data-action="memory-view"]');
+        if (viewbtn) {
+            viewbtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.openMemory();
+            });
         }
         const deletebtn = root.querySelector('[data-action="delete-all"]');
         if (deletebtn) {
@@ -658,6 +671,149 @@ class TutorChat extends ChatPanel {
                 e.preventDefault();
                 this.confirmDeleteAll(root);
             });
+        }
+    }
+
+    /**
+     * React to the long-term memory checkbox.
+     *
+     * Switching on is saved at once. Switching off erases everything the
+     * tutor has remembered, irrevocably, so it is confirmed first (#238).
+     *
+     * @param {HTMLInputElement} toggle The checkbox.
+     * @param {HTMLElement} root The privacy modal root element.
+     * @return {void}
+     */
+    changeLtm(toggle, root) {
+        if (toggle.checked || !this.ltmEnabled) {
+            this.saveLtm(toggle, root);
+            return;
+        }
+        this.confirmLtmOff(toggle, root);
+    }
+
+    /**
+     * Ask before switching long-term memory off, with a way to look first.
+     *
+     * Nothing is saved until the learner confirms. Closing or cancelling the
+     * dialog ticks the checkbox again and leaves memory on.
+     *
+     * @param {HTMLInputElement} toggle The checkbox.
+     * @param {HTMLElement} root The privacy modal root element.
+     * @return {void}
+     */
+    confirmLtmOff(toggle, root) {
+        let confirmed = false;
+        const body = document.createElement('div');
+        const text = document.createElement('p');
+        text.textContent = strings.ltmoffconfirm;
+        body.appendChild(text);
+        if (this.config.memoryview) {
+            const look = document.createElement('button');
+            look.type = 'button';
+            look.className = 'btn btn-link p-0';
+            look.setAttribute('data-action', 'memory-view');
+            look.setAttribute('aria-haspopup', 'dialog');
+            look.textContent = strings.ltmofflook;
+            const para = document.createElement('p');
+            para.appendChild(look);
+            body.appendChild(para);
+        }
+
+        ModalSaveCancel.create({
+            title: strings.ltmofftitle,
+            body: body.innerHTML,
+            show: true,
+            removeOnClose: true
+        }).then((modal) => {
+            this.applyBrand(modal);
+            modal.setSaveButtonText(strings.ltmoffbutton);
+            const modalroot = modal.getRoot();
+            modalroot.on(ModalEvents.save, () => {
+                confirmed = true;
+                this.saveLtm(toggle, root);
+            });
+            modalroot.on(ModalEvents.hidden, () => {
+                if (!confirmed) {
+                    toggle.checked = this.ltmEnabled;
+                }
+            });
+            const lookbtn = modalroot[0].querySelector('[data-action="memory-view"]');
+            if (lookbtn) {
+                lookbtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.openMemory();
+                });
+            }
+            return modal;
+        }).catch((error) => {
+            toggle.checked = this.ltmEnabled;
+            Notification.exception(error);
+        });
+    }
+
+    /**
+     * Show what the tutor has remembered about the learner (#238).
+     *
+     * Read-only: the backend answers for the learner's own token. Opens on top
+     * of the privacy panel or of the switch-off confirmation, which both stay
+     * where they were.
+     *
+     * @return {void}
+     */
+    openMemory() {
+        const body = Ajax.call([{
+            methodname: 'block_elediaai_tutor_get_memory',
+            args: {contextid: this.config.contextid}
+        }])[0].then((view) => Templates.render('block_elediaai_tutor/memory_view', Object.assign({}, view, {
+            ok: view.status === 'ok',
+            unavailable: view.status === 'unavailable',
+            error: view.status === 'error'
+        })));
+
+        Modal.create({
+            title: strings.memorytitle,
+            body: body,
+            large: true,
+            show: true,
+            removeOnClose: true
+        }).then((modal) => {
+            this.applyBrand(modal);
+            // Delegated: the body arrives after the modal is shown.
+            modal.getRoot()[0].addEventListener('click', (e) => {
+                const more = e.target.closest('[data-action="memory-more"]');
+                if (more) {
+                    e.preventDefault();
+                    this.revealSessions(modal.getRoot()[0], more);
+                }
+            });
+            return modal;
+        }).catch(Notification.exception);
+    }
+
+    /**
+     * Reveal the next page of session notes in the memory view.
+     *
+     * All notes arrived with the first answer (at most 200, variant A of
+     * #238); this only takes the hidden attribute off the next ones. Focus
+     * moves to the first revealed note, so it does not drop to the page when
+     * the button goes away.
+     *
+     * @param {HTMLElement} root The memory modal root element.
+     * @param {HTMLElement} more The "Show more" button.
+     * @return {void}
+     */
+    revealSessions(root, more) {
+        const page = parseInt(more.getAttribute('data-page'), 10) || 10;
+        const hidden = Array.from(root.querySelectorAll('[data-region="memory-session"][hidden]'));
+        const next = hidden.slice(0, page);
+        next.forEach((item) => item.removeAttribute('hidden'));
+        if (hidden.length <= page) {
+            more.remove();
+        }
+        if (next.length) {
+            next[0].setAttribute('tabindex', '-1');
+            next[0].focus();
         }
     }
 

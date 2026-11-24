@@ -69,6 +69,33 @@ final class insights {
     public const ACTION_CHAT = 'chat_turn';
 
     /**
+     * The action name of a decision turn: the answer to a confirmation card.
+     *
+     * The chat engine records a click on "Ja, ausfuehren" / "Nein" as its own
+     * action (#210). It still counts against the credit, but it is no
+     * question, so nothing here reads it: not the counters, not the topics,
+     * not the recluster batch.
+     */
+    public const ACTION_DECISION = 'chat_decision';
+
+    /**
+     * The reserved topic "fits no topic" (#210).
+     *
+     * The recluster agent gives it to greetings, thanks, confirmations, meta
+     * questions and test input. It is a real label rather than NULL on
+     * purpose: NULL means "not classified yet" and would be sent again every
+     * night. Every reader in this class treats it as no topic at all -- it is
+     * left out of gaps(), unclear(), the follow-up count, distinct_topics()
+     * and labels_with_examples() -- and summary() reports it as a side figure
+     * (`notopic`). Where a label is shown to a person, {@see topic_label()}
+     * turns it into "Ohne Thema".
+     */
+    public const TOPIC_NONE = '__none__';
+
+    /** @var int Example questions per label in {@see labels_with_examples()}. */
+    public const LABEL_EXAMPLES = 3;
+
+    /**
      * Static-only.
      */
     private function __construct() {
@@ -79,7 +106,8 @@ final class insights {
      *
      * @param int $courseid Course id, 0 for site-wide surfaces.
      * @param int $days Period in days.
-     * @return stdClass total, askers, grounded, groundedpct, followups, followuppct
+     * @return stdClass total, askers, grounded, groundedpct, followups, followuppct, notopic
+     *         (turns the agent marked as fitting no topic, {@see TOPIC_NONE})
      */
     public static function summary(int $courseid, int $days = self::DEFAULT_DAYS): stdClass {
         global $DB;
@@ -89,16 +117,22 @@ final class insights {
         $row = $DB->get_record_sql(
             "SELECT COUNT(1) AS total,
                     COUNT(DISTINCT CASE WHEN askerkey <> :emptykey THEN askerkey END) AS askers,
-                    SUM(CASE WHEN origin = :grounded THEN 1 ELSE 0 END) AS grounded
+                    SUM(CASE WHEN origin = :grounded THEN 1 ELSE 0 END) AS grounded,
+                    SUM(CASE WHEN topic = :topicnone THEN 1 ELSE 0 END) AS notopic
                FROM {" . turn_recorder::TABLE . "}
               WHERE {$where}",
-            $params + ['emptykey' => '', 'grounded' => turn_recorder::ORIGIN_GROUNDED]
+            $params + [
+                'emptykey' => '',
+                'grounded' => turn_recorder::ORIGIN_GROUNDED,
+                'topicnone' => self::TOPIC_NONE,
+            ]
         );
 
         $out = new stdClass();
         $out->total = (int) ($row->total ?? 0);
         $out->askers = (int) ($row->askers ?? 0);
         $out->grounded = (int) ($row->grounded ?? 0);
+        $out->notopic = (int) ($row->notopic ?? 0);
         $out->groundedpct = $out->total > 0
             ? (int) round($out->grounded * 100 / $out->total)
             : 0;
@@ -132,6 +166,7 @@ final class insights {
             'groundedsort' => turn_recorder::ORIGIN_GROUNDED,
             'groundedhaving' => turn_recorder::ORIGIN_GROUNDED,
             'minimum' => 3,
+            'topicnone' => self::TOPIC_NONE,
         ];
 
         // Two filters, both load-bearing. Asked at least a handful of times: a
@@ -149,6 +184,7 @@ final class insights {
                FROM {" . turn_recorder::TABLE . "}
               WHERE {$where}
                 AND topic IS NOT NULL
+                AND topic <> :topicnone
            GROUP BY topic
              HAVING COUNT(1) >= :minimum
                 AND SUM(CASE WHEN origin <> :groundedhaving THEN 1 ELSE 0 END) > 0
@@ -204,6 +240,7 @@ final class insights {
             // bricht mit "Incorrect number of query parameters".
             'emptykeyhaving' => '',
             'windowhaving' => $window,
+            'topicnone' => self::TOPIC_NONE,
         ];
 
         $table = '{' . turn_recorder::TABLE . '}';
@@ -234,6 +271,7 @@ final class insights {
                FROM {$table} t
               WHERE {$where}
                 AND t.topic IS NOT NULL
+                AND t.topic <> :topicnone
                 AND t.origin = :grounded
            GROUP BY t.topic, t.courseid
              HAVING COUNT(1) >= :minimum
@@ -353,8 +391,9 @@ final class insights {
                FROM {" . turn_recorder::TABLE . "}
               WHERE courseid > 0
                 AND timecreated >= :cutoff
-                AND actionname = :chataction",
-            ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT]
+                AND actionname = :chataction
+                AND success = :success",
+            ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT, 'success' => 1]
         );
 
         return array_map('intval', array_keys($rows));
@@ -431,11 +470,13 @@ final class insights {
               WHERE timecreated >= :cutoff
                 AND courseid > 0
                 AND actionname = :chataction
+                AND success = :success
            GROUP BY courseid
            ORDER BY COUNT(1) DESC",
             [
                 'cutoff' => self::cutoff($days),
                 'chataction' => self::ACTION_CHAT,
+                'success' => 1,
                 'emptykey' => '',
                 'grounded' => turn_recorder::ORIGIN_GROUNDED,
             ],
@@ -465,6 +506,9 @@ final class insights {
      * so it merges „Essay-Abgabe" into „Abgabe Essay 2" instead of inventing a
      * third name for the same thing.
      *
+     * Without {@see TOPIC_NONE}: "fits no topic" is a rule the agent applies,
+     * not a word of the course's vocabulary. Only answered questions count.
+     *
      * @param int $courseid
      * @param int $limit
      * @return string[]
@@ -477,8 +521,15 @@ final class insights {
                FROM {" . turn_recorder::TABLE . "}
               WHERE courseid = :courseid
                 AND topic IS NOT NULL
-                AND actionname = :chataction",
-            ['courseid' => $courseid, 'chataction' => self::ACTION_CHAT],
+                AND topic <> :topicnone
+                AND actionname = :chataction
+                AND success = :success",
+            [
+                'courseid' => $courseid,
+                'topicnone' => self::TOPIC_NONE,
+                'chataction' => self::ACTION_CHAT,
+                'success' => 1,
+            ],
             0,
             max(1, $limit)
         );
@@ -487,24 +538,173 @@ final class insights {
     }
 
     /**
+     * The topic labels of a course with how often each is used and what it means.
+     *
+     * The recluster agent classifies into this set (#210). A bare list of
+     * names let a label stretch to anything that sounded vaguely like it; a
+     * few questions per label are the anchor for what the label actually
+     * covers. Most used first, so a cap keeps the labels that matter.
+     *
+     * Same rules as {@see distinct_topics()}: answered chat questions only,
+     * without {@see TOPIC_NONE}, over everything the log still holds for the
+     * course (the retention decides how far back that is). The examples are
+     * the most recent questions of the label, trimmed and clipped to 300
+     * characters -- question text only, never the answer or the pseudonym.
+     *
+     * @param int $courseid
+     * @param int $limit Maximum number of labels.
+     * @param int $examples Example questions per label.
+     * @return array<int, array{label: string, count: int, examples: string[]}>
+     */
+    public static function labels_with_examples(
+        int $courseid,
+        int $limit = 100,
+        int $examples = self::LABEL_EXAMPLES
+    ): array {
+        global $DB;
+
+        $rows = $DB->get_records_sql(
+            "SELECT topic, COUNT(1) AS uses
+               FROM {" . turn_recorder::TABLE . "}
+              WHERE courseid = :courseid
+                AND topic IS NOT NULL
+                AND topic <> :topicnone
+                AND actionname = :chataction
+                AND success = :success
+           GROUP BY topic
+           ORDER BY COUNT(1) DESC, topic ASC",
+            [
+                'courseid' => $courseid,
+                'topicnone' => self::TOPIC_NONE,
+                'chataction' => self::ACTION_CHAT,
+                'success' => 1,
+            ],
+            0,
+            max(1, $limit)
+        );
+
+        $notempty = $DB->sql_isnotempty(turn_recorder::TABLE, 'prompt', true, true);
+        $out = [];
+        foreach ($rows as $row) {
+            $texts = [];
+            if ($examples > 0) {
+                // A few more rows than needed, because duplicates are skipped:
+                // "Wann ist die Abgabe?" three times anchors nothing.
+                $prompts = $DB->get_records_select(
+                    turn_recorder::TABLE,
+                    "courseid = :courseid AND topic = :topic AND actionname = :chataction
+                        AND success = :success AND prompt IS NOT NULL AND {$notempty}",
+                    [
+                        'courseid' => $courseid,
+                        'topic' => (string) $row->topic,
+                        'chataction' => self::ACTION_CHAT,
+                        'success' => 1,
+                    ],
+                    'id DESC',
+                    'id, prompt',
+                    0,
+                    $examples * 4
+                );
+                foreach ($prompts as $prompt) {
+                    $text = \core_text::substr(trim((string) $prompt->prompt), 0, 300);
+                    if ($text === '' || in_array($text, $texts, true)) {
+                        continue;
+                    }
+                    $texts[] = $text;
+                    if (count($texts) >= $examples) {
+                        break;
+                    }
+                }
+            }
+            $out[] = [
+                'label' => (string) $row->topic,
+                'count' => (int) $row->uses,
+                'examples' => $texts,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * A topic label as a person should read it.
+     *
+     * {@see TOPIC_NONE} is a technical marker and reads as "Ohne Thema"; any
+     * other label is returned trimmed, an empty one stays empty so the caller
+     * decides how to show "nothing".
+     *
+     * @param string|null $topic Stored label.
+     * @return string Plain text, not escaped.
+     */
+    public static function topic_label(?string $topic): string {
+        $topic = trim((string) $topic);
+        if ($topic === self::TOPIC_NONE) {
+            return get_string('insights_topic_none', 'local_elediaai_core');
+        }
+        return $topic;
+    }
+
+    /**
      * A batch of questions for re-clustering: id and text, nothing else.
      *
      * Deliberately not the answer and not the pseudonym. What leaves the site
      * here is the smallest thing the backend needs to group questions.
      *
+     * Only answered turns with a question in them (#206). A refused turn is
+     * logged on purpose with an empty prompt and success = 0 -- the code,
+     * place and time are what a diagnosis needs -- but it is no question, and
+     * the backend rejected a whole batch for one empty text. The prompt is a
+     * TEXT column, hence sql_isnotempty() and not a plain comparison.
+     *
+     * With $untopiconly only turns that have no topic yet (#210, variant B):
+     * once labelled stays labelled, so the numbers a teacher sees do not jump
+     * from night to night without new questions. {@see TOPIC_NONE} is a
+     * label, so a turn marked as fitting no topic is not sent again either.
+     *
+     * $afterid pages by id rather than by offset. A caller that labels each
+     * batch before asking for the next would otherwise skip rows: the
+     * labelled ones drop out of the "no topic yet" set and every offset
+     * shifts by a batch.
+     *
      * @param int $courseid
      * @param int $days
      * @param int $limit
      * @param int $offset
+     * @param bool $untopiconly Only turns whose topic is still NULL.
+     * @param int $afterid Only turns with a higher id (cursor paging).
      * @return stdClass[] id, prompt -- oldest first.
      */
-    public static function fetch_for_recluster(int $courseid, int $days, int $limit, int $offset): array {
+    public static function fetch_for_recluster(
+        int $courseid,
+        int $days,
+        int $limit,
+        int $offset = 0,
+        bool $untopiconly = false,
+        int $afterid = 0
+    ): array {
         global $DB;
+
+        $notempty = $DB->sql_isnotempty(turn_recorder::TABLE, 'prompt', true, true);
+        $where = "courseid = :courseid AND timecreated >= :since AND actionname = :chataction
+                AND success = :success AND prompt IS NOT NULL AND {$notempty}";
+        $params = [
+            'courseid' => $courseid,
+            'since' => time() - max(1, $days) * DAYSECS,
+            'chataction' => self::ACTION_CHAT,
+            'success' => 1,
+        ];
+        if ($untopiconly) {
+            $where .= ' AND topic IS NULL';
+        }
+        if ($afterid > 0) {
+            $where .= ' AND id > :afterid';
+            $params['afterid'] = $afterid;
+        }
 
         return array_values($DB->get_records_select(
             turn_recorder::TABLE,
-            'courseid = :courseid AND timecreated >= :since AND actionname = :chataction',
-            ['courseid' => $courseid, 'since' => time() - max(1, $days) * DAYSECS, 'chataction' => self::ACTION_CHAT],
+            $where,
+            $params,
             'id ASC',
             'id, prompt',
             max(0, $offset),
@@ -649,13 +849,16 @@ final class insights {
         $params += [
             'emptykey' => '',
             'window' => self::FOLLOWUP_WINDOW_MINUTES * MINSECS,
+            'topicnone' => self::TOPIC_NONE,
         ];
 
+        // Zwei Begruessungen in einer halben Stunde sind kein Nachfassen.
         return (int) $DB->get_field_sql(
             "SELECT COUNT(1)
                FROM {$table} t
               WHERE {$where}
                 AND t.topic IS NOT NULL
+                AND t.topic <> :topicnone
                 AND t.askerkey <> :emptykey
                 AND EXISTS (
                         SELECT 1
@@ -681,8 +884,14 @@ final class insights {
      */
     private static function scope(int $courseid, int $days, string $alias = ''): array {
         $prefix = $alias === '' ? '' : $alias . '.';
-        $where = "{$prefix}timecreated >= :cutoff AND {$prefix}actionname = :chataction";
-        $params = ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT];
+        // Nur beantwortete Durchgaenge zaehlen als Frage (#206). Eine Ablehnung
+        // -- keine Einwilligung, kein Zugriff, Kontingent erschoepft -- steht
+        // mit leerem Prompt und success = 0 im Protokoll; als Frage gezaehlt
+        // trieb sie die Fragenzahl hoch und senkte den Anteil gedeckter
+        // Antworten, ohne dass jemand etwas gefragt haette.
+        $where = "{$prefix}timecreated >= :cutoff AND {$prefix}actionname = :chataction"
+            . " AND {$prefix}success = :success";
+        $params = ['cutoff' => self::cutoff($days), 'chataction' => self::ACTION_CHAT, 'success' => 1];
 
         if ($courseid > 0) {
             $where .= " AND {$prefix}courseid = :courseid";

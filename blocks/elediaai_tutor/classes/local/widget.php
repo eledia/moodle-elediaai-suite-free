@@ -419,7 +419,11 @@ class widget {
             'collapselabel' => self::string_or_fallback('collapsechat', 'Shrink chat'),
             'launchlabel' => $brand['launchlabel'],
             'launcherstyle' => $brand['launcherstyle'],
-            'launchfab' => $brand['launcherstyle'] === 'fab',
+            // Floating at all (portalled, round on phones) and, within that,
+            // whether the button shows its label (#234).
+            'launchfab' => branding::is_floating($brand['launcherstyle']),
+            'launchfabicononly' => $brand['launcherstyle'] === branding::LAUNCHER_FAB,
+            'launchfablabel' => $brand['launcherstyle'] === branding::LAUNCHER_FABLABEL,
             'launchcompact' => $brand['launcherstyle'] === 'compact',
             'stylechoice' => $allowstylechange,
             'styles' => $styles,
@@ -481,6 +485,8 @@ class widget {
             'aisystem' => get_string('pluginname', 'block_elediaai_tutor'),
             'avatarurl' => $avatarurl,
             'ltmenabled' => ltm::is_enabled((int) $USER->id),
+            // The view of the stored memory, offered with the opt-in (#238).
+            'memoryview' => ltm::is_viewable(),
             'candelete' => has_capability('block/elediaai_tutor:deleteownhistory', $context),
             'answerstyle' => $answerstyle,
             'allowstylechange' => $allowstylechange,
@@ -498,7 +504,7 @@ class widget {
             'briefingprompt' => $briefing ? $briefingprompt : '',
             // Floating launcher is portalled to <body> by the JS so the block
             // drawer can't hide it.
-            'launchfab' => $brand['launcherstyle'] === 'fab',
+            'launchfab' => branding::is_floating($brand['launcherstyle']),
             'editing' => $PAGE->user_is_editing(),
             // Brand variables so JS-created modals (portalled to <body>) can be
             // themed too — see TutorChat.applyBrand().

@@ -55,7 +55,7 @@ $indexurl = new moodle_url('/local/elediaai_core/index.php');
 
 $PAGE->set_url($url);
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout('report');
 $PAGE->set_title(get_string('surface_insights_title', 'local_elediaai_core'));
 $PAGE->set_heading('');
 $PAGE->requires->css('/local/elediaai_core/styles.css');

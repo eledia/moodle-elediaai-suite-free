@@ -65,7 +65,7 @@ if ($suitequick !== '') {
 
 $PAGE->set_url($url);
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout('report');
 $PAGE->set_title(get_string('surface_requests_title', 'local_elediaai_core'));
 $PAGE->set_heading('');
 

@@ -20,6 +20,7 @@ namespace webservice_elediamcp\task;
 
 use core\task\scheduled_task;
 use webservice_elediamcp\local\oauth\store as oauth_store;
+use webservice_elediamcp\local\security;
 use webservice_elediamcp\local\token_manager;
 
 /**
@@ -55,6 +56,13 @@ class prune_revoked_tokens extends scheduled_task {
         // past their (minutes-long) expiry, independent of the token retention window.
         $codes = oauth_store::gc_expired_codes();
         mtrace("webservice_elediamcp: pruned {$codes} expired OAuth authorization code(s).");
+
+        // Dynamically registered clients that nobody ever used (#151); 0 keeps them all.
+        $clientdays = security::oauth_client_retention_days();
+        if ($clientdays > 0) {
+            $clients = oauth_store::gc_unused_clients(time() - $clientdays * DAYSECS);
+            mtrace("webservice_elediamcp: deleted {$clients} unused OAuth client(s) older than {$clientdays} day(s).");
+        }
 
         $configured = get_config('webservice_elediamcp', 'token_retention_days');
         $days = ($configured === false || $configured === '') ? 30 : (int) $configured;

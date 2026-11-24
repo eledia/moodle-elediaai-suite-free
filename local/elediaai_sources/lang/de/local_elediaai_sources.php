@@ -202,7 +202,6 @@ $string['lockcoursemarking_desc'] = 'Wenn aktiviert, hat die Kurseinstellung „
 
 // Extractor content labels.
 $string['alsoknownas'] = 'Auch bekannt als:';
-$string['questionhint'] = 'Hinweis:';
 $string['gradingcriteria'] = 'Bewertungskriterien';
 $string['contenttruncated'] = '[Inhalt wurde auf die Größenbegrenzung gekürzt]';
 $string['contenttruncatedlog'] = 'Inhalt wurde vor dem Senden auf das Limit von {$a->max} MB gekürzt: cmid {$a->cmid}';

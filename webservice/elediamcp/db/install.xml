@@ -46,6 +46,7 @@
         <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated scopes the client requested at registration (default for its authorization requests)."/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Registration timestamp."/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last modification timestamp."/>
+        <FIELD NAME="timelastused" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="When a person last allowed access for this client; null while nobody ever did. A client that was never used is deleted after the configured retention."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

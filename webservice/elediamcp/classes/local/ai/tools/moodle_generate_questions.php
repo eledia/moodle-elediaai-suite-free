@@ -43,8 +43,25 @@ class moodle_generate_questions implements ai_tool {
     /** @var string[] Supported generation modes. */
     private const MODES = ['topic', 'coursecontents'];
 
-    /** @var string[] Supported question types. */
-    private const QUESTION_TYPES = ['multichoice', 'truefalse', 'shortanswer', 'matching', 'ordering'];
+    /** @var string[] Question types of Question Generator before it published its own list (#227). */
+    private const FALLBACK_QUESTION_TYPES = ['multichoice', 'truefalse', 'shortanswer', 'matching', 'ordering'];
+
+    /**
+     * The question types the installed Question Generator offers.
+     *
+     * Read from the generator (`prompts::all_questiontypes()`), so a new type there
+     * (essay, numerical) reaches this tool without a change here; an older generator
+     * without that method keeps the five original types.
+     *
+     * @return string[]
+     */
+    private static function question_types(): array {
+        $prompts = '\\local_elediaai_questiongen\\local\\prompts';
+        if (class_exists($prompts) && is_callable([$prompts, 'all_questiontypes'])) {
+            return array_values($prompts::all_questiontypes());
+        }
+        return self::FALLBACK_QUESTION_TYPES;
+    }
 
     /**
      * Return the MCP tool name.
@@ -128,7 +145,7 @@ class moodle_generate_questions implements ai_tool {
                     'default' => ['multichoice'],
                     'items' => [
                         'type' => 'string',
-                        'enum' => self::QUESTION_TYPES,
+                        'enum' => self::question_types(),
                     ],
                 ],
                 'multichoice_correct_mode' => [
@@ -435,9 +452,9 @@ class moodle_generate_questions implements ai_tool {
         $normalised = [];
         foreach ($types as $type) {
             $type = trim((string) $type);
-            if (!in_array($type, self::QUESTION_TYPES, true)) {
+            if (!in_array($type, self::question_types(), true)) {
                 throw new tool_exception(
-                    'Invalid question type "' . $type . '". Allowed: ' . implode(', ', self::QUESTION_TYPES) . '.'
+                    'Invalid question type "' . $type . '". Allowed: ' . implode(', ', self::question_types()) . '.'
                 );
             }
             $normalised[$type] = $type;

@@ -5,6 +5,26 @@ All notable changes to the **local_literag** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.5] – 2026-11-20
+
+### Changed
+
+- A typed confirmation of a pending action is judged by the rule of the
+  confirmation gate of `webservice_elediamcp` when that plugin is installed
+  (#190). A message with a question mark or a wish ("Ja, aber nimm drei
+  Fragen") no longer sends the waiting action, and neither does a longer
+  message that merely starts with "send" or "ja". The exact phrases ("ja",
+  "senden", "send it" and so on) and the confirmation buttons work as before.
+  Without the gate the older short-prefix rule stays.
+- The arguments a preview announces in `confirm_args` are taken over into the
+  confirmed call (#190). `draft_token` and `job_token` remain as the fallback
+  for previews without that field, so a tool with another argument needs no
+  change in this plugin.
+
+### Tests
+
+- `confirmation_test` (new) and extended `agent_test` (announced arguments).
+
 ## [1.1.4] – 2026-11-05
 
 ### Fixed

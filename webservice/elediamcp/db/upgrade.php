@@ -157,5 +157,30 @@ function xmldb_webservice_elediamcp_upgrade($oldversion): bool {
         upgrade_plugin_savepoint(true, 2026102101, 'webservice', 'elediamcp');
     }
 
+    if ($oldversion < 2026112001) {
+        // OAuth clients: remember when a client was last used, so that clients nobody ever
+        // used can be cleaned up (#151).
+        $table = new xmldb_table('webservice_elediamcp_oauth_client');
+        $field = new xmldb_field('timelastused', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'timemodified');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+            // Clients that exist now stay: they count as used from today on.
+            $DB->set_field('webservice_elediamcp_oauth_client', 'timelastused', time());
+        }
+
+        // Dynamic registration is off by default from now on. A site that has OAuth on and
+        // never saved the setting keeps what it had, now written down where an administrator
+        // can see and change it.
+        if (
+            get_config('webservice_elediamcp', 'oauth_enabled') &&
+            get_config('webservice_elediamcp', 'oauth_allow_dynamic_registration') === false
+        ) {
+            set_config('oauth_allow_dynamic_registration', 1, 'webservice_elediamcp');
+        }
+
+        // MCP savepoint reached.
+        upgrade_plugin_savepoint(true, 2026112001, 'webservice', 'elediamcp');
+    }
+
     return true;
 }

@@ -202,7 +202,6 @@ $string['lockcoursemarking_desc'] = 'When enabled, the per-course "AI Sources" s
 
 // Extractor content labels.
 $string['alsoknownas'] = 'Also known as:';
-$string['questionhint'] = 'Hint:';
 $string['gradingcriteria'] = 'Grading criteria';
 $string['contenttruncated'] = '[content truncated to fit the size limit]';
 $string['contenttruncatedlog'] = 'Content truncated to the {$a->max} MB limit before sending: cmid {$a->cmid}';

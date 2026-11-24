@@ -34,6 +34,7 @@ use core_reportbuilder\local\report\filter;
 use html_writer;
 use lang_string;
 use local_elediaai_core\local\audit_config;
+use local_elediaai_core\local\insights;
 use local_elediaai_core\local\turn_recorder;
 use local_elediaai_core\output\lucide_icon;
 use moodle_url;
@@ -127,7 +128,7 @@ final class turn extends base {
             ->set_type(column::TYPE_TEXT)
             ->add_field("{$alias}.topic")
             ->set_is_sortable(true)
-            ->set_callback([self::class, 'format_plain']);
+            ->set_callback([self::class, 'format_topic']);
 
         $columns[] = (new column(
             'prompt',
@@ -308,6 +309,16 @@ final class turn extends base {
     public static function format_plain(?string $value): string {
         $value = trim((string) $value);
         return $value === '' ? '—' : s($value);
+    }
+
+    /**
+     * A topic label, with the reserved "fits no topic" marker spelled out.
+     *
+     * @param string|null $value
+     * @return string
+     */
+    public static function format_topic(?string $value): string {
+        return self::format_plain(insights::topic_label($value));
     }
 
     /**

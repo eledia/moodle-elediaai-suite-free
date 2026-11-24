@@ -5,6 +5,44 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.23.0] – 2026-11-20
+
+### Sicherheit
+
+- Die dynamische Client-Registrierung (`oauth_allow_dynamic_registration`) ist jetzt standardmäßig **aus** (#151). Sie lässt jede Person ohne Anmeldung einen Client mit beliebiger Rückleitungs-Adresse anlegen und gehört deshalb erst eingeschaltet, wenn ein Betreiber Clients wie Claude Desktop nutzen will. Eine Installation mit eingeschaltetem OAuth, die die Einstellung nie gespeichert hat, behält die bisherige Einstellung: das Upgrade schreibt sie als „an“ fest, sie steht dann sichtbar in der Konfiguration. Neue Installationen starten mit „aus“, und ohne Registrierung bietet die Server-Metadatei keinen `registration_endpoint` an.
+
+### Neu
+
+- Unbenutzte, dynamisch registrierte Clients werden aufgeräumt (#151): Der Task `prune_revoked_tokens` löscht einen Client, für den nie jemand den Zugriff erlaubt hat, nach 30 Tagen. Einstellung `oauth_client_retention_days` (0 behält alle). Ein Client, der einmal benutzt wurde, bleibt immer. Neues Feld `timelastused` an `webservice_elediamcp_oauth_client`; das Upgrade setzt es für vorhandene Clients auf den Zeitpunkt des Upgrades, sie bleiben also erhalten.
+- Loopback-Rückleitung nach RFC 8252 §7.3 (#151, H2): Für `http://127.0.0.1/…` und `http://[::1]/…` gilt der Port der Anfrage beliebig, weil native Apps einen freien Port erst zur Laufzeit wählen. Schema, Host, Pfad und Query müssen gleich sein; `https` und alle anderen Adressen werden weiter exakt verglichen. Der Code bleibt an die genaue Adresse der Anfrage gebunden.
+
+### Tests
+
+- `oauth_service_test`: Registrierung ist ohne Einstellung aus, Loopback-Vergleich (zehn Fälle), Aufräumen nur unbenutzter und alter Clients, Task folgt der Einstellung.
+
+## [1.22.0] – 2026-11-19
+
+### Neu
+
+- `moodle_generate_questions` (#227): Die Fragetypen kommen jetzt vom Fragen-Generator (`prompts::all_questiontypes()`) und stehen nicht mehr fest in diesem Plugin. Damit bietet das Werkzeug die neuen Typen `essay` (Freitext, von Hand bewertet) und `numerical` (Numerisch) an und jeden künftigen Typ des Generators ohne Änderung hier; ein älterer Generator ohne diese Liste behält die fünf bisherigen Typen. Schema und Fehlermeldung zu `question_types` nennen die verfügbaren Typen.
+- Tests: `generation_tools_test` (das Schema bietet genau die Typen des Generators an, mit `essay` und `numerical`; ohne Generator bleiben es die fünf bisherigen).
+
+## [1.21.1] – 2026-11-17
+
+### Behoben
+
+- `moodle_generate_h5p` (#221): Bei `multichoice` und `truefalse` (eine Frage oder Aussage je Paket, `count` ohne Wirkung) nannten `preview.count` und die Bestätigungskarte die vorgegebene Anzahl, standardmäßig 8 („Ein H5P-Entwurf (Wahr-oder-falsch-Aussage, 8 Aufgabe(n)) ist erzeugt …“). Beide nennen jetzt 1. Bei den übrigen Typen ändert sich nichts (neu `item_count()`).
+- Tests: `h5p_type_normalisation_test` (angekündigte Anzahl je Typ; ein Aufruf des Werkzeugs mit einer Attrappe für den KI-Anbieter prüft Vorschau und Karte bei True/False und bei Dialogkarten, nur mit installiertem H5P Autor).
+
+## [1.21.0] – 2026-11-17
+
+### Neu
+
+- `moodle_generate_h5p` (#221): Die Typen kommen jetzt aus dem H5P Autor (`content_type::all()`) und stehen nicht mehr fest in diesem Plugin. Damit kennt das Werkzeug die neuen Typen `dragtext` (Drag the Words), `markthewords` (Mark the Words) und `truefalse` (True/False) und jeden künftigen Typ des H5P Autors ohne Änderung hier; eine Site mit älterem H5P Autor bekommt nur dessen Typen angeboten (ohne H5P Autor bleiben es die vier Typen der ersten Version). Beschreibung und Schema des Arguments `type` werden aus dieser Liste gebaut, die Beschreibung von `count` nennt, dass er bei `multichoice` und `truefalse` ohne Wirkung ist (eine Frage oder Aussage je Paket).
+- Neue Schreibweisen für den Typ: „Drag the Words“, „Wörter ziehen“, „Mark the Words“, „Wörter markieren“, „True/False“, „True or False“, „Wahr oder falsch“; Schrägstriche zählen wie Leerzeichen nicht. Eine Schreibweise gilt nur für einen Typ, den der H5P Autor der Site anbietet, sonst bleibt sie ungültig und die Fehlermeldung nennt die verfügbaren Typen.
+- Der Fehlercode `error_notenoughmaterial` des H5P Autors (0.7.18, zu wenig Material für die gewünschte Anzahl) wird zur Anweisung an den Agenten („nicht unverändert wiederholen: genaueres Thema, `source_cmid` oder kleinere `count`“) statt zu „H5P generation failed“.
+- Tests: `h5p_type_normalisation_test` (neue Schreibweisen, Typen aus dem H5P Autor, Beschreibung und Schema nennen jeden Typ, Schreibweise nur für einen verfügbaren Typ, Fehlercode zu wenig Material).
+
 ## [1.20.2] – 2026-11-10
 
 ### Behoben

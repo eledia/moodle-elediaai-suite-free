@@ -115,13 +115,27 @@ class security {
     /**
      * Whether dynamic client registration (RFC 7591) is accepted.
      *
-     * Only consulted when {@see self::oauth_enabled()} is true. Enabled by default
-     * so zero-configuration MCP clients (Claude Desktop, Cursor, ...) can onboard.
+     * Only consulted when {@see self::oauth_enabled()} is true. Off until an
+     * administrator switches it on, because anyone without a sign-in can then
+     * register a client (#151). Zero-configuration MCP clients (Claude Desktop,
+     * Cursor, ...) need it.
      *
      * @return bool
      */
     public static function oauth_allow_dynamic_registration(): bool {
-        return (int) self::get_config('oauth_allow_dynamic_registration', 1) === 1;
+        return (int) self::get_config('oauth_allow_dynamic_registration', 0) === 1;
+    }
+
+    /**
+     * Days after which a dynamically registered client that nobody ever used is deleted.
+     *
+     * 0 keeps every client. A client counts as used once a person has allowed
+     * access for it.
+     *
+     * @return int
+     */
+    public static function oauth_client_retention_days(): int {
+        return max(0, (int) self::get_config('oauth_client_retention_days', 30));
     }
 
     /**

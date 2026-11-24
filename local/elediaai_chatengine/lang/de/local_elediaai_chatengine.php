@@ -68,6 +68,8 @@ $string['setting_simulator_desc'] = 'Beantwortet jeden Chat-Zug nach festem Dreh
 
 Schlüsselwörter steuern, was zurückkommt — schicke <code>/hilfe</code> in einem beliebigen Chat.';
 $string['status_simulator_active'] = 'Simulator aktiv — die Antworten sind erfunden, es ist kein Sprachmodell beteiligt.';
+$string['simulator_memory_background'] = 'Simulierte Erinnerung: studiert etwas Erfundenes im dritten Semester.';
+$string['simulator_memory_preference'] = 'Simulierte Erinnerung: versteht Dinge am besten, wenn die Erklärung mit einem Beispiel beginnt.';
 $string['simulator_marker'] = '**Simulierte Antwort.** Es war kein Sprachmodell beteiligt.';
 $string['simulator_topic'] = 'Simulation';
 $string['simulator_default'] = 'Du hast geschrieben: *{$a->message}*
@@ -155,7 +157,7 @@ $string['setting_enabletool_delete_desc'] = 'Löscht eine Unterhaltung, die in M
 $string['setting_enabletool_deleteuser'] = 'Alle Daten einer Person auch beim Agenten löschen';
 $string['setting_enabletool_deleteuser_desc'] = 'Empfohlen. Entfernt bei einer Datenschutz-Löschung alle Transkripte und das Gedächtnis der Person auch beim Agenten (Werkzeug <code>{$a}</code>). Ausgeschaltet werden die Daten nur in dieser Instanz gelöscht.';
 $string['setting_enabletool_memoryoptin'] = 'Langzeitgedächtnis anbieten';
-$string['setting_enabletool_memoryoptin_desc'] = 'Lernende können dem Langzeitgedächtnis des Agenten zustimmen; die Einwilligung wird ihm übermittelt (Werkzeug <code>{$a}</code>). Nur einschalten, wenn der Agent ein Gedächtnis hat.';
+$string['setting_enabletool_memoryoptin_desc'] = 'Lernende können dem Langzeitgedächtnis des Agenten zustimmen; die Einwilligung wird ihm übermittelt (Werkzeug <code>{$a}</code>). Nur einschalten, wenn der Agent ein Gedächtnis hat. Lernende können dann auch einsehen, was gespeichert ist (Werkzeug <code>tutor_get_memory</code>).';
 $string['setting_enabletool_recluster'] = 'Fragen nachts neu gruppieren';
 $string['setting_enabletool_recluster_desc'] = 'Die nächtliche Fragenauswertung des Tutors lässt die Themen der Fragen vom Agenten neu ordnen (Werkzeug <code>{$a}</code>).';
 $string['setting_requesttimeout'] = 'Zeitgrenze je Anfrage';

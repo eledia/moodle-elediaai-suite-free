@@ -110,7 +110,7 @@ final class audit_config {
     ): never {
         $page->set_url($url);
         $page->set_context(context_system::instance());
-        $page->set_pagelayout('admin');
+        $page->set_pagelayout('report');
         $page->set_title(get_string('audit_unavailable_title', 'local_elediaai_core'));
         $page->set_heading(get_string('audit_unavailable_title', 'local_elediaai_core'));
 

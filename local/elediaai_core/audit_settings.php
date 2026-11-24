@@ -44,7 +44,7 @@ require_capability('moodle/site:config', $context);
 
 $PAGE->set_context($context);
 $PAGE->set_url($url);
-$PAGE->set_pagelayout('standard');
+$PAGE->set_pagelayout('report');
 $PAGE->set_title(get_string('surface_settings_title', 'local_elediaai_core'));
 $PAGE->set_heading('');
 

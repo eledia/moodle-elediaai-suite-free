@@ -3,6 +3,109 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.20] – 2026-11-24
+
+### Neu
+
+- Startschaltflaeche „Schwebende Schaltflaeche mit Beschriftung (untere
+  Ecke)“ (ai_suite#234): dieselbe schwebende Schaltflaeche an derselben
+  Stelle, aber als Pille mit Logo und Text. Waehlbar wie die uebrigen Stile
+  auf der Website und je Blockinstanz. Der Text kommt aus „Beschriftung der
+  Startschaltflaeche“ (mehrsprachig ueber den Filter); ist sie leer, steht
+  der Name des Tutors darauf. Der Text ist echter Text im Button und damit
+  sein zugaenglicher Name. Unter 768 Pixel Breite wird die Schaltflaeche
+  wieder zum Kreis; der Text ist dann nur optisch ausgeblendet. Die Abstaende
+  `tok_fabbottom`/`tok_fabright` gelten unveraendert. Der bisherige Behelf
+  per „Eigenes CSS“ (`::after` an `.elediaai-chat-launch--fab`) ist damit
+  entbehrlich.
+- `branding::is_floating()` beantwortet an allen Stellen, ob ein Stil
+  schwebt (Verschieben an `<body>`, leere Blockhuelle, Hinweis bei
+  fehlendem Backend), statt dort mit `'fab'` zu vergleichen.
+- Einsicht ins Langzeitgedaechtnis (ai_suite#238): Im Datenschutzfenster
+  oeffnet „Ansehen, was der Tutor sich ueber mich gemerkt hat“ eine
+  Uebersicht mit den Erinnerungen nach Kategorie und den Notizen zu den
+  Gespraechen mit Kurs und Datum, sonst „Es ist nichts gespeichert.“ Die
+  Daten kommen ueber `tutor_get_memory` vom Agenten (neue Webservice-Funktion
+  `block_elediaai_tutor_get_memory`, nur die eigenen Daten, Faehigkeit
+  `block/elediaai_tutor:use`, erst nach der Erstbestaetigung, falls die
+  verlangt ist) und werden nicht in Moodle gespeichert. Variante A: alle
+  Erinnerungen, von den Gespraechsnotizen zuerst die neuesten zehn, „Mehr
+  anzeigen“ innerhalb der gelieferten. Die englischen Zeilenanfaenge der
+  Notizen („Worked on:“, „Open:“, „Moodle:“) ersetzt der Block durch eigene
+  Sprachstrings. Angeboten wird die Einsicht, solange die Chat-Engine
+  Langzeitgedaechtnis anbietet (`enabletool_memoryoptin`).
+
+### Geaendert
+
+- Das Abschalten des Langzeitgedaechtnisses fragt jetzt nach (ai_suite#238):
+  Der Agent loescht dabei alles Gemerkte sofort und endgueltig, und bisher
+  genuegte ein versehentlicher Klick. Der Dialog bietet „Vorher ansehen“;
+  Abbrechen oder Schliessen laesst das Gedaechtnis eingeschaltet.
+- Abhaengigkeit `local_elediaai_chatengine` 2026112401 (Werkzeug `memory`).
+
+## [1.0.19] – 2026-11-24
+
+### Behoben
+
+- Recluster: Abgelehnte Chat-Zuege mit leerem Prompt gehen nicht mehr an
+  den Agenten (#206). Eine einzige solche Zeile liess bisher den ganzen
+  Stapel eines Kurses scheitern („questions[N].text must be a non-empty
+  string“). Der Kern liefert sie nicht mehr; leere Prompts werden hier
+  zusaetzlich uebersprungen.
+
+### Geaendert
+
+- Recluster nachts nur fuer neue Fragen (ai_suite#210, Variante B): gesendet
+  werden nur Fragen ohne Thema. Eine einmal eingeordnete Frage behaelt ihr
+  Thema, die Zahlen in den Kurs-Einblicken springen nicht mehr von Nacht zu
+  Nacht.
+- Recluster-Aufruf im Format des Agenten seit 23.11.: `mode: classify`,
+  `course {fullname, lang}` und `labels [{label, count, examples}]` statt
+  `existing_labels`. Das Ergebnis `__none__` („passt zu keinem Thema“) wird
+  gespeichert und vom Kern aus allen Auswertungen herausgehalten.
+
+### Hinzugefuegt
+
+- Einstellung „Alle 14 Tage alle Fragen neu einordnen“
+  (`reclusterfullrun`, Variante C, Standard aus): ordnet alle 14 Tage alle
+  Fragen der letzten 30 Tage neu ein und repariert so abgedriftete Themen.
+  Die erste Nacht nach dem Einschalten ist sofort faellig. Der Zeitpunkt des
+  letzten Volllaufs steht in `reclusterlastfullrun`.
+
+### Hinweis zum Upgrade
+
+- Benoetigt `local_elediaai_core` 1.4.0 (2026112401). Keine Datenmigration:
+  vorhandene `__none__`-Zeilen behandelt der Kern beim Lesen richtig.
+
+### Tests
+
+- `recluster_service_test`: vorab protokollierte Ablehnung wird nicht
+  gesendet; nachts nur Zuege ohne Thema im neuen Format; `__none__` wird
+  gespeichert und steht in keiner Luecke; zweiter Stapel wird nicht
+  uebersprungen; Volllauf folgt Einstellung und 14-Tage-Takt.
+
+## [1.0.18] – 2026-11-20
+
+### Behoben
+
+- Fehlerfenster „sitepolicynotagreed“ vor der Datenschutzerklaerung: Der
+  websiteweite Tutor wurde fuer angemeldete Personen auch dann eingebunden,
+  wenn Moodle sie nach dem Login noch aufhaelt (Datenschutzerklaerung nicht
+  bestaetigt, erzwungene Kennwortaenderung, unvollstaendiges Profil). Sein
+  erster Webservice-Aufruf wurde abgewiesen und als Fehlerfenster angezeigt.
+  Auf diesen Seiten erscheint er jetzt nicht mehr.
+
+- Fehlerfenster „requireloginerror“ auf der Einschreibeseite: Die Seite
+  gehoert zum Kurs, die Person ist aber noch nicht eingeschrieben. Der
+  websiteweite Tutor erscheint in einem Kurs nur noch, wenn die Person
+  Zugang zum Kurs hat.
+
+- Nach Registrierung oder Login wurde das Tutor-Logo bzw. der Avatar als
+  Download angeboten: Wurde ein solches Bild ohne gueltige Sitzung
+  angefordert, merkte sich Moodle die Bildadresse als Ruecksprungziel. Die
+  Bildauslieferung setzt kein Ruecksprungziel mehr; ein bereits gemerktes
+  wird vor der naechsten Seite verworfen.
+
 ## [1.0.17] – 2026-11-12
 
 ### Behoben

@@ -62,7 +62,9 @@ if ($quick !== '') {
 
 $PAGE->set_url($url);
 $PAGE->set_context($context);
-$PAGE->set_pagelayout('standard');
+// Ein Seitentyp je Oberflaeche (#230): im Kurs wie die anderen Kursseiten,
+// sonst wie Uebersicht, Audit und Health. Sonst springt der Inhalt.
+$PAGE->set_pagelayout($courseid > 0 ? 'incourse' : 'report');
 $PAGE->set_title(get_string('surface_actions_title', 'local_elediaai_core'));
 $PAGE->set_heading('');
 $PAGE->requires->css('/local/elediaai_core/styles.css');

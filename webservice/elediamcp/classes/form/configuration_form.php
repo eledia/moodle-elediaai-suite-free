@@ -286,6 +286,22 @@ class configuration_form extends moodleform {
         );
         $mform->disabledIf('oauth_allow_dynamic_registration', 'oauth_enabled', 'notchecked');
 
+        $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-oauth_client_retention_days']));
+        $mform->addElement(
+            'text',
+            'oauth_client_retention_days',
+            get_string('setting_oauth_client_retention_days', 'webservice_elediamcp'),
+            ['size' => 8]
+        );
+        $mform->setType('oauth_client_retention_days', PARAM_INT);
+        $mform->addHelpButton('oauth_client_retention_days', 'setting_oauth_client_retention_days', 'webservice_elediamcp');
+        $mform->addElement(
+            'static',
+            'oauth_client_retention_days_desc',
+            '',
+            get_string('setting_oauth_client_retention_days_desc', 'webservice_elediamcp')
+        );
+
         $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-oauth_code_ttl']));
         $mform->addElement(
             'text',
@@ -334,7 +350,7 @@ class configuration_form extends moodleform {
         $errors = parent::validation($data, $files);
         foreach (
             ['token_retention_days', 'rate_limit_per_minute', 'rate_limit_per_hour',
-                'max_request_size', 'tools_page_size', 'oauth_code_ttl', 'oauth_token_ttl'] as $field
+                'max_request_size', 'tools_page_size', 'oauth_code_ttl', 'oauth_token_ttl', 'oauth_client_retention_days'] as $field
         ) {
             if ((int) ($data[$field] ?? 0) < 0) {
                 $errors[$field] = get_string('configuration_error_nonnegative', 'webservice_elediamcp');

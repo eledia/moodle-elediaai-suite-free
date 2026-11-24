@@ -27,12 +27,23 @@ use local_elediaai_core\local\insights;
 /**
  * Batch topic reclustering against the RAG server.
  *
- * Converges the question-analytics hotspot labels: for every course with
- * recent activity, the last 30 days of logged questions are sent to the
- * configured recluster tool (in batches, together with the course's current
- * label registry) and the returned canonical labels are written back. The
- * server contract is idempotent, so repeated runs are safe and progressively
- * converge labels that drifted across model or prompt changes.
+ * Labels the questions of the question analytics: for every course with
+ * recent activity, logged questions are sent to the recluster tool in
+ * batches, together with the course (name, language) and its current labels
+ * with counts and example questions, and the returned labels are written
+ * back. The agent may answer {@see insights::TOPIC_NONE} for a turn that is
+ * no question about the course; that is stored like any other label.
+ *
+ * Which turns are sent (ai_suite#210, decided 24.11.2026):
+ *
+ * - **Every night, only what is new** (variant B): turns whose topic is
+ *   still NULL. Once labelled stays labelled. Before, the whole 30-day window
+ *   was re-sent every night, borderline questions were decided anew each
+ *   time, and teachers saw numbers jump without a single new question.
+ * - **Every 14 days, everything** (variant C), only when the admin setting
+ *   `reclusterfullrun` is on (default off): all turns of the window are
+ *   re-labelled once, which repairs labels that drifted, at the price of the
+ *   numbers moving on that night.
  *
  * This is a SITE-LEVEL service operation: requests carry the MCP token of the
  * auto-provisioned maintenance account ({@see service_user}) — never a real
@@ -57,6 +68,15 @@ class recluster_service {
     /** @var int Safety cap of questions processed per course per run. */
     public const MAX_PER_COURSE = 1000;
 
+    /** @var int Days between two full re-labelling runs (variant C). */
+    public const FULL_RUN_INTERVAL_DAYS = 14;
+
+    /** @var string Config key: full re-labelling every FULL_RUN_INTERVAL_DAYS. */
+    public const CONFIG_FULL_RUN = 'reclusterfullrun';
+
+    /** @var string Config key: when the last full run finished. */
+    public const CONFIG_LAST_FULL_RUN = 'reclusterlastfullrun';
+
     /**
      * Whether reclustering is configured and may run.
      *
@@ -70,6 +90,24 @@ class recluster_service {
     }
 
     /**
+     * Whether tonight's run re-labels everything (variant C).
+     *
+     * Only with the admin setting on, and then once every
+     * {@see FULL_RUN_INTERVAL_DAYS} days. The first night after switching it
+     * on is due at once: the admin asked for a repair, not for a two-week wait.
+     *
+     * @param int|null $now Point in time to judge, now by default.
+     * @return bool
+     */
+    public static function full_run_due(?int $now = null): bool {
+        if (!get_config('block_elediaai_tutor', self::CONFIG_FULL_RUN)) {
+            return false;
+        }
+        $last = (int) get_config('block_elediaai_tutor', self::CONFIG_LAST_FULL_RUN);
+        return ($now ?? time()) - $last >= self::FULL_RUN_INTERVAL_DAYS * DAYSECS;
+    }
+
+    /**
      * Recluster recent questions for every active course.
      *
      * Failures are per-course best-effort: a failing batch aborts that course
@@ -78,10 +116,14 @@ class recluster_service {
      * @param adapter|null $adapter Optional injected backend (tests).
      * @param int|null $serviceuserid Optional maintenance account id (tests); by
      *                                default the auto-created service account.
-     * @return array{courses: int, batches: int, updated: int, failed: int}
+     * @param bool|null $full True re-labels every turn of the window, false only
+     *                        the turns without a topic; null decides by
+     *                        {@see full_run_due()}.
+     * @return array{courses: int, batches: int, updated: int, failed: int, full: bool}
      */
-    public static function run(?adapter $adapter = null, ?int $serviceuserid = null): array {
-        $stats = ['courses' => 0, 'batches' => 0, 'updated' => 0, 'failed' => 0];
+    public static function run(?adapter $adapter = null, ?int $serviceuserid = null, ?bool $full = null): array {
+        $full ??= self::full_run_due();
+        $stats = ['courses' => 0, 'batches' => 0, 'updated' => 0, 'failed' => 0, 'full' => $full];
 
         // Vorher stand hier der Opt-in-Schalter des Frage-Logs; er ist mit dem
         // Log entfallen. An seine Stelle tritt die Frage, ob ueberhaupt ein
@@ -109,32 +151,65 @@ class recluster_service {
 
         foreach (insights::active_courses(self::WINDOW_DAYS) as $courseid) {
             $stats['courses']++;
-            $labels = insights::distinct_topics($courseid);
-            $offset = 0;
+            $course = null;
+            $labels = null;
+            $afterid = 0;
+            $seen = 0;
 
-            while ($offset < self::MAX_PER_COURSE) {
+            while ($seen < self::MAX_PER_COURSE) {
+                // Paged by id, not by offset: in variant B a labelled batch
+                // leaves the "no topic yet" set, and an offset would then skip
+                // the next batch's worth of rows.
                 $rows = insights::fetch_for_recluster(
                     $courseid,
                     self::WINDOW_DAYS,
                     self::BATCH_SIZE,
-                    $offset
+                    0,
+                    !$full,
+                    $afterid
                 );
                 if (empty($rows)) {
                     break;
                 }
-                $offset += count($rows);
+                $seen += count($rows);
+                $afterid = (int) end($rows)->id;
 
                 $questions = [];
                 $sentids = [];
                 foreach ($rows as $row) {
-                    $questions[] = ['id' => (int) $row->id, 'text' => (string) $row->prompt];
+                    // Eine leere Frage laesst der Agent den ganzen Stapel
+                    // ablehnen (#206). Der Kern liefert seit dem Fix keine mehr;
+                    // die Pruefung hier faengt Zeilen ab, die auf anderem Weg
+                    // leer ins Protokoll kamen.
+                    $text = trim((string) $row->prompt);
+                    if ($text === '') {
+                        continue;
+                    }
+                    $questions[] = ['id' => (int) $row->id, 'text' => $text];
                     $sentids[] = (int) $row->id;
                 }
+                if ($questions === []) {
+                    if (count($rows) < self::BATCH_SIZE) {
+                        break;
+                    }
+                    continue;
+                }
+
+                // Read only once there is something to send: in variant B most
+                // courses have no new question on most nights.
+                $course ??= self::course_info($courseid);
+                $labels ??= insights::labels_with_examples($courseid);
 
                 try {
+                    // Contract of tutor_recluster_questions since the agent
+                    // release of 23.11.2026 (rag_server_spec A.6): mode, the
+                    // course as context and the label set with anchors instead
+                    // of the bare existing_labels.
                     $result = $adapter->call_tool('recluster', [
+                        'mode' => 'classify',
                         'course_id' => (string) $courseid,
-                        'existing_labels' => array_values($labels),
+                        'course' => $course,
+                        'labels' => array_values($labels),
                         'questions' => array_values($questions),
                     ], $serviceuserid);
                     $map = self::topics_from($result);
@@ -148,11 +223,12 @@ class recluster_service {
                 $stats['batches']++;
                 $stats['updated'] += insights::apply_topics($map, $courseid, $sentids);
 
-                // Newly minted labels join the registry for the next batch.
-                $labels = array_slice(array_values(array_unique(array_merge(
-                    $labels,
-                    array_values($map)
-                ))), 0, 100);
+                // Newly minted labels join the label set for the next batch;
+                // read again from the log so they come with count and examples.
+                $known = array_column($labels, 'label');
+                if (array_diff(array_values($map), $known, [insights::TOPIC_NONE]) !== []) {
+                    $labels = null;
+                }
 
                 if (count($rows) < self::BATCH_SIZE) {
                     break;
@@ -160,7 +236,45 @@ class recluster_service {
             }
         }
 
+        if ($full) {
+            set_config(self::CONFIG_LAST_FULL_RUN, time(), 'block_elediaai_tutor');
+        }
+
         return $stats;
+    }
+
+    /**
+     * The course as context for the agent: its name and its language.
+     *
+     * A course without a forced language is answered in the site language,
+     * so that is what the agent gets. A course that no longer exists sends an
+     * empty name; the agent treats the field as optional context.
+     *
+     * @param int $courseid
+     * @return array{fullname: string, lang: string}
+     */
+    private static function course_info(int $courseid): array {
+        global $CFG, $DB;
+
+        $fullname = '';
+        $lang = '';
+        $course = $DB->get_record('course', ['id' => $courseid], 'id, fullname, lang', IGNORE_MISSING);
+        if ($course) {
+            $fullname = strip_tags(format_string(
+                (string) $course->fullname,
+                true,
+                ['context' => \core\context\course::instance($courseid), 'escape' => false]
+            ));
+            $lang = trim((string) $course->lang);
+        }
+        if ($lang === '') {
+            $lang = (string) ($CFG->lang ?? 'en');
+        }
+
+        return [
+            'fullname' => \core_text::substr(trim($fullname), 0, 255),
+            'lang' => $lang,
+        ];
     }
 
     /**

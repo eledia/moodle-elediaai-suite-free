@@ -94,14 +94,15 @@ interface adapter {
     /**
      * Call one of the backend's other tools.
      *
-     * The documented backend contract has six tools, of which answering a turn
-     * is one. The other five — reading a transcript, deleting a conversation,
-     * deleting everything about a person, recording a memory opt-in,
-     * reclustering questions — are used by one placement each, but they are the
+     * The documented backend contract has seven tools, of which answering a
+     * turn is one. The other six — reading a transcript, deleting a
+     * conversation, deleting everything about a person, recording a memory
+     * opt-in, reading the memory back, reclustering questions — are used by one
+     * placement each, but they are the
      * backend's, not that placement's. Routing them through here is what keeps
      * a placement from holding its own client and its own credential.
      *
-     * @param string $tool Logical tool key: history, delete, deleteuser, memoryoptin or recluster.
+     * @param string $tool Logical tool key: history, delete, deleteuser, memoryoptin, memory or recluster.
      * @param array $arguments Tool arguments, excluding the ones every call carries.
      * @param int $userid The user the call acts for; a callback token is issued for them.
      * @return array The normalised tool result.

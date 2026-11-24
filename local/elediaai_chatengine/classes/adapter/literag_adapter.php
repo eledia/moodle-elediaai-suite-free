@@ -236,6 +236,14 @@ class literag_adapter implements adapter {
             throw new adapter_exception('error_backend_unavailable', 'literag: not installed or unconfigured');
         }
 
+        if ($tool === 'memory') {
+            // LiteRAG has no tutor_get_memory, and it writes no memories that
+            // one could show: its store is only ever read and erased. Empty
+            // lists are therefore the true answer, and asking its dispatcher
+            // would only produce "unknown tool" (#238).
+            return mcp_client::normalise_tool_result(self::empty_memory_result());
+        }
+
         $name = $this->tool_name($tool);
         if ($name === '') {
             throw new adapter_exception('error_backend_tool_missing', 'literag: no tool for ' . $tool);
@@ -248,6 +256,20 @@ class literag_adapter implements adapter {
         ], $arguments);
 
         return mcp_client::normalise_tool_result($this->dispatch($arguments, $name));
+    }
+
+    /**
+     * The answer of tutor_get_memory when nothing is stored.
+     *
+     * @return array An MCP tool result, as rag_server_spec A.7 describes it.
+     */
+    private static function empty_memory_result(): array {
+        $payload = ['memories' => [], 'sessions' => []];
+        return [
+            'content' => [['type' => 'text', 'text' => json_encode($payload)]],
+            'structuredContent' => $payload,
+            'isError' => false,
+        ];
     }
 
     /**

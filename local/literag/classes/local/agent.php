@@ -292,7 +292,10 @@ class agent {
      *
      * Tools with a two-step contract identify the reviewed draft or job by a
      * token (`draft_token` of the H5P author, `job_token` of the course
-     * author), at the top level of the result or under `preview`. The tool's
+     * author), at the top level of the result or under `preview`. A preview
+     * also announces the arguments the confirmed call needs in `confirm_args`
+     * (webservice_elediamcp 1.18.0); every scalar named there is taken over, so
+     * a tool with another argument needs no change here (#190). The tool's
      * value wins over one the model supplied, so only what was actually
      * previewed can be confirmed.
      *
@@ -302,6 +305,22 @@ class agent {
      */
     private static function with_preview_tokens(array $arguments, array $structured): array {
         $preview = is_array($structured['preview'] ?? null) ? $structured['preview'] : [];
+        // The announced arguments first; the two known names stay as the
+        // fallback for previews that do not carry confirm_args.
+        foreach ([$structured, $preview] as $source) {
+            $announced = $source['confirm_args'] ?? null;
+            if (!is_array($announced)) {
+                continue;
+            }
+            foreach ($announced as $name => $value) {
+                if (!is_string($name) || $name === 'confirm' || !preg_match('/^[a-z][a-z0-9_]{0,63}$/i', $name)) {
+                    continue;
+                }
+                if ((is_string($value) && $value !== '') || is_int($value) || is_float($value) || is_bool($value)) {
+                    $arguments[$name] = $value;
+                }
+            }
+        }
         foreach (['draft_token', 'job_token'] as $name) {
             foreach ([$structured, $preview] as $source) {
                 if (isset($source[$name]) && is_string($source[$name]) && $source[$name] !== '') {

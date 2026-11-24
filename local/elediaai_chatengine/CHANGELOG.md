@@ -3,6 +3,45 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.5.8] – 2026-11-24
+
+### Neu
+
+- Werkzeug `tutor_get_memory` im Vertrag (ai_suite#238,
+  `rag_server_spec.md` A.7): liest nur lesend, was das Langzeitgedaechtnis
+  ueber die Person mit dem Token haelt (Erinnerungen und Sitzungsnotizen).
+  Logischer Schluessel `memory`. Es hat keinen eigenen Schalter, sondern
+  folgt `enabletool_memoryoptin` (`connection::FOLLOWING_TOOLS`): wer
+  Gedaechtnis anbietet, soll auch zeigen, was gemerkt wurde.
+- LiteRAG hat kein solches Werkzeug und schreibt keine Erinnerungen; der
+  Adapter antwortet selbst mit leeren Listen, statt den Dispatcher nach
+  einem unbekannten Werkzeug zu fragen.
+- Der Simulator liefert zwei erfundene Erinnerungen und eine Sitzungsnotiz,
+  damit die Einsicht im Tutor ohne Agent anzusehen ist.
+
+## [1.5.7] – 2026-11-24
+
+### Geaendert
+
+- Entscheidungszuege werden als eigene Aktion protokolliert (ai_suite#210):
+  Ein Klick auf die Bestaetigungskarte (Hinweis `pendingdecision` =
+  `confirm`/`decline`) steht im Turn-Protokoll als `chat_decision` statt
+  `chat_turn`. Er zaehlt weiter fuers Kontingent und erscheint im
+  technischen Audit, faellt aber aus der Fragenstatistik und dem
+  naechtlichen Recluster heraus. Bisher stand „Ja, ausfuehren.“ als Frage
+  in der Statistik und wurde einem Inhaltsthema zugeordnet.
+
+### Dokumentation
+
+- `rag_server_spec.md` A.6: Recluster-Vertrag seit dem Agenten-Release vom
+  23.11. (`mode`, `course`, `labels` mit Anzahl und Beispielen, Ergebnis
+  `__none__`, nachts nur Fragen ohne Thema, optionaler Volllauf alle 14 Tage).
+
+### Tests
+
+- `chat_service_test`: Kartenklick wird als `chat_decision` protokolliert,
+  ein Wert ausserhalb des Vokabulars nicht.
+
 ## [1.5.6] – 2026-10-23
 
 ### Geaendert

@@ -18,6 +18,8 @@ declare(strict_types=1);
 
 namespace local_elediaai_chatengine\adapter;
 
+use local_elediaai_chatengine\local\mcp_client;
+
 /**
  * A backend that answers without a language model.
  *
@@ -110,6 +112,9 @@ class simulator_adapter implements adapter {
      */
     #[\Override]
     public function call_tool(string $tool, array $arguments, int $userid): array {
+        if ($tool === 'memory') {
+            return mcp_client::normalise_tool_result($this->memory());
+        }
         return [
             'answer' => '',
             'conversation_id' => (string) ($arguments['conversation_id'] ?? ''),
@@ -157,6 +162,50 @@ class simulator_adapter implements adapter {
             prompttokens: $command === 'tokens' ? 1234 : null,
             completiontokens: $command === 'tokens' ? 567 : null,
         );
+    }
+
+    /**
+     * An invented long-term memory, so the learner's view has something to show.
+     *
+     * Shaped as rag_server_spec A.7 describes tutor_get_memory: two memories
+     * and one session note, the note in English with all three line prefixes,
+     * as the agent writes it. Every entry says it is simulated.
+     *
+     * @return array An MCP tool result.
+     */
+    private function memory(): array {
+        $now = gmdate('Y-m-d\TH:i:s+00:00');
+        $payload = [
+            'memories' => [
+                [
+                    'id' => str_repeat('a', 32),
+                    'category' => 'preference',
+                    'content' => get_string('simulator_memory_preference', 'local_elediaai_chatengine'),
+                    'updated_at' => $now,
+                ],
+                [
+                    'id' => str_repeat('b', 32),
+                    'category' => 'background',
+                    'content' => get_string('simulator_memory_background', 'local_elediaai_chatengine'),
+                    'updated_at' => $now,
+                ],
+            ],
+            'sessions' => [
+                [
+                    'conversation_id' => 'sim-memory',
+                    'course_id' => null,
+                    'surface' => 'tutor',
+                    // English by contract; the prefixes are translated in Moodle.
+                    'note' => "Worked on: Simulation\nOpen: Nothing, this note is invented\nMoodle: Nothing was changed",
+                    'updated_at' => $now,
+                ],
+            ],
+        ];
+        return [
+            'content' => [['type' => 'text', 'text' => json_encode($payload)]],
+            'structuredContent' => $payload,
+            'isError' => false,
+        ];
     }
 
     /**

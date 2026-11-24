@@ -60,10 +60,22 @@ final class insights_page {
      * @return string
      */
     public static function metrics(stdClass $summary, int $days = 30): string {
+        // Turns the agent marked as fitting no topic (#210) are counted, but
+        // they form no row in the gap or unclear list. Said here, as a side
+        // figure, so the reader knows why the topics do not add up to the total.
+        $questionshint = get_string('insights_metric_questions_hint', 'local_elediaai_core', $days);
+        $notopic = (int) ($summary->notopic ?? 0);
+        if ($notopic > 0) {
+            $questionshint .= ' · ' . get_string(
+                'insights_metric_questions_notopic',
+                'local_elediaai_core',
+                number_format($notopic, 0, ',', ' ')
+            );
+        }
         $cards = audit_page::metric(
             get_string('insights_metric_questions', 'local_elediaai_core'),
             number_format($summary->total, 0, ',', ' '),
-            get_string('insights_metric_questions_hint', 'local_elediaai_core', $days)
+            $questionshint
         );
         $cards .= audit_page::metric(
             get_string('insights_metric_askers', 'local_elediaai_core'),

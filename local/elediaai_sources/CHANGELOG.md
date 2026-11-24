@@ -7,6 +7,65 @@ Format angelehnt an Keep a Changelog.
 Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 `local_ragingest` erschienen und nennen ihn deshalb weiterhin.
 
+## [1.5.0] – 2026-11-24
+
+### Geändert
+
+- **Keine Lösungen mehr im Kursindex** (ingestionpipeline#23, Entscheidung
+  des Betreibers vom 24.11.2026). Der Index kannte weder die
+  Überprüfungsoptionen eines Tests noch einen laufenden Versuch; der Tutor hat
+  im E2E-Test auf /test während eines Versuchs Fragen mit markierter Lösung
+  ausgegeben. Was nicht im Index steht, kann auch über andere Wege (andere
+  Oberflächen, `local_literag`, spätere Agenten) nicht durchrutschen.
+- **Test (`aisourcesextractor_quiz` 2026112400):** nur noch Name und
+  Beschreibung. Keine Fragentexte, Antwortoptionen, Antwort-Feedback,
+  allgemeines Feedback, Hinweise und Bewertungsstufen mehr. Ein Test ohne
+  Beschreibung hat nichts mehr zu senden; sein altes Dokument wird entfernt.
+  Inhalte eines eigenen Versuchs liest der Tutor über die Quiz-Werkzeuge, die
+  die Regeln der Lehrkraft anwenden. Der nicht mehr benutzte String
+  `questionhint` ist entfernt.
+- **Bewertete Lektion (`aisourcesextractor_lesson` 2026112400):** Ist eine
+  Lektion keine Übungslektion und hat sie eine Bewertung (`practice = 0`,
+  `grade <> 0`), behalten Fragenseiten ihren Fragetext, aber keine Antworten
+  und keine Rückmeldungen („Richtig! …“). Inhaltsseiten behalten ihre
+  Schaltflächen; Übungs- und unbewertete Lektionen bleiben unverändert.
+- **H5P (Aktivität und in Texte eingebettet):** Fragen bleiben, aber ohne
+  Markierung der richtigen Antwort und ohne Hinweise. Im Einzelnen: kein
+  „Correct answer:“/„Correct statement:“ mehr; Antwortoptionen und
+  Summary-Aussagen alphabetisch statt in der Reihenfolge der Autorin (bei
+  Summary und Single Choice Set steht die richtige Option immer zuerst);
+  Wahr/Falsch ohne Antwort; die mit `*…*` markierten Lösungen in Lückentext,
+  Drag the Words und Mark the Words werden zu `___`; Flashcards ohne die
+  einzutippende Antwort (Dialog Cards behalten ihre Rückseite als
+  Lernmaterial); Tipps, Feedback, Musterlösungen und Schlüsselwörter werden
+  auch vom generischen Durchlauf übersprungen.
+- **Einmaliges Neusenden:** Die Upgrade-Schritte stellen für jeden indexierten
+  Test (Quiz-Subplugin), jede indexierte bewertete Lektion (Lesson-Subplugin)
+  sowie jede H5P-Aktivität und jede Textseite, jedes Text- und Medienfeld und
+  jedes Buch mit eingebettetem H5P (dieses Plugin) eine Indexierungsaufgabe
+  ein. Der neue Inhalt ersetzt das alte Dokument. Andere Aktivitäten mit
+  eingebettetem H5P übernehmen die Änderung mit der nächsten Bearbeitung oder
+  einer Neuindexierung des Kurses.
+
+## [1.4.1] – 2026-11-24
+
+### Geändert
+
+- **Löschen nur noch im eigenen Tenant** (#231, ingestionpipeline#39). Der
+  Delete an die Ingestion-API sendet zusätzlich `tenant_id`, abgeleitet aus
+  dem wwwroot wie beim Upsert. Die Pipeline prüft damit Tenant und Präfix der
+  `source_id` und löscht nur Chunks dieses Tenants; ohne das Feld wirkte ein
+  Präfix-Delete tenantübergreifend, und die Pipeline konnte `tenant_id` nicht
+  zur Pflicht machen. Gilt für jeden Delete (Einzelmodul, Kurs abwählen,
+  Aufräumen eines alten Ziels), weil alle über `ingestion_api_sink::delete()`
+  laufen. Der LiteRAG-Sink sendet und liest das Feld nicht und bleibt
+  unverändert. API-Spezifikation 1.5.
+- **Bekannte Grenze:** Wurde der wwwroot geändert, tragen früher gespeicherte
+  `source_id` noch das alte Tenant-Präfix. Ihr Delete wird von der Pipeline
+  mit 422 abgelehnt und als Fehler protokolliert, statt auf einen Delete ohne
+  Tenant auszuweichen. Solche Altbestände müssen in der Pipeline für den alten
+  Tenant entfernt werden.
+
 ## [1.4.0] – 2026-10-15
 
 ### Entfernt

@@ -68,6 +68,8 @@ $string['setting_simulator_desc'] = 'Answers every chat turn from a fixed script
 
 Keywords steer what comes back — send <code>/help</code> in any chat to see them.';
 $string['status_simulator_active'] = 'Simulator active — answers are invented, no language model is involved.';
+$string['simulator_memory_background'] = 'Simulated memory: studies something invented in the third semester.';
+$string['simulator_memory_preference'] = 'Simulated memory: understands things best when an explanation starts with an example.';
 $string['simulator_marker'] = '**Simulated answer.** No language model was involved.';
 $string['simulator_topic'] = 'Simulation';
 $string['simulator_default'] = 'You wrote: *{$a->message}*
@@ -155,7 +157,7 @@ $string['setting_enabletool_delete_desc'] = 'A conversation deleted in Moodle is
 $string['setting_enabletool_deleteuser'] = 'Delete all of a person\'s data at the agent as well';
 $string['setting_enabletool_deleteuser_desc'] = 'Recommended. A privacy deletion also removes every transcript and the memory of that person at the agent (tool <code>{$a}</code>). When off, the data is deleted on this site only.';
 $string['setting_enabletool_memoryoptin'] = 'Offer long-term memory';
-$string['setting_enabletool_memoryoptin_desc'] = 'Learners can consent to the agent\'s long-term memory; the consent is passed to it (tool <code>{$a}</code>). Only switch on when the agent has a memory.';
+$string['setting_enabletool_memoryoptin_desc'] = 'Learners can consent to the agent\'s long-term memory; the consent is passed to it (tool <code>{$a}</code>). Only switch on when the agent has a memory. Learners can then also view what was remembered (tool <code>tutor_get_memory</code>).';
 $string['setting_enabletool_recluster'] = 'Regroup questions nightly';
 $string['setting_enabletool_recluster_desc'] = 'The tutor\'s nightly question analytics has the agent reorder the topics of logged questions (tool <code>{$a}</code>).';
 $string['setting_requesttimeout'] = 'Request timeout';

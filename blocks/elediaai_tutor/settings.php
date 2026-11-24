@@ -33,6 +33,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 use block_elediaai_tutor\local\branding;
+use block_elediaai_tutor\local\recluster_service;
 use block_elediaai_tutor\local\registry;
 use block_elediaai_tutor\output\shell;
 
@@ -474,6 +475,17 @@ if ($hassiteconfig) {
         get_string('setting_analyticsretention_desc', 'block_elediaai_tutor'),
         180,
         PARAM_INT
+    ));
+
+    // Variante C aus ai_suite#210: Der naechtliche Recluster beschriftet nur
+    // neue Fragen. Wer abgedriftete Themen reparieren will, schaltet hier alle
+    // 14 Tage einen vollstaendigen Neulauf zu -- an dem Tag springen die
+    // Zahlen, deshalb standardmaessig aus.
+    $settings->add(new admin_setting_configcheckbox(
+        'block_elediaai_tutor/' . recluster_service::CONFIG_FULL_RUN,
+        get_string('setting_reclusterfullrun', 'block_elediaai_tutor'),
+        get_string('setting_reclusterfullrun_desc', 'block_elediaai_tutor'),
+        0
     ));
 
 

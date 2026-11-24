@@ -54,6 +54,12 @@ class branding {
     /** @var string Footer hidden entirely (full white-label). */
     public const FOOTER_NONE = 'none';
 
+    /** @var string Launcher style: round floating button with the logo only. */
+    public const LAUNCHER_FAB = 'fab';
+
+    /** @var string Launcher style: floating button with the logo and a visible label (#234). */
+    public const LAUNCHER_FABLABEL = 'fablabel';
+
     /** @var string File area for the site-level brand logo (tutor logo). */
     public const LOGO_FILEAREA = 'brandlogo';
 
@@ -104,16 +110,23 @@ class branding {
             $tokens['--eac-accent-dark'] = self::darken($tokens['--eac-accent'], 0.12);
         }
 
-        // 3. Launcher label: instance → site → built-in default string.
-        $launchlabel = trim(registry::effective_text('launchlabel', $instance, $context));
-        if ($launchlabel === '') {
-            $launchlabel = get_string('launch', 'block_elediaai_tutor');
-        }
-
-        // 4. Launcher style: validated against the registry's option set.
+        // 3. Launcher style: validated against the registry's option set.
         $launcherstyle = (string) self::effective_value('launcherstyle', $instance);
         if (!isset(registry::get('launcherstyle')['options'][$launcherstyle])) {
             $launcherstyle = (string) registry::default_for('launcherstyle');
+        }
+
+        // 4. Launcher label: instance → site → built-in default string. The
+        // labelled floating button falls back to the tutor's name first: it
+        // stands alone in the corner of every page, and "Ask the tutor" there
+        // says less than the name the institution gave its tutor (#234).
+        $launchlabel = trim(registry::effective_text('launchlabel', $instance, $context));
+        if ($launchlabel === '' && $launcherstyle === self::LAUNCHER_FABLABEL) {
+            $launchlabel = trim(registry::effective_text('persona', $instance, $context))
+                ?: get_string('default_persona', 'block_elediaai_tutor');
+        }
+        if ($launchlabel === '') {
+            $launchlabel = get_string('launch', 'block_elediaai_tutor');
         }
 
         // 5. Window width: a step from the registry, written as the two width
@@ -133,6 +146,21 @@ class branding {
             'footermode' => self::footer_mode($instance),
             'footertext' => self::footer_text($instance, $context),
         ];
+    }
+
+    /**
+     * Whether a launcher style floats in the corner of the page.
+     *
+     * Both floating styles are portalled to <body>, hide the empty block
+     * shell and take the place of the launcher when the tutor is unavailable.
+     * Asked here rather than compared with 'fab' at each of those places, so
+     * a further floating style cannot be forgotten in one of them.
+     *
+     * @param string $style A launcher style from the registry.
+     * @return bool
+     */
+    public static function is_floating(string $style): bool {
+        return in_array($style, [self::LAUNCHER_FAB, self::LAUNCHER_FABLABEL], true);
     }
 
     /**

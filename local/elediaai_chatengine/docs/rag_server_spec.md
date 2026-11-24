@@ -44,6 +44,7 @@ Plugins ▸ Local plugins ▸ AI Chat Engine).
 | `tutor_delete_user_data` | Optional, **recommended** | `enabletool_deleteuser` (default on) | Erase ALL data held for the authenticated user (transcripts + memory). |
 | `tutor_set_memory_optin` | Optional (required for memory) | `enabletool_memoryoptin` (default off) | Record the user's long-term memory consent; erase memories on opt-out. |
 | `tutor_recluster_questions` | Optional | `enabletool_recluster` (default off) | Nightly batch re-labelling of logged questions (analytics topic convergence); authenticated by the maintenance account's token. |
+| `tutor_get_memory` | Optional (with memory) | follows `enabletool_memoryoptin` | Return what long-term memory holds about the authenticated user, read-only, for the learner's own view (A.7). |
 
 A switched-off tool is simply not called.
 
@@ -327,7 +328,10 @@ consent signal.
 
 > Moodle never transmits memory **content** — only the consent boolean. What you
 > store as memory, you own; include it in A.4 deletion and document its
-> retention.
+> retention. Moodle may *read* it back for the learner's own view (A.7).
+
+Before Moodle sends `enabled: false` it now asks the learner to confirm, because
+the erasure cannot be undone; the confirmation links to the view of A.7.
 
 ### A.6 `tutor_recluster_questions` (optional — called by a nightly task)
 
@@ -343,36 +347,61 @@ report useless.
 
 **Repair — batch reclustering (this tool).** Even with a registry, labels
 drift over time (model/prompt updates, course restructuring, early questions
-asked before the registry stabilised). When the Moodle admin configures this
-tool's name, a **nightly scheduled task** sends the last 30 days of logged
-questions per active course (in batches of ≤ 200, oldest first, together with
-the course's current label set) and writes the returned canonical labels back —
-converging the *historical* analytics:
+asked before the registry stabilised). When the tool is enabled, a **nightly
+scheduled task** sends, per active course, the logged questions of the last 30
+days that **have no topic yet** (block 1.0.19, ai_suite#210: once labelled
+stays labelled, so the teacher's numbers do not move without new questions).
+Optionally (admin setting, default off) it re-sends **all** questions of the
+window once every 14 days to repair drift. Batches hold ≤ 200 questions, oldest
+first, together with the course and its current label set; refused turns
+(empty prompt) are never sent. The returned labels are written back:
 
 ```json
 { "name": "tutor_recluster_questions",
   "arguments": {
     "system_url": "https://moodle.example.com",
     "moodle_token": "f9a8…",
+    "mode": "classify",
     "course_id": "42",
-    "existing_labels": ["Photosynthesis", "Assignment 2", "Enrolment & access"],
+    "course": { "fullname": "Biology 101", "lang": "en" },
+    "labels": [
+      { "label": "Photosynthesis", "count": 12,
+        "examples": ["What does chlorophyll do?", "Why are leaves green?"] },
+      { "label": "Assignment 2", "count": 5,
+        "examples": ["When is the essay due?"] }
+    ],
     "questions": [
       { "id": 17, "text": "When is the essay due?" },
-      { "id": 18, "text": "essay deadline?" }
+      { "id": 18, "text": "essay deadline?" },
+      { "id": 19, "text": "Thanks!" }
     ]
   } }
 ```
 
+- `mode` — `classify` (the only mode so far).
+- `course` — name and language of the course, as context for the model.
+- `labels` — the course's label set, most used first (≤ 100), each with its
+  usage count and up to three recent example questions as the anchor for what
+  the label means. Replaces the older `existing_labels` (plain names), which
+  Moodle no longer sends; a server may keep accepting it.
+
 Expected response — one label per question id, drawn from (or extending) the
-supplied label set:
+supplied label set; the reserved label **`__none__`** marks a turn that is no
+question about the course (greeting, thanks, confirmation, meta question, test
+input):
 
 ```json
 { "structuredContent": {
     "topics": [
       { "id": 17, "topic": "Assignment 2" },
-      { "id": 18, "topic": "Assignment 2" }
+      { "id": 18, "topic": "Assignment 2" },
+      { "id": 19, "topic": "__none__" }
     ] } }
 ```
+
+Moodle stores `__none__` like any label (so the turn is not sent again), never
+shows it as a topic and never sends it back in `labels`. A question without an
+entry in `topics` keeps its stored label (or stays unlabelled).
 
 Contract notes, fixed now so you can design toward them:
 
@@ -406,6 +435,66 @@ Contract notes, fixed now so you can design toward them:
 - Privacy: the question texts already transited your server at chat time; this
   re-sends the same data to the same processor for the same purpose. Do not
   retain the batch beyond processing.
+
+### A.7 `tutor_get_memory` (optional — the learner's view of their memory)
+
+Lets learners see what the tutor has remembered about them ("What the tutor has
+remembered about me", in the privacy panel next to the memory opt-in). There is
+no separate switch: Moodle asks for it whenever `enabletool_memoryoptin` is on,
+since a server that keeps memory should also show it. LiteRAG (the in-Moodle
+backend) has no such tool; the engine answers with empty lists for it.
+
+Arguments: `system_url`, `moodle_token` — nothing else. Read-only, and only ever
+the data of the person the token belongs to. Answer **independently of the
+current consent**: after opting out the lists are simply empty, because opting
+out erased them (A.5).
+
+```json
+{ "structuredContent": {
+    "memories": [
+      { "id": "47c01b6a0db64712aacb4c05e87e56f2", "category": "preference",
+        "content": "Understands things best when an explanation starts with a concrete example.",
+        "updated_at": "2026-11-23T15:34:00.391944+00:00" }
+    ],
+    "sessions": [
+      { "conversation_id": "conv-7f052326e85c", "course_id": "5", "surface": "tutor",
+        "note": "Worked on: Forum in Moodle\nOpen: How to subscribe to a forum",
+        "updated_at": "2026-11-23T15:34:01.025776+00:00" }
+    ] } }
+```
+
+Return the same object as JSON in `content[0].text` as well; Moodle reads it
+from there, like A.6. Nothing stored ⇒ `{"memories": [], "sessions": []}`.
+
+**`memories`** — facts about the person, newest first.
+
+| Field | Meaning |
+|---|---|
+| `id` | Key of the memory (32 hex characters); only tells entries apart. |
+| `category` | `background`, `preference`, `knowledge` or `other`. Moodle groups by it with its own labels; an unknown value is shown under `other`. |
+| `content` | The memory, at most 300 characters, a statement about the person in the third person. Shown as plain text. |
+| `updated_at` | Last change, ISO 8601 in UTC. |
+
+**`sessions`** — one note per conversation, newest first.
+
+| Field | Meaning |
+|---|---|
+| `conversation_id` | The conversation the note belongs to (the id of A.1). |
+| `course_id` | Course id as a string, `null` for conversations without a course. Moodle shows the course name. |
+| `surface` | Where the conversation ran, e.g. `tutor`. |
+| `note` | Up to three lines separated by `\n`, at most 500 characters, **in English**: `Worked on:` topics as keywords, `Open:` what was left open, `Moodle:` what was created, changed, sent or deleted in Moodle. Each line only when there is something to say. Moodle replaces these three line prefixes with its own language strings and shows the rest as it comes. |
+| `updated_at` | Last change, ISO 8601 in UTC. |
+
+Contract notes:
+
+- **Limit.** Both lists are capped at 200 entries, without paging and without a
+  total. Moodle shows all memories and the newest ten session notes, with
+  "Show more" inside what was delivered.
+- **No edits.** There is deliberately no tool to change or delete one memory.
+  A memory is corrected in conversation; a session note disappears with its
+  conversation (A.3); everything goes with an opt-out (A.5) or A.4.
+- A failure is shown to the learner as "could not be loaded"; it never affects
+  the opt-in or the chat.
 
 ---
 
@@ -814,6 +903,8 @@ differently trustworthy depending on where the facts came from.
       memory) for the authenticated token, even without conversation ids.
 - [ ] For memory support: `tutor_set_memory_optin`; memory off by default, every
       read/write gated on the request's `ltm_enabled`, erase on opt-out.
+- [ ] Optional with memory: `tutor_get_memory` returning the user's `memories`
+      and `sessions` (A.7), read-only, also when consent is off.
 - [ ] Use `Authorization: Bearer {moodle_token}` against
       `{system_url}/webservice/elediamcp/server.php`; call
       `moodle_verify_user_context` first.
@@ -852,6 +943,8 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.5.8 | **`tutor_get_memory`** (A.7): optional, read-only view of the user's long-term memory and session notes for the privacy panel; called whenever `enabletool_memoryoptin` is on. Additive: a server without it answers "Unknown tool", which the learner sees as "could not be loaded". The opt-out (A.5) is now confirmed by the learner first. |
+| block_elediaai_tutor 1.0.19 | **Recluster contract updated** (A.6): `mode`, `course {fullname, lang}` and `labels [{label, count, examples}]` instead of `existing_labels`; reserved result label `__none__`. Nightly runs send only questions without a topic, an optional full run every 14 days sends the whole window. Refused turns (empty prompt) are no longer sent (ai_suite#206). Requires a server that reads `labels`; ours does since 23.11.2026. |
 | chatengine 1.4.0 | **`confirmation.outline`** (A.1): an optional course outline on the confirmation card. Additive; a card without it looks as before. |
 | chatengine 1.3.0 | **Business errors reach the learner** (D, Errors). A result with `isError` and `structuredContent.error` is shown with its `answer` and steered by `code`/`retryable` instead of being reduced to "not reachable"; `conversation_not_found` is retried once without `conversation_id`; token renewal only on 401. Additive: a server without the error block behaves as before. |
 | chatengine 1.2.0 | **Tool names fixed** (A). The six names in the table are no longer configurable on the Moodle side; optional tools have an on/off switch. A server that registered other names must serve the contract names (aliases are fine). |

@@ -43,6 +43,12 @@ class confirmation {
     /**
      * Whether the message is a clear, standalone confirmation to proceed.
      *
+     * Where the confirmation gate of webservice_elediamcp is installed, its
+     * rule decides together with the exact phrases above: a message with a
+     * question mark or a wish ("Ja, aber nimm drei Fragen") is not a
+     * confirmation, however short it is (#190). Without the gate the older
+     * short-prefix rule applies.
+     *
      * @param string $message The learner's message.
      * @return bool
      */
@@ -55,6 +61,9 @@ class confirmation {
         if (in_array($normalised, self::AFFIRMATIVES, true)) {
             return true;
         }
+        if (self::gate_available()) {
+            return \webservice_elediamcp\local\confirmation_gate::is_agreement($message);
+        }
         // A short message that starts with an affirmative ("yes, send it now").
         if (\core_text::strlen($normalised) <= 30) {
             foreach (self::PREFIXES as $prefix) {
@@ -64,5 +73,15 @@ class confirmation {
             }
         }
         return false;
+    }
+
+    /**
+     * Whether the confirmation gate of webservice_elediamcp can be asked.
+     *
+     * @return bool
+     */
+    private static function gate_available(): bool {
+        return class_exists(\webservice_elediamcp\local\confirmation_gate::class)
+            && method_exists(\webservice_elediamcp\local\confirmation_gate::class, 'is_agreement');
     }
 }

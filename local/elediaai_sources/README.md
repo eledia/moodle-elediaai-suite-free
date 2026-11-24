@@ -276,12 +276,12 @@ package/interactive modules.
 | `data` | Database | Field definitions and approved records; under separate groups only records without a group |
 | `folder` | Folder | One document per supported file, preserving PDF MIME type |
 | `glossary` | Glossary | Description, approved entries, aliases/synonyms |
-| `h5pactivity` | H5P Activity | Labelled educational text from H5P JSON/package content |
+| `h5pactivity` | H5P Activity | Labelled educational text from H5P JSON/package content; questions without the correct answer marked and without hints |
 | `imscp` | IMS content package | Manifest structure and HTML body content |
 | `label` | Text/media area | Intro content |
-| `lesson` | Lesson | Page sequence, answers, feedback where relevant |
+| `lesson` | Lesson | Page sequence; answers and responses only in practice or ungraded lessons |
 | `page` | Page | Page content |
-| `quiz` | Quiz | Questions, answers, feedback, hints, and overall feedback |
+| `quiz` | Quiz | Name and intro only; never questions, answers, feedback or hints |
 | `resource` | File | Supported text, HTML, and PDF files |
 | `scorm` | SCORM | Intro, SCO titles, HTML pages in the package, captions and on-screen text; PDFs in the package as sub-documents |
 | `videotime` | Video Time | Intro and VTT captions/transcript |

@@ -60,6 +60,14 @@ $functions = [
         'capabilities' => 'block/elediaai_tutor:use',
         'loginrequired' => true,
     ],
+    'block_elediaai_tutor_get_memory' => [
+        'classname' => 'block_elediaai_tutor\external\get_memory',
+        'description' => 'Show what the tutor has remembered about the current user (read-only).',
+        'type' => 'read',
+        'ajax' => true,
+        'capabilities' => 'block/elediaai_tutor:use',
+        'loginrequired' => true,
+    ],
     'block_elediaai_tutor_delete_my_data' => [
         'classname' => 'block_elediaai_tutor\external\delete_my_data',
         'description' => 'Delete all of the current user\'s own tutor data.',

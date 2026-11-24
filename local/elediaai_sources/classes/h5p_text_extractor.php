@@ -24,11 +24,20 @@ namespace local_elediaai_sources;
  * structure varies across 40+ content types. This class walks the tree,
  * recognising the common assessable/interactive shapes (multiple choice,
  * true/false, fill-in-the-blanks, drag text, summary, dialog/flash cards,
- * accordion, …) and emitting *labelled* text blocks ("Question:", "Correct
- * answer:", "Answer:", "Cloze:", "Section:") so the downstream RAG embeddings
- * preserve the question/answer relationship. Unknown shapes fall back to a
- * generic recursive walk that harvests content strings while filtering out
+ * accordion, …) and emitting *labelled* text blocks ("Question:", "Answer:",
+ * "Cloze:", "Section:") so the downstream RAG embeddings preserve the
+ * question/answer relationship. Unknown shapes fall back to a generic
+ * recursive walk that harvests content strings while filtering out
  * identifiers, config and styling values.
+ *
+ * No solutions (ingestionpipeline#23): the questions stay, but nothing says
+ * which answer is correct. Answer options are emitted without a correctness
+ * label and in a fixed alphabetical order (H5P authors often put the correct
+ * option first, and Summary and Single Choice Set always do), true/false
+ * questions without their answer, blanks and drag/mark-the-words targets as
+ * gaps, flashcards without their answer, and hints, tips, feedback and sample
+ * solutions not at all. The index cannot know whether a learner is answering
+ * the content right now.
  *
  * It also resolves the H5P payload for a stored .h5p file: the deployed record
  * when present, otherwise reading `content/content.json` straight from the
@@ -74,6 +83,13 @@ class h5p_text_extractor {
         'showsolutionbutton',
         'retrybutton',
         'tipbuttonlabel',
+        'tip',
+        'tips',
+        'tipsandfeedback',
+        'feedback',
+        'feedbacktext',
+        'solution',
+        'keywords',
         'lock',
         'reset',
         'scorebar',
@@ -110,7 +126,7 @@ class h5p_text_extractor {
     /**
      * Extract labelled text blocks from an H5P content JSON string.
      *
-     * Each block is a single line such as "Question: …", "Correct answer: …"
+     * Each block is a single line such as "Question: …", "Answer: …"
      * or a bare content string. Order is preserved and exact duplicates are
      * removed.
      *
@@ -243,27 +259,22 @@ class h5p_text_extractor {
             if ($q !== '') {
                 $blocks[] = 'Question: ' . $q;
             }
+            // Neither the `correct` flag nor the tip and feedback of an answer
+            // is read, and the order is not the author's: see the class doc.
+            $options = [];
             foreach ($node['answers'] as $ans) {
+                $t = '';
                 if (is_string($ans)) {
                     $t = self::clean($ans);
-                    if ($t !== '') {
-                        $blocks[] = 'Answer: ' . $t;
-                    }
-                    continue;
-                }
-                if (is_array($ans) && isset($ans['text'])) {
+                } else if (is_array($ans) && isset($ans['text'])) {
                     $t = self::clean((string) $ans['text']);
-                    if ($t === '') {
-                        continue;
-                    }
-                    $blocks[] = (!empty($ans['correct']) ? 'Correct answer: ' : 'Answer: ') . $t;
-                    if (!empty($ans['tipsAndFeedback']['tip'])) {
-                        $tip = self::clean((string) $ans['tipsAndFeedback']['tip']);
-                        if ($tip !== '') {
-                            $blocks[] = 'Hint: ' . $tip;
-                        }
-                    }
                 }
+                if ($t !== '') {
+                    $options[] = $t;
+                }
+            }
+            foreach (self::unordered($options) as $t) {
+                $blocks[] = 'Answer: ' . $t;
             }
             $consumed['question'] = true;
             $consumed['answers'] = true;
@@ -275,12 +286,11 @@ class h5p_text_extractor {
                 && isset($node['correct'])
                 && (is_bool($node['correct']) || in_array($node['correct'], ['true', 'false'], true))
         ) {
+            // The question only: `correct` is its solution.
             $q = self::clean($node['question']);
             if ($q !== '') {
                 $blocks[] = 'Question: ' . $q;
             }
-            $val = is_bool($node['correct']) ? $node['correct'] : ($node['correct'] === 'true');
-            $blocks[] = 'Correct answer: ' . ($val ? 'True' : 'False');
             $consumed['question'] = true;
             $consumed['correct'] = true;
         }
@@ -290,7 +300,7 @@ class h5p_text_extractor {
             $any = false;
             foreach ($node['questions'] as $q) {
                 if (is_string($q)) {
-                    $t = self::clean($q);
+                    $t = self::gaps(self::clean($q));
                     if ($t !== '') {
                         $blocks[] = 'Cloze: ' . $t;
                         $any = true;
@@ -304,22 +314,27 @@ class h5p_text_extractor {
 
         // Drag the text / Mark the words: a single textField with *word* markers.
         if (isset($node['textField']) && is_string($node['textField'])) {
-            $t = self::clean($node['textField']);
+            $t = self::gaps(self::clean($node['textField']));
             if ($t !== '') {
                 $blocks[] = 'Text: ' . $t;
                 $consumed['textField'] = true;
             }
         }
 
-        // Summary: summaries[].summary[]; the first option in each set is correct.
+        // Summary: summaries[].summary[]; the first option in each set is
+        // correct, so the options are neither labelled nor kept in order.
         if (isset($node['summaries']) && is_array($node['summaries']) && array_is_list($node['summaries'])) {
             foreach ($node['summaries'] as $set) {
                 if (is_array($set) && isset($set['summary']) && is_array($set['summary'])) {
-                    foreach (array_values($set['summary']) as $i => $opt) {
+                    $options = [];
+                    foreach ($set['summary'] as $opt) {
                         $t = self::clean((string) $opt);
                         if ($t !== '') {
-                            $blocks[] = ($i === 0 ? 'Correct statement: ' : 'Statement: ') . $t;
+                            $options[] = $t;
                         }
+                    }
+                    foreach (self::unordered($options) as $t) {
+                        $blocks[] = 'Statement: ' . $t;
                     }
                 }
             }
@@ -327,6 +342,8 @@ class h5p_text_extractor {
         }
 
         // Dialog cards / Flashcards: dialogs[] or cards[] with text/answer.
+        // A dialog card's back is learning material and stays; a flashcard's
+        // answer is what the learner has to type, so it goes. Tips go for both.
         foreach (['dialogs', 'cards'] as $cardkey) {
             if (isset($node[$cardkey]) && is_array($node[$cardkey]) && array_is_list($node[$cardkey])) {
                 foreach ($node[$cardkey] as $card) {
@@ -341,16 +358,10 @@ class h5p_text_extractor {
                             }
                         }
                     }
-                    if (isset($card['answer'])) {
+                    if ($cardkey === 'dialogs' && isset($card['answer'])) {
                         $t = self::clean((string) $card['answer']);
                         if ($t !== '') {
                             $blocks[] = 'Answer: ' . $t;
-                        }
-                    }
-                    if (isset($card['tip'])) {
-                        $t = self::clean((string) $card['tip']);
-                        if ($t !== '') {
-                            $blocks[] = 'Hint: ' . $t;
                         }
                     }
                 }
@@ -413,6 +424,34 @@ class h5p_text_extractor {
             }
         }
         return $consumed;
+    }
+
+    /**
+     * Options in a fixed order that does not depend on the author's order.
+     *
+     * Alphabetical, so the content hash stays stable between runs, while the
+     * position no longer says which option is the correct one.
+     *
+     * @param string[] $options Cleaned option texts.
+     * @return string[] The same texts, sorted.
+     */
+    private static function unordered(array $options): array {
+        sort($options, SORT_STRING | SORT_FLAG_CASE);
+        return $options;
+    }
+
+    /**
+     * Replace H5P's *answer* markers with a gap.
+     *
+     * Fill in the Blanks, Drag the Words and Mark the Words mark the solution
+     * between asterisks (`*Paris*`, also `*Paris/paris:Tip*`). The text around
+     * stays as the question; the marked solution becomes `___`.
+     *
+     * @param string $text Cleaned text.
+     * @return string The text with every marked solution replaced by a gap.
+     */
+    private static function gaps(string $text): string {
+        return (string) preg_replace('/\*[^*]+\*/u', '___', $text);
     }
 
     /**

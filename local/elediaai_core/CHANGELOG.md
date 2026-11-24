@@ -4,6 +4,41 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.4.0] – 2026-11-24
+
+### Behoben
+
+- #206: Abgelehnte Chat-Züge zählen nicht mehr als Fragen. Die Chat-Engine schreibt Ablehnungen (keine Einwilligung, kein Zugriff, Backend-Ablehnung, Kontingent) bewusst mit leerem Prompt und `success = 0` ins Turn-Protokoll. `insights::fetch_for_recluster()` gab sie in den nächtlichen Recluster-Stapel, und der Agent lehnte daraufhin den ganzen Stapel des Kurses ab. Jetzt liefert die Methode nur beantwortete Züge mit nicht leerem Prompt; die Zähler der Kurs-Einblicke (`summary`, `gaps`, `unclear`, Tagesverlauf, Wortlaut, `active_courses`, `courses_with_activity`) zählen nur noch `success = 1`.
+- #210: Das reservierte Label `__none__` („passt zu keinem Thema“), das der Recluster-Agent seit dem 23.11. für Begrüßungen, Dank, Bestätigungen und Testeingaben vergibt, erscheint nicht mehr als Thema in Lücken, Unklarem, den Schwerpunkten des Copiloten und dem MCP-Werkzeug `moodle_ai_course_insights`. Es zählt weiter als Frage und steht als Nebenzahl bei „Fragen“ („davon N ohne Thema“), im MCP-Werkzeug als `no_topic_questions`. In der Themenspalte des technischen Audits heißt es „Ohne Thema“.
+
+### Hinzugefügt
+
+- `insights::TOPIC_NONE` und `insights::topic_label()` (übersetzt `__none__` für die Anzeige), `insights::ACTION_DECISION` (`chat_decision`, Entscheidungszüge der Chat-Engine; im Audit-Schnellfilter „Chat“ enthalten, in keiner Auswertung).
+- `insights::labels_with_examples()`: die Labels eines Kurses mit Anzahl und bis zu drei Beispielfragen, im Format, das `tutor_recluster_questions` als `labels` erwartet.
+- `insights::fetch_for_recluster()` mit den optionalen Argumenten `$untopiconly` (nur Züge ohne Thema) und `$afterid` (Blättern über die id). Bestehende Aufrufe bleiben gültig.
+- `insights::summary()` liefert zusätzlich `notopic`.
+
+### Hinweis zum Upgrade
+
+- Keine Datenmigration: Bestehende Zeilen mit Thema `__none__` (Test 36, Staging 46) werden durch das neue Leseverhalten sofort richtig behandelt.
+
+### Tests
+
+- `turn_log_test`: Ablehnung weder im Recluster-Stapel noch gezählt; Kurs nur mit Ablehnungen ist nicht aktiv; `__none__` ist kein Thema; Labels mit Anzahl und Beispielen; Stapel nur ohne Thema und id-Cursor.
+- `insights_page_test`: Nebenzahl „ohne Thema“, keine Lücke `__none__`.
+- `mcp_tools_test`: `no_topic_questions`, `__none__` nie als Thema.
+- `turn_entity_display_test`: „Ohne Thema“ in der Themenspalte.
+
+## [1.3.4] – 2026-11-24
+
+### Behoben
+
+- #230: Der Inhalt springt beim Wechsel zwischen den Suite-Seiten nicht mehr zur Seite. Übersicht, Health und Entwicklerseite setzten den Seitentyp `report`, Audit, Didaktik, Technik, KI-Aktionen und Audit-Einstellungen `standard` und die Seite „Audit nicht verfügbar" `admin`; Moodle und die Themes geben je Seitentyp eine andere Inhaltsbreite und Position vor. Jetzt setzen alle Seiten im Systemkontext `report`. `audit_actions.php` setzt im Kurskontext (`courseid`) `incourse`, wie `course_insights.php`.
+
+### CI
+
+- `ci/design-lint.php` prüft mit der neuen Regel `seitentyp`, dass die Seiten von `local_elediaai_core` nur `report` und `incourse` setzen. Andere Plugins prüft die Regel noch nicht.
+
 ## [1.3.3] – 2026-11-12
 
 ### Behoben

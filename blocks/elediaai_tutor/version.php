@@ -26,12 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026111205;
+$plugin->version = 2026112402;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'block_elediaai_tutor';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.17';
+$plugin->release = '1.0.20';
 $plugin->dependencies = [
     // The block always talks to the backend through a user-scoped Moodle MCP
     // token, on grounded and model-only turns alike, so the connector is
@@ -41,10 +41,13 @@ $plugin->dependencies = [
     // chat appears, who may use it and the tutor's voice; the engine owns the
     // conversation, the backend and the safety framing.
     // 2026101403: chat_service::record_rejection() (#37).
-    'local_elediaai_chatengine' => 2026101403,
+    // 2026112401: Werkzeug 'memory' (tutor_get_memory) fuer die Einsicht (#238).
+    'local_elediaai_chatengine' => 2026112401,
     // Die Einstiege pruefen den Feature-Schalter der Suite
     // (registry::require_enabled, K2), ohne Rueckfall fuer einen fehlenden
     // Kern. Bisher fehlte die Angabe, und Moodle nannte bei der Installation
     // nur MCP und Chat-Engine (N-02).
-    'local_elediaai_core' => 2026102000,
+    // 2026112401: insights::labels_with_examples(), TOPIC_NONE und die
+    // Variante-B-Abfrage von fetch_for_recluster() (ai_suite#210).
+    'local_elediaai_core' => 2026112401,
 ];

@@ -156,6 +156,14 @@ final class hook_callbacks {
         if (!isloggedin() || isguestuser()) {
             return false;
         }
+        // Logged in is not yet "may use the site". Between the login and the first
+        // real page Moodle holds a user at the site policy, a forced password
+        // change or an incomplete profile, and require_login() turns every web
+        // service call away until then. A tutor on those pages would only show
+        // its first failed request as an error dialog.
+        if (self::user_is_held_after_login()) {
+            return false;
+        }
         if (in_array($PAGE->pagelayout, ['login', 'popup', 'embedded', 'maintenance'], true)) {
             return false;
         }
@@ -183,6 +191,30 @@ final class hook_callbacks {
         }
         // Avoid injecting into the block's own admin/standalone pages.
         return strpos((string) $PAGE->url->get_path(), '/blocks/elediaai_tutor/') !== 0;
+    }
+
+    /**
+     * Whether Moodle still holds the logged-in user back from the site.
+     *
+     * Mirrors the checks require_login() runs after the login itself: forced
+     * password change, incomplete profile, site policy not agreed.
+     *
+     * @return bool
+     */
+    private static function user_is_held_after_login(): bool {
+        global $USER;
+
+        if (get_user_preferences('auth_forcepasswordchange') && !\core\session\manager::is_loggedinas()) {
+            return true;
+        }
+        if (user_not_fully_set_up($USER, true)) {
+            return true;
+        }
+        if (empty($USER->policyagreed) && !is_siteadmin()) {
+            $manager = new \core_privacy\local\sitepolicy\manager();
+            return $manager->get_redirect_url(false) !== null;
+        }
+        return false;
     }
 
     /**
@@ -220,6 +252,12 @@ final class hook_callbacks {
             if (!security::course_chat_enabled() || !widget::course_has_tutor($courseid)) {
                 return [null, 0];
             }
+            // A page can belong to a course its visitor is not in yet: the
+            // enrolment page is the common one. The tutor's web services check
+            // course access and would answer requireloginerror there.
+            if (!can_access_course($PAGE->course, null, '', true)) {
+                return [null, 0];
+            }
             return [\core\context\course::instance($courseid), $courseid];
         }
 
@@ -227,6 +265,30 @@ final class hook_callbacks {
             return [null, 0];
         }
         return [\core\context\system::instance(), 0];
+    }
+
+    /**
+     * Drop a return URL that points at one of the tutor's branding images.
+     *
+     * Logo and avatar are served through pluginfile.php, which requires a login.
+     * A browser asking for such an image without a session (an open tab after
+     * the session ran out) makes Moodle remember the image as the place to
+     * return to, and the next login or sign-up ends in a download of that image
+     * instead of on a page. For images in a block context core runs that login
+     * check before this plugin's file function is reached, so it is undone here.
+     *
+     * @param before_http_headers $hook Unused; the trigger fires before any output.
+     */
+    public static function forget_branding_return_url(before_http_headers $hook): void {
+        global $SESSION;
+
+        if (empty($SESSION->wantsurl)) {
+            return;
+        }
+        $wantsurl = rawurldecode((string) $SESSION->wantsurl);
+        if (preg_match('~/pluginfile\.php(/|\?file=/)\d+/block_elediaai_tutor/~', $wantsurl)) {
+            unset($SESSION->wantsurl);
+        }
     }
 
     /**

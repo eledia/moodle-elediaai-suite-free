@@ -193,6 +193,20 @@ class connection {
         'deleteuser' => 'tutor_delete_user_data',
         'memoryoptin' => 'tutor_set_memory_optin',
         'recluster' => 'tutor_recluster_questions',
+        'memory' => 'tutor_get_memory',
+    ];
+
+    /**
+     * Optional tools that have no switch of their own but follow another one.
+     *
+     * Reading the memory back (#238) belongs to offering it: a server that
+     * keeps memory should also show the learner what it kept, and a second
+     * switch would only allow the one without the other.
+     *
+     * @var array<string, string> Tool key => key of the switch it follows.
+     */
+    public const FOLLOWING_TOOLS = [
+        'memory' => 'memoryoptin',
     ];
 
     /**
@@ -230,7 +244,8 @@ class connection {
         if ($key === 'chat') {
             return self::TOOLS['chat'];
         }
-        return self::tool_enabled($key) ? self::TOOLS[$key] : '';
+        $switch = self::FOLLOWING_TOOLS[$key] ?? $key;
+        return self::tool_enabled($switch) ? self::TOOLS[$key] : '';
     }
 
     /**

@@ -31,6 +31,7 @@
     {
         "uniqid": "elediaai_tutor_abc123",
         "ltmenabled": false,
+        "memoryview": true,
         "candelete": true,
         "hascustom": false,
         "customtext": ""
@@ -64,6 +65,13 @@
             {{#str}}ltm_optin, block_elediaai_tutor{{/str}}
         </label>
     </div>
+    {{#memoryview}}
+        <p class="mt-2 mb-1">
+            <button type="button" class="btn btn-link p-0" data-action="memory-view" aria-haspopup="dialog">
+                {{#str}}memory_view_open, block_elediaai_tutor{{/str}}
+            </button>
+        </p>
+    {{/memoryview}}
     <div class="small text-muted mb-3" data-region="ltm-status" role="status" aria-live="polite"></div>
 
     <h3 class="elediaai-chat-privacy-heading">{{#str}}privacy_deletion_title, block_elediaai_tutor{{/str}}</h3>

@@ -129,6 +129,11 @@ final class moodle_ai_course_insights implements ai_tool {
                 'askers' => ['type' => 'integer'],
                 'covered_percent' => ['type' => 'integer'],
                 'followup_percent' => ['type' => 'integer'],
+                'no_topic_questions' => [
+                    'type' => 'integer',
+                    'description' => 'Turns that fit no topic (greetings, thanks, confirmations, test input). '
+                        . 'Counted in questions, but never a topic of their own.',
+                ],
                 'gaps' => ['type' => 'array', 'items' => $topic],
                 'unclear' => ['type' => 'array', 'items' => $topic],
                 'examples' => ['type' => 'array', 'items' => ['type' => 'string']],
@@ -214,6 +219,10 @@ final class moodle_ai_course_insights implements ai_tool {
             'askers' => $summary->askers,
             'covered_percent' => $summary->groundedpct,
             'followup_percent' => $summary->followuppct,
+            // The agent's "fits no topic" marker (#210) never appears as a
+            // topic: insights leaves it out of gaps and unclear, and only its
+            // count travels, so an agent does not read "__none__" out loud.
+            'no_topic_questions' => $summary->notopic,
             'gaps' => $gaps,
             'unclear' => $unclear,
             'examples' => $examples,

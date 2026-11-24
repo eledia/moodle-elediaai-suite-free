@@ -27,6 +27,7 @@ namespace local_elediaai_core\reportbuilder\local\systemreports;
 use core_reportbuilder\local\helpers\database as reportbuilder_database;
 use core_reportbuilder\system_report;
 use local_elediaai_core\local\audit_config;
+use local_elediaai_core\local\insights;
 use local_elediaai_core\local\turn_recorder;
 use local_elediaai_core\reportbuilder\local\entities\turn;
 
@@ -57,8 +58,14 @@ class turns extends system_report {
 
         $quickfilter = optional_param('suitequick', '', PARAM_ALPHANUMEXT);
         if ($quickfilter === 'chat') {
+            // Entscheidungszuege (Klick auf die Bestaetigungskarte) sind seit
+            // #210 eine eigene Aktion, gehoeren im Audit aber zum Chat.
             $param = reportbuilder_database::generate_param_name();
-            $this->add_base_condition_sql("{$alias}.actionname = :{$param}", [$param => 'chat_turn']);
+            $decision = reportbuilder_database::generate_param_name();
+            $this->add_base_condition_sql(
+                "{$alias}.actionname IN (:{$param}, :{$decision})",
+                [$param => insights::ACTION_CHAT, $decision => insights::ACTION_DECISION]
+            );
         } else if ($quickfilter === 'generate_text') {
             $param = reportbuilder_database::generate_param_name();
             $this->add_base_condition_sql("{$alias}.actionname = :{$param}", [$param => 'generate_text']);

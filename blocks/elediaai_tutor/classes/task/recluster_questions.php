@@ -56,7 +56,8 @@ class recluster_questions extends scheduled_task {
 
         $stats = recluster_service::run();
         mtrace(sprintf(
-            'block_elediaai_tutor: reclustered %d course(s), %d batch(es), %d topic(s) updated, %d failure(s).',
+            'block_elediaai_tutor: reclustered (%s) %d course(s), %d batch(es), %d topic(s) updated, %d failure(s).',
+            $stats['full'] ? 'full run' : 'new questions only',
             $stats['courses'],
             $stats['batches'],
             $stats['updated'],

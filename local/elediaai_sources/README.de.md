@@ -288,12 +288,12 @@ ausgewaehlte Paket-/Interaktionsmodule mit.
 | `feedback` | Feedback | Fragen/Item-Definitionen; keine abgegebenen Antworten |
 | `folder` | Folder | Ein Dokument pro unterstuetzter Datei, PDF bleibt PDF |
 | `glossary` | Glossary | Beschreibung, freigegebene Eintraege, Aliase/Synonyme |
-| `h5pactivity` | H5P Activity | Gelabelter Lerntext aus H5P JSON/Paketinhalt |
+| `h5pactivity` | H5P Activity | Gelabelter Lerntext aus H5P JSON/Paketinhalt; Fragen ohne Markierung der richtigen Antwort und ohne Hinweise |
 | `imscp` | IMS Content Package | Manifest-Struktur und HTML-Body-Inhalte |
 | `label` | Text/media area | Intro-Inhalt |
-| `lesson` | Lesson | Seitenfolge, Antworten, Feedback wo relevant |
+| `lesson` | Lesson | Seitenfolge; Antworten und Rueckmeldungen nur in Uebungs- oder unbewerteten Lektionen |
 | `page` | Page | Seiteninhalt |
-| `quiz` | Quiz | Fragen, Antworten, Feedback, Hinweise und Gesamtfeedback |
+| `quiz` | Quiz | Nur Name und Beschreibung; nie Fragen, Antworten, Feedback oder Hinweise |
 | `resource` | File | Unterstuetzte Text-, HTML- und PDF-Dateien |
 | `scorm` | SCORM | Intro, SCO-Titel und lokale HTML-Launch-Seiten |
 | `videotime` | Video Time | Intro und VTT-Captions/Transkript |

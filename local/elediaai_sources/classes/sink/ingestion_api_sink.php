@@ -18,11 +18,12 @@ namespace local_elediaai_sources\sink;
 
 use local_elediaai_sources\api_client;
 use local_elediaai_sources\format_matrix;
+use local_elediaai_sources\tenant;
 
 /**
  * The external ingestion pipeline, reached over the documented HTTP API.
  *
- * The endpoints are fixed by docs/api-specification.md (v1.3): the service
+ * The endpoints are fixed by docs/api-specification.md (v1.5): the service
  * exposes `POST /documents/upsert`, `POST /documents/delete` and `GET /health`
  * beneath a base URL, authenticated with an `X-API-Key` header issued per
  * tenant. The administrator therefore configures the base URL, not one action
@@ -133,11 +134,29 @@ class ingestion_api_sink implements sink {
         return $this->client()->post($this->baseurl() . '/documents/upsert', $payload);
     }
 
+    /**
+     * Delete a document (or a prefix of them) for this site's tenant only.
+     *
+     * `tenant_id` binds the delete to the tenant (ingestionpipeline#39,
+     * ai_suite#231): with it the service checks the tenant (403/503) and the
+     * source_id prefix (422), and removes only this tenant's chunks. Without
+     * it a prefix delete would still reach across tenants.
+     *
+     * The tenant is taken from the current wwwroot, like on upsert. A
+     * source_id stored before a wwwroot change still carries the old prefix;
+     * the service then answers 422 and the delete is reported as failed
+     * instead of silently touching another tenant's data.
+     *
+     * @param string $sourceid The source_id to delete.
+     * @param string $scope 'exact' or 'prefix'.
+     * @return array The transport result row.
+     */
     #[\Override]
     public function delete(string $sourceid, string $scope = 'exact'): array {
         return $this->client()->post($this->baseurl() . '/documents/delete', [
             'source_id' => $sourceid,
             'scope' => $scope,
+            'tenant_id' => tenant::id(),
         ]);
     }
 

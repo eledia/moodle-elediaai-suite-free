@@ -24,12 +24,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version   = 2026102300;
+$plugin->version   = 2026112401;
 $plugin->requires  = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'local_elediaai_chatengine';
 $plugin->maturity  = MATURITY_STABLE;
-$plugin->release   = '1.5.6';
+$plugin->release   = '1.5.8';
 // The engine books every turn against the shared token quota and writes the
 // AI audit trail, both of which live in the core plugin. Placements depend on
 // the engine; the engine never depends on a placement.

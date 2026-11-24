@@ -110,7 +110,10 @@ function block_elediaai_tutor_pluginfile(
         send_file_not_found();
     }
 
-    require_login();
+    // These are images inside a page, never a page of their own: without a login
+    // the request fails, and Moodle must not remember the image as the place to
+    // return to after the next login (it would be offered as a download).
+    require_login(null, true, null, false, true);
 
     // The pluginfile URL carries the itemid (always 0 for these single-file areas)
     // as the first path segment; shift it off so the remainder is the filepath.

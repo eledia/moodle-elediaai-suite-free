@@ -159,6 +159,22 @@ Die `ai_action_register`-Tabelle, die gleichnamige Reportbuilder-Entity und die 
 
 `audit_config::feature_available()` (`class_exists(\core_ai\reportbuilder\local\entities\ai_action_register::class)`) ist die zentrale Feature-Erkennung. Alles Audit-Bezogene ist dahinter gegatet: Der Launcher blendet die Audit-Kachel auf < 5.0 aus (`elediaai_core\feature_provider`), `can_view()` gibt dort `false` zurueck (nie die fehlende Capability), die Audit-Seiten rendern eine `render_unavailable_page()`-Hinweisseite statt zu fatalen, und die Audit-Tests (`audit_entity_test`, die Audit-Assertions in `registry_test`) ueberspringen sich. Alle uebrigen Suite-Funktionen bleiben auf 4.5 voll nutzbar. Feature-Detection statt harter Versionsnummer haelt das robust gegen kuenftige Core-Aenderungen.
 
+### Lese-API des Turn-Protokolls: Fragen, Themen, Recluster (`classes/local/insights.php`)
+
+Fremde Plugins lesen `local_elediaai_core_turn` nur ueber `insights` (TD-007). Drei Regeln gelten fuer jede Auswertung dort und sind Vertrag:
+
+- **Eine Frage ist ein beantworteter Chat-Zug:** `actionname = insights::ACTION_CHAT` (`chat_turn`) **und** `success = 1` (#206). Abgelehnte Zuege schreibt die Chat-Engine bewusst mit leerem Prompt und `success = 0` (`chat_service::record_rejection()`); sie bleiben fuer die Diagnose im Protokoll, zaehlen aber in keiner Kennzahl und gehen nie in den Recluster-Stapel. `fetch_for_recluster()` verlangt zusaetzlich einen nicht leeren Prompt (`sql_isnotempty`, die Spalte ist TEXT).
+- **Entscheidungszuege sind keine Fragen:** Die Antwort auf eine Bestaetigungskarte (`pendingdecision` gesetzt) protokolliert die Chat-Engine als `insights::ACTION_DECISION` (`chat_decision`, #210). Sie zaehlt fuers Kontingent und erscheint im technischen Audit (Schnellfilter „Chat" nimmt beide Aktionen), aber in keiner Auswertung von `insights`.
+- **`insights::TOPIC_NONE` (`__none__`) ist kein Thema (#210).** Der Recluster-Agent vergibt es fuer Begruessungen, Dank, Bestaetigungen, Meta-Fragen und Testeingaben. Es ist ein echtes Label und nicht `NULL`, weil `NULL` „noch nicht eingeordnet" heisst und jede Nacht erneut gesendet wuerde. `gaps()`, `unclear()`, die Nachfass-Zaehlung, `distinct_topics()` und `labels_with_examples()` lassen es weg; `summary()` meldet es als Nebenzahl `notopic`, die Kurs-Einblicke zeigen sie als Zusatz bei „Fragen", das MCP-Werkzeug `moodle_ai_course_insights` als `no_topic_questions`. **Wo ein Label einer Person gezeigt wird, geht es durch `insights::topic_label()`** — das macht aus `__none__` den Sprachstring `insights_topic_none` („Ohne Thema" / „No topic"); so die Themenspalte des technischen Audits. Bestehende `__none__`-Zeilen brauchen deshalb keine Datenmigration.
+
+Fuer den naechtlichen Recluster (`block_elediaai_tutor`, `recluster_service`):
+
+| Methode | Vertrag |
+| --- | --- |
+| `fetch_for_recluster($courseid, $days, $limit, $offset = 0, $untopiconly = false, $afterid = 0)` | id und Prompt beantworteter Fragen, aelteste zuerst. `$untopiconly` liefert nur Zeilen mit `topic IS NULL` (Variante B: einmal eingeordnet bleibt eingeordnet). `$afterid` blaettert ueber die id — wer jeden Stapel vor dem naechsten beschriftet, wuerde mit dem Versatz Zeilen ueberspringen. |
+| `labels_with_examples($courseid, $limit = 100, $examples = 3)` | Die Labels des Kurses als `[{label, count, examples[]}]`, meistgenutzte zuerst, ohne `TOPIC_NONE`; je Label bis zu drei verschiedene juengste Fragen, auf 300 Zeichen gekuerzt. Genau das Format, das `tutor_recluster_questions` als `labels` erwartet. Nur Fragetext, nie Antwort oder Pseudonym. |
+| `apply_topics($map, $courseid, $allowedids)` | Unveraendert: schreibt nur ids, die gesendet wurden und zum Kurs gehoeren; `__none__` wird wie jedes Label gespeichert. |
+
 ## Datenfluss: KI-Aktion → Audit
 
 Zwei Wege, die sich nicht vereinigen lassen.
@@ -761,6 +777,18 @@ Eigene Huellen haben heute noch `block_elediaai_tutor` (echte Erweiterung: zwei
 zusaetzliche Breiten), `filter_eledia_translate`, `local_elediaai_sources`,
 `local_literag` und `webservice_elediamcp`.
 
+**Ein Seitentyp je Oberflaeche (#230).** Moodle und die Themes (Boost, Boost
+Union) geben je Seitentyp eine andere Inhaltsbreite und Position vor. Setzen
+die Seiten einer Oberflaeche verschiedene Typen, springen Ueberschrift und
+Inhalt beim Wechsel zwischen ihnen. Die Seiten von `local_elediaai_core`
+setzen deshalb `report`, wenn sie im Systemkontext laufen (Uebersicht, Health,
+Entwicklerseite, Audit und seine Unterseiten, auch die Seite „Audit nicht
+verfuegbar"), und `incourse` im Kurskontext (`course_insights.php`,
+`audit_actions.php?courseid=…`). `ci/design-lint.php` prueft das mit der
+Regel `seitentyp`; die erlaubten Typen stehen dort je Plugin in
+`SEITENTYPEN`. Andere Suite-Plugins sollen derselben Regel folgen und werden
+in die Liste aufgenommen, sobald ihre Seiten vereinheitlicht sind.
+
 **Wer sich nachladen laesst, muss seinen Zustand in `$PAGE->url` tragen.**
 `$PAGE->set_periodic_refresh_delay()` ist der Weg, eine laufende Erzeugung
 ohne JavaScript aktuell zu halten. Das Ziel des Meta-Refresh baut Moodle aber
@@ -1168,7 +1196,8 @@ am selben Tag.
 
 ### Wer das nachhält
 
-- **`ci/design-lint.php`** prüft die Quelle — vier Regeln, läuft je Plugin in
+- **`ci/design-lint.php`** prüft die Quelle — vier CSS-Regeln und den
+  Seitentyp (`seitentyp`, siehe „Aussehen — die gemeinsame Seitenhuelle"), läuft je Plugin in
   der Stage `lint`. Liest `.css`, `.scss`, `.php` und `.mustache`, denn die
   Suite gibt CSS auch aus PHP und aus `<style>`-Blöcken aus.
 - **`ci/design-measure.mjs`** prüft das Ergebnis im Browser und vergleicht zwei

@@ -31,6 +31,7 @@ use webservice_elediamcp\form\configuration_form;
 use webservice_elediamcp\form\create_token_form;
 use webservice_elediamcp\local\ai\response_budget;
 use webservice_elediamcp\local\premium;
+use webservice_elediamcp\local\security;
 use webservice_elediamcp\local\token_manager;
 use webservice_elediamcp\local\tool_provider;
 use webservice_elediamcp\output\shell;
@@ -213,7 +214,8 @@ $current = (object) [
     'oauth_enabled' => (int) (get_config('webservice_elediamcp', 'oauth_enabled') ?: 0),
     'oauth_allow_dynamic_registration' => (int) (
         get_config('webservice_elediamcp', 'oauth_allow_dynamic_registration') !== false
-            ? get_config('webservice_elediamcp', 'oauth_allow_dynamic_registration') : 1),
+            ? get_config('webservice_elediamcp', 'oauth_allow_dynamic_registration') : 0),
+    'oauth_client_retention_days' => security::oauth_client_retention_days(),
     'oauth_code_ttl' => get_config('webservice_elediamcp', 'oauth_code_ttl') ?: 300,
     'oauth_token_ttl' => (int) (get_config('webservice_elediamcp', 'oauth_token_ttl') ?: 0),
 ];
@@ -252,6 +254,7 @@ if ($data = $mform->get_data()) {
         empty($data->oauth_allow_dynamic_registration) ? 0 : 1,
         'webservice_elediamcp'
     );
+    set_config('oauth_client_retention_days', max(0, (int) $data->oauth_client_retention_days), 'webservice_elediamcp');
     set_config('oauth_code_ttl', max(30, min(600, (int) $data->oauth_code_ttl)), 'webservice_elediamcp');
     set_config('oauth_token_ttl', max(0, (int) $data->oauth_token_ttl), 'webservice_elediamcp');
 

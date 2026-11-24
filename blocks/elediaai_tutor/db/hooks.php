@@ -57,6 +57,13 @@ $callbacks = [
         'priority' => 500,
     ],
     [
+        // A branding image asked for without a session must not become the page
+        // Moodle returns to after the next login or sign-up.
+        'hook' => \core\hook\output\before_http_headers::class,
+        'callback' => \block_elediaai_tutor\hook_callbacks::class . '::forget_branding_return_url',
+        'priority' => 490,
+    ],
+    [
         // With JS on, the "Configure" control opens a modal (core_block/edit) rather than
         // navigating; this loads the client-side helper that redirects it to the shell.
         'hook' => \core\hook\output\before_standard_top_of_body_html_generation::class,

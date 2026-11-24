@@ -294,7 +294,7 @@ class service {
                     false
                 );
             }
-        } else if (!in_array($redirecturi, $registered, true)) {
+        } else if (!self::redirect_uri_matches($redirecturi, $registered)) {
             throw new oauth_exception(
                 'invalid_request',
                 get_string('oauth_err_redirect_uri_mismatch', 'webservice_elediamcp'),
@@ -366,6 +366,8 @@ class service {
      */
     public static function issue_code(stdClass $ctx, int $userid): string {
         $code = self::random_secret();
+        // The person has allowed access: the client counts as used and is kept (#151).
+        store::touch_client((string) $ctx->client->clientid);
         store::create_code(
             store::hash($code),
             (string) $ctx->client->clientid,
@@ -671,6 +673,48 @@ class service {
     public static function is_web_redirect_uri(string $uri): bool {
         $scheme = strtolower((string) parse_url($uri, PHP_URL_SCHEME));
         return $scheme === 'http' || $scheme === 'https';
+    }
+
+    /**
+     * Whether a requested redirect URI is one the client registered.
+     *
+     * The comparison is exact, except for loopback addresses (RFC 8252 section 7.3): a native
+     * app picks a free port at the time of the request, so for `http://127.0.0.1/cb` or
+     * `http://[::1]/cb` any port is accepted when scheme, host, path and query are the same.
+     * The code is bound to the exact URI of the request either way.
+     *
+     * @param string $requested The `redirect_uri` of the request.
+     * @param string[] $registered The client's registered URIs.
+     * @return bool
+     */
+    public static function redirect_uri_matches(string $requested, array $registered): bool {
+        if (in_array($requested, $registered, true)) {
+            return true;
+        }
+        $want = parse_url($requested);
+        if (!is_array($want) || strtolower((string) ($want['scheme'] ?? '')) !== 'http') {
+            return false;
+        }
+        $loopback = ['127.0.0.1', '::1', '[::1]'];
+        $wanthost = strtolower((string) ($want['host'] ?? ''));
+        if (!in_array($wanthost, $loopback, true) || isset($want['user']) || isset($want['pass'])) {
+            return false;
+        }
+        foreach ($registered as $uri) {
+            $have = parse_url($uri);
+            if (!is_array($have) || strtolower((string) ($have['scheme'] ?? '')) !== 'http') {
+                continue;
+            }
+            if (
+                strtolower((string) ($have['host'] ?? '')) === $wanthost
+                && ($have['path'] ?? '') === ($want['path'] ?? '')
+                && ($have['query'] ?? '') === ($want['query'] ?? '')
+                && !isset($have['user']) && !isset($have['pass'])
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

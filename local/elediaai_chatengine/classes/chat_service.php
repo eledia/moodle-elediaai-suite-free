@@ -367,7 +367,8 @@ class chat_service {
             $response,
             (int) $context->id,
             $turnstarted,
-            $booked
+            $booked,
+            in_array((string) ($hints['pendingdecision'] ?? ''), hints::values('pendingdecision'), true)
         );
         $logged = true;
         // Der Simulator erzeugt keinen Text mit einem Modell; seine Antworten
@@ -739,7 +740,9 @@ class chat_service {
      * @param chat_response $response What came back.
      * @param int $contextid Where the turn happened.
      * @param int $turnstarted When it was dispatched.
-     * @return void
+     * @param array|null $booked What the credit chokepoint booked, if anything.
+     * @param bool $decision Whether the turn answers a confirmation card.
+     * @return int|null The turn log row id, null when not recorded.
      */
     private static function record_in_turn_log(
         string $component,
@@ -750,7 +753,8 @@ class chat_service {
         chat_response $response,
         int $contextid,
         int $turnstarted,
-        ?array $booked = null
+        ?array $booked = null,
+        bool $decision = false
     ): ?int {
         $recorder = '\\local_elediaai_core\\local\\turn_recorder';
         if (!class_exists($recorder)) {
@@ -768,7 +772,15 @@ class chat_service {
 
         return call_user_func([$recorder, 'record'], ...[
             'component' => $component,
-            'actionname' => 'chat_turn',
+            // Ein Klick auf die Bestaetigungskarte ("Ja, ausfuehren") ist ein
+            // Entscheidungszug, keine Frage (ai_suite#210). Er bleibt im
+            // Protokoll und zaehlt fuers Kontingent, aber als eigene Aktion:
+            // die Fragenstatistik und der Recluster lesen nur chat_turn, und
+            // eine Bestaetigung als Frage zwang der Agent in ein Inhaltslabel.
+            // Der Wert entspricht insights::ACTION_DECISION; hier als
+            // Literal, wie der Recorder selbst nur ueber seinen Namen
+            // angesprochen wird.
+            'actionname' => $decision ? 'chat_decision' : 'chat_turn',
             'contextid' => $contextid,
             'userid' => $userid,
             'prompt' => $message,

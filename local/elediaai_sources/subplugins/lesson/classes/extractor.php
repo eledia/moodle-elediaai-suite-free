@@ -25,6 +25,13 @@ use local_elediaai_sources\content_extractor;
  * and answer/response texts for question pages. Structural pages
  * (cluster, end-of-branch, end-of-cluster) are skipped.
  *
+ * In a graded lesson (not a practice lesson, grade other than none) the
+ * question pages keep their question text but lose their answers and
+ * responses (ingestionpipeline#23): the answers name the solution and the
+ * responses ("Richtig! ...") say which one it is, and the index cannot tell
+ * whether a learner is in the middle of the lesson. Content pages keep their
+ * buttons, and practice or ungraded lessons stay learning material as before.
+ *
  * @package    aisourcesextractor_lesson
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -32,6 +39,9 @@ use local_elediaai_sources\content_extractor;
 class extractor implements content_extractor {
     /** @var int[] Structural page types that carry no educational content. */
     private const STRUCTURAL_QTYPES = [21, 30, 31]; // End of branch, cluster, end of cluster.
+
+    /** @var int Content page (branch table): its "answers" are navigation buttons. */
+    private const CONTENT_QTYPE = 20;
 
     /**
      * Check whether this extractor supports the given module.
@@ -56,7 +66,8 @@ class extractor implements content_extractor {
     public function extract(\cm_info $cm): ?array {
         global $DB;
 
-        $lesson = $DB->get_record('lesson', ['id' => $cm->instance], 'id, name, intro', MUST_EXIST);
+        $lesson = $DB->get_record('lesson', ['id' => $cm->instance], 'id, name, intro, practice, grade', MUST_EXIST);
+        $graded = self::is_graded($lesson);
         $context = \core\context\module::instance($cm->id);
 
         // Get all pages for this lesson.
@@ -161,6 +172,12 @@ class extractor implements content_extractor {
                 ) . "\n";
             }
 
+            // A graded lesson's question page keeps its question, never its
+            // answers or responses: those are the solution.
+            if ($graded && (int) $page->qtype !== self::CONTENT_QTYPE) {
+                continue;
+            }
+
             // Include answer and response texts for question pages.
             if (!empty($answersbypage[$page->id])) {
                 foreach ($answersbypage[$page->id] as $answer) {
@@ -197,5 +214,18 @@ class extractor implements content_extractor {
             'content_type' => 'text/html',
             'title' => $lesson->name,
         ];
+    }
+
+    /**
+     * Whether the lesson counts towards the grade.
+     *
+     * Mirrors mod_lesson: a practice lesson is never graded, and a grade of 0
+     * means "none". A negative grade is a scale and graded as well.
+     *
+     * @param \stdClass $lesson Lesson record with practice and grade.
+     * @return bool True for a graded lesson.
+     */
+    public static function is_graded(\stdClass $lesson): bool {
+        return (int) $lesson->practice === 0 && (int) $lesson->grade !== 0;
     }
 }

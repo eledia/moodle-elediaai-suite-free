@@ -78,6 +78,36 @@ class store {
     }
 
     /**
+     * Note that a person allowed access for a client.
+     *
+     * @param string $clientid Public client identifier.
+     * @param int|null $now Reference timestamp, defaults to the current time.
+     * @return void
+     */
+    public static function touch_client(string $clientid, ?int $now = null): void {
+        global $DB;
+        $DB->set_field(self::CLIENT_TABLE, 'timelastused', $now ?? time(), ['clientid' => $clientid]);
+    }
+
+    /**
+     * Delete clients nobody ever used that were registered before the cutoff.
+     *
+     * A client counts as used once a person has allowed access for it; those are kept.
+     *
+     * @param int $cutoff Registrations before this timestamp are deleted.
+     * @return int Number of clients deleted.
+     */
+    public static function gc_unused_clients(int $cutoff): int {
+        global $DB;
+        $select = 'timelastused IS NULL AND timecreated < :cutoff';
+        $count = $DB->count_records_select(self::CLIENT_TABLE, $select, ['cutoff' => $cutoff]);
+        if ($count > 0) {
+            $DB->delete_records_select(self::CLIENT_TABLE, $select, ['cutoff' => $cutoff]);
+        }
+        return $count;
+    }
+
+    /**
      * Store an authorization code binding.
      *
      * @param string $codehash SHA-256 hex digest of the code value.

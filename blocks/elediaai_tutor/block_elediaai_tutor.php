@@ -141,7 +141,9 @@ class block_elediaai_tutor extends block_base {
             // geschlossenen Blockleiste; der Hinweis stand dort, wo ihn niemand
             // sah, und der Tutor war fuer alle einfach verschwunden. Er erscheint
             // jetzt an der Stelle des Startknopfs.
-            $floating = (\block_elediaai_tutor\local\branding::resolve($instance)['launcherstyle'] ?? '') === 'fab';
+            $floating = \block_elediaai_tutor\local\branding::is_floating(
+                (string) (\block_elediaai_tutor\local\branding::resolve($instance)['launcherstyle'] ?? '')
+            );
             $noticeid = html_writer::random_id('elediaai-tutor-unavailable');
             $this->content->text = $OUTPUT->render_from_template('block_elediaai_tutor/unavailable', [
                 'id' => $noticeid,

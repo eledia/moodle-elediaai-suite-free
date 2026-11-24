@@ -264,5 +264,51 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026101503, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026112401) {
+        // H5P keeps its questions but no longer marks the correct answer, and
+        // drops hints, feedback and the marked words of blanks
+        // (ingestionpipeline#23). Indexed H5P activities are sent once more, as
+        // in 2026101501; so are pages, labels and books whose stored HTML
+        // embeds an H5P placeholder, which h5p_embed_helper resolves through
+        // the same extractor. Other modules with an embedded H5P pick the
+        // change up with their next edit or a course reindex. Quizzes and
+        // graded lessons are queued by their own extractors' upgrade steps.
+        $params = ['empty' => \local_elediaai_sources\cm_state::STATUS_EMPTY];
+        $placeholder = '%h5p-placeholder%';
+        $cms = $DB->get_records_sql(
+            "SELECT cm.id, cm.course
+               FROM {course_modules} cm
+               JOIN {modules} m ON m.id = cm.module
+               JOIN {local_elediaai_sources_cmstate} st ON st.cmid = cm.id
+              WHERE st.laststatus <> :empty
+                AND (m.name = :h5pactivity
+                     OR (m.name = :page AND EXISTS (
+                         SELECT 1 FROM {page} p
+                          WHERE p.id = cm.instance AND " . $DB->sql_like('p.content', ':p1') . "))
+                     OR (m.name = :label AND EXISTS (
+                         SELECT 1 FROM {label} l
+                          WHERE l.id = cm.instance AND " . $DB->sql_like('l.intro', ':p2') . "))
+                     OR (m.name = :book AND EXISTS (
+                         SELECT 1 FROM {book_chapters} bc
+                          WHERE bc.bookid = cm.instance AND " . $DB->sql_like('bc.content', ':p3') . ")))",
+            $params + [
+                'h5pactivity' => 'h5pactivity',
+                'page' => 'page',
+                'label' => 'label',
+                'book' => 'book',
+                'p1' => $placeholder,
+                'p2' => $placeholder,
+                'p3' => $placeholder,
+            ]
+        );
+        foreach ($cms as $cm) {
+            $task = new \local_elediaai_sources\task\ingest_module_task();
+            $task->set_custom_data(['courseid' => (int) $cm->course, 'cmid' => (int) $cm->id]);
+            \core\task\manager::queue_adhoc_task($task, true);
+        }
+
+        upgrade_plugin_savepoint(true, 2026112401, 'local', 'elediaai_sources');
+    }
+
     return true;
 }

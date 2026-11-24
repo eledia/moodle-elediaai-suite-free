@@ -85,8 +85,11 @@ as a pseudonymous key; it is declared, exported and erased by the privacy
 provider of `local_elediaai_core`.
 
 When the **Recluster tool name** is additionally configured, a nightly task
-re-sends recent logged question texts (without user identities) to the RAG
-server to converge their topic labels. This transmits no new data category —
+sends logged question texts that have no topic yet (without user identities)
+to the RAG server to assign their topic labels; with the optional 14-day full
+run, all question texts of the last 30 days. Each call also carries the course
+name and language and, per existing label, its count and up to three example
+question texts of the same course. This transmits no new data category —
 the same question texts already transited the same processor at chat time —
 and the server must not retain the batches beyond processing (see the RAG
 server specification, section A.6).
@@ -110,13 +113,19 @@ preference changed* event), and is declared and exported through the Privacy
 API. If the configured backend supports long-term memory, the current
 preference is sent as a per-request gate and existing memory is included in
 external user-data deletion. Moodle stores the preference, but not the memory
-content itself.
+content itself. When learners open the memory view (#238), Moodle reads the
+content back from the backend (`tutor_get_memory`, with the learner's own
+token), shows it in the browser and keeps nothing of it.
 
 ## In-product privacy controls
 
 The chat header has a **Privacy guidelines** button that shows learners an AI
 accuracy warning, what is sent and stored, the long-term memory opt-in, and a
-**Delete all my tutor data** action. Deletion removes local conversation
+**Delete all my tutor data** action. While the chat engine offers long-term
+memory, the panel also shows what the tutor has remembered (memories by
+category and one note per conversation), and switching memory off asks for
+confirmation first, because the backend erases the memory at once and for
+good; the confirmation links to that view. Deletion removes local conversation
 metadata, question analytics, usage counters, diagnostics, the LTM preference
 and, if stored, the confirmation on first use.
 When the admin has configured a RAG delete tool, deletion is propagated to the

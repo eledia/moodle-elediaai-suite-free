@@ -36,8 +36,19 @@ use webservice_elediamcp\local\ai\tool_exception;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class moodle_generate_h5p implements ai_tool {
-    /** @var string[] Supported H5P content type keys. */
-    private const TYPES = ['dialogcards', 'blanks', 'singlechoice', 'multichoice'];
+    /** @var string[] The content types of the first H5P author release, used when its list cannot be read. */
+    private const FALLBACK_TYPES = ['dialogcards', 'blanks', 'singlechoice', 'multichoice'];
+
+    /** @var array<string, string> What each content type is, for the description the agent reads. */
+    private const TYPE_HELP = [
+        'dialogcards' => 'dialogcards (Dialog Cards, flashcards)',
+        'blanks' => 'blanks (Fill in the Blanks)',
+        'singlechoice' => 'singlechoice (Single Choice Set, one correct answer per question)',
+        'multichoice' => 'multichoice (Multiple Choice, one question with several correct answers)',
+        'dragtext' => 'dragtext (Drag the Words, words are dragged into the gaps of sentences)',
+        'markthewords' => 'markthewords (Mark the Words, the learner marks the right words in a text)',
+        'truefalse' => 'truefalse (True/False, one statement that is true or false)',
+    ];
 
     /** @var array<string, string> Spellings models and people use, by normalised form, mapped to a type. */
     private const TYPE_ALIASES = [
@@ -55,7 +66,35 @@ class moodle_generate_h5p implements ai_tool {
         'multiplechoice' => 'multichoice',
         'multiplechoiceset' => 'multichoice',
         'multiplechoicequestion' => 'multichoice',
+        'dragthewords' => 'dragtext',
+        'dragwords' => 'dragtext',
+        'woerterziehen' => 'dragtext',
+        'markwords' => 'markthewords',
+        'woertermarkieren' => 'markthewords',
+        'truefalsequestion' => 'truefalse',
+        'trueorfalse' => 'truefalse',
+        'wahroderfalsch' => 'truefalse',
     ];
+
+    /**
+     * The content types this site can generate: the list of the installed H5P author.
+     *
+     * The H5P author decides which types exist (`content_type::all()`), so a new type there is available here
+     * without a change in this plugin, and a site with an older H5P author is never offered a type it does not
+     * know. Without the H5P author the four types of its first release are listed (the tool is not registered
+     * then, but the schema can still be read).
+     *
+     * @return string[]
+     */
+    public static function types(): array {
+        if (class_exists('\\local_elediaai_h5pauthor\\local\\content_type')) {
+            $types = \local_elediaai_h5pauthor\local\content_type::all();
+            if ($types !== []) {
+                return array_values($types);
+            }
+        }
+        return self::FALLBACK_TYPES;
+    }
 
     /**
      * Return the MCP tool name.
@@ -81,8 +120,11 @@ class moodle_generate_h5p implements ai_tool {
      * @return string
      */
     public static function description(): string {
-        return 'Generates interactive H5P content of four types (dialogcards, blanks, singlechoice or '
-            . 'multichoice) as an owner-bound review draft, then publishes that exact draft only after approval, '
+        $types = self::types();
+        $last = array_pop($types);
+        $list = $types === [] ? $last : implode(', ', $types) . ' or ' . $last;
+        return 'Generates interactive H5P content of ' . count(self::types()) . ' types (' . $list . ') '
+            . 'as an owner-bound review draft, then publishes that exact draft only after approval, '
             . 'either to the course content bank or as a course activity (see target). Generation runs SERVER-SIDE through '
             . 'the Moodle site\'s configured AI provider — pass only the topic and parameters, not '
             . 'the content itself. Optionally grounds the content in an existing course activity '
@@ -109,10 +151,10 @@ class moodle_generate_h5p implements ai_tool {
                 ],
                 'type' => [
                     'type' => 'string',
-                    'description' => 'H5P content type, one of: dialogcards (Dialog Cards, flashcards), blanks '
-                        . '(Fill in the Blanks), singlechoice (Single Choice Set, one correct answer per question), '
-                        . 'multichoice (Multiple Choice, several correct answers). Common spellings such as '
-                        . '"Dialog Cards" or "fill in the blanks" are accepted.',
+                    'description' => 'H5P content type, one of: ' . implode(', ', array_map(
+                        static fn(string $type): string => self::TYPE_HELP[$type] ?? $type,
+                        self::types()
+                    )) . '. Common spellings such as "Dialog Cards" or "fill in the blanks" are accepted.',
                 ],
                 'topic' => [
                     'type' => 'string',
@@ -129,7 +171,8 @@ class moodle_generate_h5p implements ai_tool {
                     'minimum' => 1,
                     'maximum' => 12,
                     'default' => 8,
-                    'description' => 'Number of cards/sentences/questions. Larger counts take longer.',
+                    'description' => 'Number of cards/sentences/questions. Larger counts take longer. '
+                        . 'Ignored for multichoice and truefalse (always one question or statement).',
                 ],
                 'language' => [
                     'type' => 'string',
@@ -238,23 +281,40 @@ class moodle_generate_h5p implements ai_tool {
     }
 
     /**
+     * How many items the draft of a type has, for the preview and the confirmation card.
+     *
+     * Multiple choice and true/false hold one question or statement per package and ignore `count`, so the card
+     * must not announce the requested number (8 by default) for them (#221). For the other types it is the
+     * requested number.
+     *
+     * @param string $type A type of {@see types()}.
+     * @param int $count The requested number.
+     * @return int
+     */
+    public static function item_count(string $type, int $count): int {
+        return in_array($type, ['multichoice', 'truefalse'], true) ? 1 : $count;
+    }
+
+    /**
      * Map the spelling of a content type to one of the supported types.
      *
-     * Case, spaces, hyphens and underscores do not matter, and the usual English names and a few German
+     * Case, spaces, hyphens, underscores and slashes do not matter, and the usual English names and a few German
      * ones are accepted ("Dialog Cards", "dialog_cards", "Fill in the Blanks"). Returns null for anything
      * else, so a wrong type still fails with the list of supported types (#182).
      *
      * @param string $type What the caller sent.
-     * @return string|null One of TYPES, or null.
+     * @return string|null One of the types of {@see types()}, or null.
      */
     public static function normalise_type(string $type): ?string {
         $key = \core_text::strtolower($type);
-        $key = preg_replace('/[\s_\-]+/u', '', $key) ?? '';
+        $key = preg_replace('/[\s_\-\/]+/u', '', $key) ?? '';
         $key = strtr($key, ['ü' => 'ue', 'ä' => 'ae', 'ö' => 'oe']);
-        if (in_array($key, self::TYPES, true)) {
+        $types = self::types();
+        if (in_array($key, $types, true)) {
             return $key;
         }
-        return self::TYPE_ALIASES[$key] ?? null;
+        $type = self::TYPE_ALIASES[$key] ?? null;
+        return $type !== null && in_array($type, $types, true) ? $type : null;
     }
 
     /**
@@ -273,7 +333,7 @@ class moodle_generate_h5p implements ai_tool {
         $type = self::normalise_type($typeinput);
         if ($type === null) {
             throw new tool_exception(
-                'Invalid type. Supported types: ' . implode(', ', self::TYPES) . '.',
+                'Invalid type. Supported types: ' . implode(', ', self::types()) . '.',
                 ['type' => $typeinput]
             );
         }
@@ -354,7 +414,7 @@ class moodle_generate_h5p implements ai_tool {
             'course_fullname' => format_string($course->fullname, true, ['context' => $coursecontext]),
             'content_type' => $type,
             'h5p_library' => $machinename . ' ' . implode('.', $library),
-            'count' => $count,
+            'count' => self::item_count($type, $count),
             'target' => $target,
             'ai_provider_ready' => true,
             'grounding' => $grounding,
@@ -385,7 +445,7 @@ class moodle_generate_h5p implements ai_tool {
         $preview['expires'] = $draft['expires'];
         $preview['card_summary'] = card_summary::text('cardsummary_generate_h5p', (object) [
             'type' => card_summary::h5p_type_name($type),
-            'count' => $count,
+            'count' => self::item_count($type, $count),
             'course' => $preview['course_fullname'],
         ]);
         return [
@@ -458,6 +518,12 @@ class moodle_generate_h5p implements ai_tool {
             case 'error_notopic':
             case 'error_notopicorsource':
                 return new tool_exception('A non-empty topic is required. Retry with a topic argument.', $context);
+            case 'error_notenoughmaterial':
+                return new tool_exception(
+                    'The AI found too little in the topic or the source to create content. Do not retry unchanged: '
+                    . 'ask for a more detailed topic, pass a source_cmid, or lower count.',
+                    $context
+                );
             case 'error_emptyresponse':
             case 'error_badjson':
                 return new tool_exception(

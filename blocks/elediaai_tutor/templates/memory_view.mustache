@@ -1,0 +1,100 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_elediaai_tutor/memory_view
+
+    Body of the "What the tutor has remembered about me" modal (#238): the
+    learner's long-term memories grouped by category, and one note per
+    conversation with course and date. Filled from the external function
+    block_elediaai_tutor_get_memory; the JS module sets ok/unavailable/error
+    from its status and reveals hidden session notes on "Show more".
+
+    Session notes are written by the agent in English; their fixed line
+    openings arrive here already translated as "label".
+
+    Example context (json):
+    {
+        "ok": true,
+        "unavailable": false,
+        "error": false,
+        "hasmemories": true,
+        "hassessions": true,
+        "hasmore": false,
+        "sessionpage": 10,
+        "categories": [
+            {"category": "preference", "label": "What you want from the answers", "items": [
+                {"content": "Understands things best when an explanation starts with an example.", "updated": 1795700000, "updatedlabel": "23/11/26, 15:34"}
+            ]}
+        ],
+        "sessions": [
+            {"courseid": 5, "coursename": "Course 1", "updated": 1795700000, "updatedlabel": "23/11/26, 15:34", "hidden": false,
+             "lines": [{"label": "Worked on", "text": "Forum in Moodle"}]}
+        ]
+    }
+}}
+<div class="elediaai-chat-memory" data-region="memory-view">
+    {{#unavailable}}
+        <p data-region="memory-unavailable">{{#str}}memory_view_unavailable, block_elediaai_tutor{{/str}}</p>
+    {{/unavailable}}
+    {{#error}}
+        <div class="alert alert-warning" role="alert" data-region="memory-error">{{#str}}memory_view_error, block_elediaai_tutor{{/str}}</div>
+    {{/error}}
+    {{#ok}}
+        <p>{{#str}}memory_view_intro, block_elediaai_tutor{{/str}}</p>
+        {{^hasmemories}}{{^hassessions}}
+            <p class="elediaai-chat-memory-empty" data-region="memory-empty">{{#str}}memory_view_empty, block_elediaai_tutor{{/str}}</p>
+        {{/hassessions}}{{/hasmemories}}
+
+        {{#hasmemories}}
+            <h3 class="elediaai-chat-privacy-heading">{{#str}}memory_view_memories, block_elediaai_tutor{{/str}}</h3>
+            {{#categories}}
+                <h4 class="elediaai-chat-memory-category">{{label}}</h4>
+                <ul class="elediaai-chat-memory-list" data-region="memory-category" data-category="{{category}}">
+                    {{#items}}
+                        <li>
+                            {{content}}
+                            {{#updatedlabel}}<span class="elediaai-chat-memory-date">{{updatedlabel}}</span>{{/updatedlabel}}
+                        </li>
+                    {{/items}}
+                </ul>
+            {{/categories}}
+        {{/hasmemories}}
+
+        {{#hassessions}}
+            <h3 class="elediaai-chat-privacy-heading">{{#str}}memory_view_sessions, block_elediaai_tutor{{/str}}</h3>
+            <p class="small text-muted">{{#str}}memory_view_sessions_note, block_elediaai_tutor{{/str}}</p>
+            <ul class="elediaai-chat-memory-list elediaai-chat-memory-sessions" data-region="memory-sessions">
+                {{#sessions}}
+                    <li data-region="memory-session" {{#hidden}}hidden{{/hidden}}>
+                        <span class="elediaai-chat-memory-course">{{coursename}}</span>
+                        {{#updatedlabel}}<span class="elediaai-chat-memory-date">{{updatedlabel}}</span>{{/updatedlabel}}
+                        {{#lines}}
+                            <span class="elediaai-chat-memory-line">{{#label}}<span class="elediaai-chat-memory-label">{{label}}:</span> {{/label}}{{text}}</span>
+                        {{/lines}}
+                    </li>
+                {{/sessions}}
+            </ul>
+            {{#hasmore}}
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-action="memory-more" data-page="{{sessionpage}}">
+                    {{#str}}memory_view_more, block_elediaai_tutor{{/str}}
+                </button>
+            {{/hasmore}}
+        {{/hassessions}}
+
+        <p class="small text-muted mt-3">{{#str}}memory_view_readonly, block_elediaai_tutor{{/str}}</p>
+    {{/ok}}
+</div>
