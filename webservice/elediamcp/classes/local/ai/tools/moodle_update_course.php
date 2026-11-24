@@ -93,7 +93,14 @@ class moodle_update_course implements ai_tool {
                 ],
                 'summary' => [
                     'type' => 'string',
-                    'description' => 'Optional new plain-text course summary.',
+                    'description' => 'Optional new course summary; replaces the whole summary. '
+                        . 'For learning objectives use moodle_set_learning_objectives instead.',
+                ],
+                'summary_format' => [
+                    'type' => 'string',
+                    'enum' => ['plain', 'html'],
+                    'default' => 'plain',
+                    'description' => 'Format of summary: plain text (default) or HTML.',
                 ],
                 'visible' => [
                     'type' => 'boolean',
@@ -218,7 +225,7 @@ class moodle_update_course implements ai_tool {
 
         if (array_key_exists('summary', $arguments)) {
             self::add_change($updates, $changes, 'summary', (string) $course->summary, trim((string) $arguments['summary']));
-            $updates['summaryformat'] = FORMAT_PLAIN;
+            $updates['summaryformat'] = ($arguments['summary_format'] ?? 'plain') === 'html' ? FORMAT_HTML : FORMAT_PLAIN;
         }
 
         if (array_key_exists('visible', $arguments)) {

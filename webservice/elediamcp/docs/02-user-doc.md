@@ -53,6 +53,12 @@ course creation, course updates, manual course enrolment and activity creation
 (page, label, url, book, assignment); they use a preview step and only change
 Moodle after a second call with `confirm=true`.
 
+Teachers can also set and extend learning objectives in course, section and
+activity descriptions. With "Components for Learning" (C4L) installed, the
+objectives appear in its "Learning outcomes" box. When competencies are
+enabled on the site, matching competencies can be searched and linked to the
+course and its activities.
+
 ## Workflow prompts
 
 MCP clients can show guided slash commands such as **Weekly overview**, **Course

@@ -27,6 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $string['health_backend'] = 'Chat-Backend';
 $string['health_backend_unconfigured'] = 'Es ist kein Backend gewählt, also kann kein Chat antworten.';
 $string['pluginname'] = 'KI-Chat-Engine';
+$string['elediaai_chatengine:bypassquizlock'] = 'Chat während Tests nutzen';
 $string['privacy:metadata:thread'] = 'Unterhaltungen mit einer KI-Assistenz, aus welcher Chat-Oberfläche auch immer geführt.';
 $string['privacy:metadata:thread:userid'] = 'Die Person, die die Unterhaltung geführt hat.';
 $string['privacy:metadata:thread:placement'] = 'Aus welcher Chat-Oberfläche die Unterhaltung begonnen wurde.';
@@ -172,6 +173,8 @@ $string['setting_dailymessagelimit'] = 'Nachrichten je Tag';
 $string['setting_dailymessagelimit_desc'] = 'Nachrichten, die eine Person je Tag senden darf. 0 bedeutet unbegrenzt.';
 $string['setting_streamingenabled'] = 'Antworten fortlaufend anzeigen';
 $string['setting_streamingenabled_desc'] = 'Zeigt eine Antwort, während sie entsteht, sofern das Backend das unterstützt. LiteRAG antwortet in einem Stück; mit LiteRAG wirkt diese Einstellung nicht.';
+$string['setting_quizlock'] = 'Chat während Tests sperren';
+$string['setting_quizlock_desc'] = 'Solange eine Person einen Testversuch offen hat, egal in welchem Kurs, lehnt jeder Chat ihre Nachrichten ab und nennt den Test. Vorschauversuche und Tests, die die Person nicht mehr erreichen kann, zählen nicht. Wer im Kurs des Tests die Berechtigung „Chat während Tests nutzen“ hat (standardmäßig Lehrende), ist ausgenommen. Eine Oberfläche kann das je Instanz überschreiben; der Tutor-Block bietet das in seinen Blockeinstellungen an.';
 $string['setting_retentiondays'] = 'Aufbewahrung von Unterhaltungen';
 $string['setting_retentiondays_desc'] = 'Tage, die eine Unterhaltung nach ihrem letzten Beitrag aufbewahrt wird. 0 bewahrt sie auf, bis eine Person oder die Administration sie löscht.';
 $string['setting_mcpserviceid'] = 'Webservice für Rückrufe';
@@ -212,6 +215,7 @@ $string['error_rate_limited'] = 'Gerade zu viele Nachrichten. Bitte {$a} Sekunde
 $string['error_daily_limit'] = 'Das Tageslimit an Nachrichten ist erreicht.';
 $string['error_mode_unsupported'] = 'Das eingerichtete Backend kann in diesem Modus nicht antworten.';
 $string['error_thread_not_found'] = 'Diese Unterhaltung wurde nicht gefunden.';
+$string['error_quiz_in_progress'] = 'Solange Sie den Test „{$a->quiz}“ im Kurs „{$a->course}“ bearbeiten, steht der Chat nicht zur Verfügung. Nach der Abgabe können Sie ihn wieder nutzen.';
 
 // Gemeinsame Oberflächentexte.
 $string['source'] = 'Quelle';

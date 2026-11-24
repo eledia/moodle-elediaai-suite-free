@@ -339,6 +339,9 @@ $string['privacy_sent_title'] = 'What is sent when you chat';
 $string['privacy_storage_body'] = 'Moodle stores your conversations in full – your messages and the tutor\'s answers – so that you can continue them later, together with the time you acknowledged these guidelines and a daily message count. When the tutor answers through LiteRAG on this site, LiteRAG keeps its own copy of the conversation and a search log. In addition, the AI suite records each question and answer without your name, under a pseudonym, for course reports, and keeps a record that an AI answer was given to you, as the EU AI Act requires. If an external tutor service answers, it stores the conversation under its own retention policy. How long each of these is kept is set by your site administrator.';
 $string['privacy_storage_title'] = 'What is stored';
 $string['privacyguidelines'] = 'Privacy guidelines';
+$string['quizlock_inherit'] = 'As set in the chat engine';
+$string['quizlock_off'] = 'Do not lock';
+$string['quizlock_on'] = 'Lock';
 $string['ragmode_grounded'] = 'Grounded in course materials';
 $string['ragmode_llmonly'] = 'General knowledge (LLM only)';
 $string['reg_allowstylechange'] = 'Allow style change';
@@ -477,6 +480,13 @@ $string['reg_promptstarters_teacher'] = 'Prompt starters (teachers)';
 $string['reg_promptstarters_student'] = 'Prompt starters (students)';
 $string['reg_promptstarters_teacher_desc'] = 'Shown on the Dashboard to teachers; one per line ("fa-icon | Label | Prompt"). Empty: the built-in defaults apply.';
 $string['reg_promptstarters_student_desc'] = 'On the dashboard for learners; one per line ("fa-icon | Label | Prompt"). Empty: the built-in learner pills apply. The general prompt starters are not used on the dashboard.';
+$string['reg_quizlock'] = 'Lock during quizzes';
+$string['reg_quizlock_desc'] = 'Whether the tutor refuses messages while the learner has a quiz attempt open, in any course. "As set in the chat engine" follows the site setting "Lock the chat during quizzes" of the chat engine. Teachers are exempt through the capability local/elediaai_chatengine:bypassquizlock.';
+$string['reg_quizlock_help'] = 'Whether this tutor refuses messages while the learner has a quiz attempt open. Any open attempt counts, in any course; the tutor names the quiz instead of answering. Previews and quizzes the learner can no longer reach do not count, and teachers are exempt.
+
+* **Use site default**: what the tutor\'s site settings say, by default the chat engine\'s setting.
+* **As set in the chat engine**: the site setting "Lock the chat during quizzes".
+* **Lock** / **Do not lock**: for this tutor, whatever the site says.';
 $string['reg_tok_accentcontrast'] = 'Text on accent';
 $string['reg_tok_accentcontrast_desc'] = 'Text/icon colour shown on top of the accent colour (e.g. button labels).';
 $string['reg_tok_accentdark'] = 'Accent (hover/pressed)';

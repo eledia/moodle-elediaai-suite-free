@@ -26,12 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026112403;
+$plugin->version = 2026112404;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'block_elediaai_tutor';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.21';
+$plugin->release = '1.0.22';
 $plugin->dependencies = [
     // The block always talks to the backend through a user-scoped Moodle MCP
     // token, on grounded and model-only turns alike, so the connector is
@@ -42,7 +42,8 @@ $plugin->dependencies = [
     // conversation, the backend and the safety framing.
     // 2026101403: chat_service::record_rejection() (#37).
     // 2026112401: Werkzeug 'memory' (tutor_get_memory) fuer die Einsicht (#238).
-    'local_elediaai_chatengine' => 2026112401,
+    // 2026112403: Schnittstelle quiz_lock_policy, die placement umsetzt (#237).
+    'local_elediaai_chatengine' => 2026112403,
     // Die Einstiege pruefen den Feature-Schalter der Suite
     // (registry::require_enabled, K2), ohne Rueckfall fuer einen fehlenden
     // Kern. Bisher fehlte die Angabe, und Moodle nannte bei der Installation

@@ -3,6 +3,27 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.6.0] – 2026-11-24
+
+### Neu
+
+- Testsperre (ai_suite#237): Mit der neuen Website-Einstellung
+  „Chat waehrend Tests sperren“ (`quizlock`, standardmaessig aus) lehnt jeder
+  Chat Nachrichten ab, solange die Person einen Testversuch offen hat
+  (`inprogress` oder `overdue`, keine Vorschau), egal in welchem Kurs. Die
+  Meldung nennt Test und Kurs, als Text ohne Link. Geprueft wird in
+  `chat_service::run_turn()` vor Rate-Limit, Kontingent und Backend, bei
+  jedem Senden ohne Cache; nach der Abgabe ist der Chat sofort frei. Abgelehnte
+  Turns stehen wie andere Ablehnungen im Turn-Log (ohne Frage).
+- Versuche, die die Person nicht mehr erreichen kann (Aktivitaet verborgen,
+  Kurs verborgen, keine aktive Einschreibung), sperren nicht.
+- Neue Berechtigung `local/elediaai_chatengine:bypassquizlock` (Kurs;
+  Lehrende mit und ohne Bearbeitungsrecht, Manager): nimmt im Kurs des Tests
+  von der Sperre aus. Dafuer gibt es jetzt `db/access.php`.
+- Optionale Placement-Schnittstelle `placement\quiz_lock_policy`
+  (`quiz_lock(int): ?bool`): ein Placement kann die Sperre je Instanz an-
+  oder abschalten; `null` folgt der Website-Einstellung.
+
 ## [1.5.9] – 2026-11-24
 
 ### Behoben

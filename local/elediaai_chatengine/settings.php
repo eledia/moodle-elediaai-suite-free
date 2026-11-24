@@ -195,4 +195,12 @@ if ($hassiteconfig) {
         get_string('setting_streamingenabled_desc', 'local_elediaai_chatengine'),
         1
     ));
+
+    // Off by default, so an existing site behaves as before (#237, E-2).
+    $settings->add(new admin_setting_configcheckbox(
+        'local_elediaai_chatengine/' . \local_elediaai_chatengine\local\quiz_lock::SETTING,
+        get_string('setting_quizlock', 'local_elediaai_chatengine'),
+        get_string('setting_quizlock_desc', 'local_elediaai_chatengine'),
+        0
+    ));
 }

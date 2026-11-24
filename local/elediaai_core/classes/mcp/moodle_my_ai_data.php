@@ -87,7 +87,8 @@ final class moodle_my_ai_data implements ai_tool {
         return [
             'type' => 'object',
             'additionalProperties' => false,
-            'properties' => [],
+            // An object, not [], so the JSON schema reads {} instead of an invalid list.
+            'properties' => new \stdClass(),
         ];
     }
 

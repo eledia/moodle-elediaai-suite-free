@@ -43,7 +43,7 @@ Plugins ▸ Local plugins ▸ AI Chat Engine).
 | `tutor_delete_conversation` | Optional | `enabletool_delete` (default on) | Delete a single conversation server-side. |
 | `tutor_delete_user_data` | Optional, **recommended** | `enabletool_deleteuser` (default on) | Erase ALL data held for the authenticated user (transcripts + memory). |
 | `tutor_set_memory_optin` | Optional (required for memory) | `enabletool_memoryoptin` (default off) | Record the user's long-term memory consent; erase memories on opt-out. |
-| `tutor_recluster_questions` | Optional | `enabletool_recluster` (default off) | Nightly batch re-labelling of logged questions (analytics topic convergence); authenticated by the maintenance account's token. |
+| `tutor_recluster_questions` | Optional, **needed for topics** | `enabletool_recluster` (default off) | Nightly labelling of logged questions with topics (A.6); the only way questions get a topic, so without it the teacher report shows none. Authenticated by the maintenance account's token. |
 | `tutor_get_memory` | Optional (with memory) | follows `enabletool_memoryoptin` | Return what long-term memory holds about the authenticated user, read-only, for the learner's own view (A.7). |
 
 A switched-off tool is simply not called.
@@ -142,7 +142,7 @@ Recognised fields (several aliases accepted, so you can keep your own naming):
 | Answer body (Markdown) | `answer`, `text`, `message`, `response`, `content`, `output` |
 | Conversation id | `conversation_id`, `conversationId`, `session_id`, `sessionId`, `thread_id` |
 | Sources / citations | `sources`, `citations`, `documents`, `references` |
-| Topic label | `topic`, `subject` |
+| Topic label (deprecated, see below) | `topic`, `subject` |
 | Confirmation card | `confirmation` (object, see below) |
 
 A **source** entry may be a plain string, or an object with any of:
@@ -161,20 +161,15 @@ free text. Fields: `required` (must be `true`), `yeslabel`, `nolabel`,
 the `outline` of `moodle_generate_course`'s preview (`coursename` → `title`,
 section `title`/`summary`, nothing else). All text is shown as plain text.
 
-**`topic` (strongly recommended):** a short canonical label (≤ 100 chars) used
-to cluster questions in the teacher analytics dashboard. Without it, two
-phrasings of the same question ("When is the essay due?" / "essay deadline?")
-never aggregate and the statistics stay uselessly granular. Rules:
-
-- **Stable across rephrasings**: the same concept must always yield the same
-  label. Derive it from your retrieval (e.g. the dominant chunk's
-  section/concept) or a cheap classification step — not from the user's wording.
-- Keep the label set small and human-readable (course-section or concept
-  granularity, e.g. `Photosynthesis`, `Assignment 2`, `Enrolment & access`).
-- Use the course's language consistently; do not vary the label by the
-  learner's `user_lang`.
-- Omit the field when you genuinely cannot classify; Moodle then falls back to
-  grouping by the primary source's title.
+**`topic` (deprecated, do not send):** earlier versions asked for a topic
+label with every answer. Topics now come only from the nightly recluster
+(`tutor_recluster_questions`, A.6), which labels all questions of a course
+together against the course's label set; our own server sends no `topic` in
+`tutor_chat`. Moodle still reads the field for backwards compatibility: a
+label that arrives with an answer is stored as the question's topic and
+counts as labelled, so the nightly run skips it and only the optional full
+run (A.6) can change it. Send it only if you classify into the course's label
+set yourself; otherwise leave it out and let the recluster label the question.
 
 > The answer is rendered as **Markdown** and sanitised by Moodle's HTML purifier
 > before display, so Markdown (headings, lists, code fences, links, tables) is
@@ -335,26 +330,25 @@ the erasure cannot be undone; the confirmation links to the view of A.7.
 
 ### A.6 `tutor_recluster_questions` (optional — called by a nightly task)
 
-Topic quality is the foundation of the teacher analytics. Two mechanisms keep
-it high; implement both:
+Topics are the foundation of the teacher analytics, and this tool is how
+questions get them: `tutor_chat` does not label (A.1), so without the tool the
+teacher report has no topics.
 
-**Primary — per-course label registry (required for good analytics).**
-Maintain a registry of topic labels per course and always classify a question
-*into the existing set*, only minting a new label when nothing fits. Free-form
-label generation per answer WILL fragment ("Essay deadline", "Essay 2 due
-date", "Assignment deadlines" for the same concept) and makes the hotspot
+**The label set lives in Moodle.** Moodle keeps the labels of each course and
+sends them with every batch (`labels`, with counts and examples). Classify each
+question *into that set* and only mint a new label when nothing fits.
+Free-form labels per question WILL fragment ("Essay deadline", "Essay 2 due
+date", "Assignment deadlines" for the same concept) and make the hotspot
 report useless.
 
-**Repair — batch reclustering (this tool).** Even with a registry, labels
-drift over time (model/prompt updates, course restructuring, early questions
-asked before the registry stabilised). When the tool is enabled, a **nightly
-scheduled task** sends, per active course, the logged questions of the last 30
-days that **have no topic yet** (block 1.0.19, ai_suite#210: once labelled
-stays labelled, so the teacher's numbers do not move without new questions).
-Optionally (admin setting, default off) it re-sends **all** questions of the
-window once every 14 days to repair drift. Batches hold ≤ 200 questions, oldest
-first, together with the course and its current label set; refused turns
-(empty prompt) are never sent. The returned labels are written back:
+**When it runs.** When the tool is enabled, a **nightly scheduled task** sends,
+per active course, the logged questions of the last 30 days that **have no
+topic yet** (block 1.0.19, ai_suite#210: once labelled stays labelled, so the
+teacher's numbers do not move without new questions). Optionally (admin
+setting, default off) it re-sends **all** questions of the window once every
+14 days to repair drift. Batches hold ≤ 200 questions, oldest first, together
+with the course and its current label set; refused turns (empty prompt) are
+never sent. The returned labels are written back:
 
 ```json
 { "name": "tutor_recluster_questions",
@@ -595,7 +589,7 @@ deltas and answer drifting apart cannot corrupt the stored conversation.
 
 Consequently:
 
-- `sources`, `topic`, `answer_origin`, `confirmation` and token counts belong in
+- `sources`, `answer_origin`, `confirmation` and token counts belong in
   the `final` frame only — never in a `token` frame.
 - Never put a token, a secret or internal diagnostics in a delta; deltas reach
   the browser directly.
@@ -920,12 +914,13 @@ differently trustworthy depending on where the facts came from.
       emit `token` frames while generating, always close with `final` + `done`,
       and disable proxy buffering.
 - [ ] Use `"isError": true` for handled failures; JSON-RPC `error` for outages.
-- [ ] Return a stable `topic` label with each answer and order `sources` by
-      relevance (`sources[0]` = primary) so teacher analytics can aggregate.
+- [ ] Order `sources` by relevance (`sources[0]` = primary) so teacher
+      analytics can aggregate. Do not send a `topic` per answer (A.1).
 - [ ] Honour `answer_style` (`hint` must never reveal full solutions) and
       `user_lang`.
-- [ ] Optional `tutor_recluster_questions`: classify each batch into the
-      supplied label registry (mint sparingly), idempotent, ≤ 200/batch; its
+- [ ] `tutor_recluster_questions` if the teacher report should show topics
+      (it is their only source): classify each batch into the
+      supplied label set (mint sparingly), idempotent, ≤ 200/batch; its
       `moodle_token` belongs to the `elediaai_tutor_service` maintenance
       account — validate it by callback, **pin on that username** (reject
       learner tokens for this tool), only against known tenant `system_url`s,
@@ -943,6 +938,7 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.5.9 (doc update) | **`topic` in `tutor_chat` deprecated** (A.1, A.6, ai_suite#240): topics come only from `tutor_recluster_questions`, which is therefore needed for a teacher report with topics. The label set is Moodle's (`labels` in each batch), not a server-side registry. Moodle still reads `topic`/`subject` from an answer; such a label counts as labelled and is skipped by the nightly run. Nothing changes for a server that already omits the field. |
 | chatengine 1.5.8 | **`tutor_get_memory`** (A.7): optional, read-only view of the user's long-term memory and session notes for the privacy panel; called whenever `enabletool_memoryoptin` is on. Additive: a server without it answers "Unknown tool", which the learner sees as "could not be loaded". The opt-out (A.5) is now confirmed by the learner first. |
 | block_elediaai_tutor 1.0.19 | **Recluster contract updated** (A.6): `mode`, `course {fullname, lang}` and `labels [{label, count, examples}]` instead of `existing_labels`; reserved result label `__none__`. Nightly runs send only questions without a topic, an optional full run every 14 days sends the whole window. Refused turns (empty prompt) are no longer sent (ai_suite#206). Requires a server that reads `labels`; ours does since 23.11.2026. |
 | chatengine 1.4.0 | **`confirmation.outline`** (A.1): an optional course outline on the confirmation card. Additive; a card without it looks as before. |

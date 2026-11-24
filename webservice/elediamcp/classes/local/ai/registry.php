@@ -26,14 +26,16 @@ use webservice_elediamcp\local\ai\tools\moodle_create_course;
 use webservice_elediamcp\local\ai\tools\moodle_create_user;
 use webservice_elediamcp\local\ai\tools\moodle_due_work;
 use webservice_elediamcp\local\ai\tools\moodle_enrol_user;
+use webservice_elediamcp\local\ai\tools\moodle_find_competencies;
 use webservice_elediamcp\local\ai\tools\moodle_find_user;
 use webservice_elediamcp\local\ai\tools\moodle_forum_discussions;
 use webservice_elediamcp\local\ai\tools\moodle_generate_h5p;
 use webservice_elediamcp\local\ai\tools\moodle_generate_questions;
-use webservice_elediamcp\local\ai\tools\moodle_grading_queue;
 use webservice_elediamcp\local\ai\tools\moodle_get_announcements;
 use webservice_elediamcp\local\ai\tools\moodle_get_resource;
 use webservice_elediamcp\local\ai\tools\moodle_grade_submission;
+use webservice_elediamcp\local\ai\tools\moodle_grading_queue;
+use webservice_elediamcp\local\ai\tools\moodle_link_competencies;
 use webservice_elediamcp\local\ai\tools\moodle_list_course_categories;
 use webservice_elediamcp\local\ai\tools\moodle_manage_sections;
 use webservice_elediamcp\local\ai\tools\moodle_me;
@@ -58,6 +60,7 @@ use webservice_elediamcp\local\ai\tools\moodle_selfstudy_get_quiz;
 use webservice_elediamcp\local\ai\tools\moodle_selfstudy_list_quizzes;
 use webservice_elediamcp\local\ai\tools\moodle_selfstudy_submit_attempt;
 use webservice_elediamcp\local\ai\tools\moodle_send_message;
+use webservice_elediamcp\local\ai\tools\moodle_set_learning_objectives;
 use webservice_elediamcp\local\ai\tools\moodle_unanswered_forum_posts;
 use webservice_elediamcp\local\ai\tools\moodle_update_activity;
 use webservice_elediamcp\local\ai\tools\moodle_update_course;
@@ -144,9 +147,16 @@ class registry {
             moodle_create_activity::class,
             moodle_update_activity::class,
             moodle_manage_sections::class,
+            moodle_set_learning_objectives::class,
             moodle_grade_submission::class,
             moodle_message_course_students::class,
         ];
+
+        // Competencies only where the site has them switched on.
+        if (\core_competency\api::is_enabled()) {
+            $tools[] = moodle_find_competencies::class;
+            $tools[] = moodle_link_competencies::class;
+        }
 
         // Optional eledia.ai generation tools: registered only when the wrapped
         // plugin is installed, so marketplace installs never reference them.

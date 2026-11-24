@@ -3,6 +3,16 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [1.0.22] – 2026-11-24
+
+### Neu
+
+- „Waehrend Tests sperren“ je Blockinstanz (ai_suite#237): Website-Standard,
+  „Wie in der Chat-Engine eingestellt“ (Standard), „Sperren“ oder „Nicht
+  sperren“. Die Sperre selbst kommt aus `local_elediaai_chatengine` 1.6.0;
+  der Block setzt dafuer `quiz_lock_policy` um. Der Website-Launcher folgt
+  der freischaltenden Instanz. Setzt Chat-Engine 2026112403 voraus.
+
 ## [1.0.21] – 2026-11-24
 
 ### Behoben

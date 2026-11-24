@@ -27,6 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 $string['health_backend'] = 'Chat backend';
 $string['health_backend_unconfigured'] = 'No backend is selected, so no chat can answer.';
 $string['pluginname'] = 'AI Chat Engine';
+$string['elediaai_chatengine:bypassquizlock'] = 'Use the chat during quizzes';
 $string['privacy:metadata:thread'] = 'Conversations held with an AI assistant in any of the chat placements.';
 $string['privacy:metadata:thread:userid'] = 'The user who held the conversation.';
 $string['privacy:metadata:thread:placement'] = 'Which chat placement the conversation was started from.';
@@ -172,6 +173,8 @@ $string['setting_dailymessagelimit'] = 'Messages per day';
 $string['setting_dailymessagelimit_desc'] = 'Messages one user may send per day. 0 means unlimited.';
 $string['setting_streamingenabled'] = 'Stream answers';
 $string['setting_streamingenabled_desc'] = 'Show an answer as it is produced, where the backend supports it. LiteRAG answers in one piece; with LiteRAG this setting has no effect.';
+$string['setting_quizlock'] = 'Lock the chat during quizzes';
+$string['setting_quizlock_desc'] = 'While a person has a quiz attempt open, in any course, every chat refuses their messages and names the quiz. Previews and quizzes the person can no longer reach do not count. People with the capability "Use the chat during quizzes" in the quiz\'s course (teachers by default) are exempt. A surface may override this per instance; the tutor block offers that in its block settings.';
 $string['setting_retentiondays'] = 'Conversation retention';
 $string['setting_retentiondays_desc'] = 'Days a conversation is kept after its last turn. 0 keeps conversations until a user or an administrator deletes them.';
 $string['setting_mcpserviceid'] = 'Callback web service';
@@ -212,6 +215,7 @@ $string['error_rate_limited'] = 'Too many messages just now. Please wait {$a} se
 $string['error_daily_limit'] = 'You have reached the daily message limit.';
 $string['error_mode_unsupported'] = 'The configured backend cannot answer in that mode.';
 $string['error_thread_not_found'] = 'That conversation could not be found.';
+$string['error_quiz_in_progress'] = 'While you are working on the quiz "{$a->quiz}" in the course "{$a->course}", the chat is not available. Once you submit your attempt, you can use it again.';
 
 // Shared interface strings.
 $string['source'] = 'Source';

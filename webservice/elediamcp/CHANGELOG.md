@@ -5,6 +5,19 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.0] – 2026-11-21
+
+### Neu
+
+- `moodle_set_learning_objectives`: setzt, ergänzt oder entfernt die Lernziele eines Kurses, eines Abschnitts oder einer Aktivität. Nur der Lernziel-Kasten ändert sich; Beschreibung, Bilder und eingebettete Dateien bleiben (die Beschreibung wird dabei neu serialisiert, Dateinamen mit Leerzeichen oder Sonderzeichen werden prozentkodiert geschrieben). Ist die Beschreibung Klartext oder Markdown, wird sie als HTML gespeichert; die Vorschau nennt das (`preview.format_converted`). Mit `tiny_c4l` (Components for Learning) nutzt der Kasten dessen Komponente „Learning outcomes“, ein von Hand eingefügter C4L-Kasten wird erkannt. Ohne C4L: Überschrift und Liste.
+- `moodle_find_competencies` und `moodle_link_competencies`: Kompetenzen suchen und mit Kurs und Aktivität verknüpfen (nur hinzufügen, mit Vorschau); verknüpft wird nur aus Rahmen, die für die Person sichtbar und lesbar sind. Nur registriert, wenn Kompetenzen aktiv sind.
+- `moodle_manage_sections`: Aktion `set_summary` (Abschnittsbeschreibung als HTML, auch Abschnitt 0); die Vorschau zeigt den alten und den neuen Text (`preview.before`, `preview.after`).
+- `moodle_update_course`: `summary_format` (`plain` bleibt Standard, `html` neu).
+
+### Tests
+
+- `learning_objectives_test`: Kasten einfügen, ersetzen, entfernen, C4L-Kasten erkennen, Kurs/Abschnitt/Aktivität, Rechte, `set_summary`, `summary_format`, Kompetenzen suchen und verknüpfen, Werkzeuge bei abgeschalteten Kompetenzen nicht angeboten.
+
 ## [1.23.0] – 2026-11-20
 
 ### Sicherheit

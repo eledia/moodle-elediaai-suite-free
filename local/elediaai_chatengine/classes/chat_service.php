@@ -32,6 +32,7 @@ use local_elediaai_chatengine\local\markdown_renderer;
 use local_elediaai_chatengine\local\message;
 use local_elediaai_chatengine\local\mode;
 use local_elediaai_chatengine\local\prompt_safety;
+use local_elediaai_chatengine\local\quiz_lock;
 use local_elediaai_chatengine\local\system_prompt;
 use local_elediaai_chatengine\local\thread_store;
 use local_elediaai_chatengine\local\token_provider;
@@ -238,6 +239,10 @@ class chat_service {
         $placement = registry::require_placement($component);
         $placement->require_access($instanceid, $userid);
         $placement->require_send($instanceid, $userid);
+        // Before the rate limit, the quota and the backend: a turn refused
+        // because a quiz is open costs nothing and reaches no agent -- and
+        // with it none of the Moodle tools the agent would call (#237).
+        quiz_lock::enforce($placement, $instanceid, $userid);
 
         $message = guard::validate_message($rawmessage);
         guard::enforce_rate_limit($userid, $guestkey);

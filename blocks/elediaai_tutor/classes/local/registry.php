@@ -238,6 +238,19 @@ class registry {
         $entries['historyenabled'] = self::entry('conversation', 'checkbox', [
             'default' => 1, 'exposedefault' => true,
         ]);
+        // Whether an open quiz attempt closes this tutor (ai_suite#237). The
+        // engine holds the site-wide switch; 'inherit' follows it, so a site
+        // that sets nothing here behaves exactly as the engine says. Exposed,
+        // because the requirement is a switch per course.
+        $entries['quizlock'] = self::entry('conversation', 'select', [
+            'default' => 'inherit',
+            'options' => [
+                'inherit' => 'quizlock_inherit',
+                'on' => 'quizlock_on',
+                'off' => 'quizlock_off',
+            ],
+            'exposedefault' => true,
+        ]);
 
         // Dashboard hero mode (/my/ pages only). The hero replaces the classic
         // widget with a prominent greeting, audience-specific prompt starters

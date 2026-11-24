@@ -56,6 +56,12 @@ manuelle Kurseinschreibung und Aktivitätserstellung (Textseite, Textfeld,
 Link, Buch, Aufgabe). Sie nutzen eine Vorschau und verändern Moodle erst
 beim zweiten Aufruf mit `confirm=true`.
 
+Lehrende können außerdem Lernziele in Kurs-, Abschnitts- und
+Aktivitätsbeschreibungen setzen und ergänzen. Ist „Components for Learning“
+(C4L) installiert, erscheinen die Lernziele im C4L-Kasten „Learning
+outcomes“. Wenn Kompetenzen auf der Website aktiv sind, lassen sich passende
+Kompetenzen suchen und mit Kurs und Aktivitäten verknüpfen.
+
 ## Workflow-Prompts
 
 MCP-Clients können geführte Slash-Commands wie **Wochenüberblick**,

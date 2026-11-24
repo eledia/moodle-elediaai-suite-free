@@ -339,6 +339,9 @@ $string['privacy_sent_title'] = 'Was beim Chatten gesendet wird';
 $string['privacy_storage_body'] = 'Moodle speichert Ihre Gespräche vollständig – Ihre Nachrichten und die Antworten des Tutors –, damit Sie sie später fortsetzen können, dazu den Zeitpunkt Ihrer Bestätigung dieser Hinweise und einen täglichen Nachrichtenzähler. Antwortet der Tutor über LiteRAG auf dieser Website, hält LiteRAG eine eigene Kopie des Gesprächs und ein Suchprotokoll. Außerdem erfasst die KI-Suite jede Frage und Antwort ohne Ihren Namen unter einem Pseudonym für Kursauswertungen und hält fest, dass Ihnen eine KI-Antwort gegeben wurde, wie es die KI-Verordnung verlangt. Antwortet ein externer Tutor-Dienst, speichert er das Gespräch nach seiner eigenen Aufbewahrungsrichtlinie. Wie lange all das aufbewahrt wird, legt Ihre Administration fest.';
 $string['privacy_storage_title'] = 'Was gespeichert wird';
 $string['privacyguidelines'] = 'Datenschutzhinweise';
+$string['quizlock_inherit'] = 'Wie in der Chat-Engine eingestellt';
+$string['quizlock_off'] = 'Nicht sperren';
+$string['quizlock_on'] = 'Sperren';
 $string['ragmode_grounded'] = 'In Kursmaterialien verankert';
 $string['ragmode_llmonly'] = 'Allgemeinwissen (nur LLM)';
 $string['reg_allowstylechange'] = 'Stilwechsel erlauben';
@@ -477,6 +480,13 @@ $string['reg_promptstarters_teacher'] = 'Vorschlagsfragen (Trainer/innen)';
 $string['reg_promptstarters_student'] = 'Vorschlagsfragen (Lernende)';
 $string['reg_promptstarters_teacher_desc'] = 'Auf dem Dashboard für Trainer/innen; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gelten die eingebauten Vorgaben.';
 $string['reg_promptstarters_student_desc'] = 'Auf dem Dashboard für Lernende; eine pro Zeile („fa-icon | Label | Prompt"). Leer: Es gelten die eingebauten Pills für Lernende. Die allgemeinen Vorschlagsfragen gelten auf dem Dashboard nicht.';
+$string['reg_quizlock'] = 'Während Tests sperren';
+$string['reg_quizlock_desc'] = 'Ob der Tutor Nachrichten ablehnt, solange die Person einen Testversuch offen hat, egal in welchem Kurs. „Wie in der Chat-Engine eingestellt“ folgt der Website-Einstellung „Chat während Tests sperren“ der Chat-Engine. Lehrende sind über die Berechtigung local/elediaai_chatengine:bypassquizlock ausgenommen.';
+$string['reg_quizlock_help'] = 'Ob dieser Tutor Nachrichten ablehnt, solange die Person einen Testversuch offen hat. Jeder offene Versuch zählt, in jedem Kurs; statt einer Antwort nennt der Tutor den Test. Vorschauversuche und Tests, die die Person nicht mehr erreichen kann, zählen nicht, und Lehrende sind ausgenommen.
+
+* **Website-Standard verwenden**: was die Website-Einstellungen des Tutors sagen, standardmäßig die Einstellung der Chat-Engine.
+* **Wie in der Chat-Engine eingestellt**: die Website-Einstellung „Chat während Tests sperren“.
+* **Sperren** / **Nicht sperren**: für diesen Tutor, unabhängig von der Website.';
 $string['reg_tok_accentcontrast'] = 'Text auf Akzent';
 $string['reg_tok_accentcontrast_desc'] = 'Text-/Symbolfarbe auf der Akzentfarbe (z. B. Schaltflächenbeschriftungen).';
 $string['reg_tok_accentdark'] = 'Akzent (Hover/Gedrückt)';

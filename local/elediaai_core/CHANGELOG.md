@@ -4,6 +4,12 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [1.4.1] – 2026-11-24
+
+### Behoben
+
+- `moodle_my_ai_data`: Das Eingabeschema meldete leere `properties` als `[]` statt als Objekt. Das ist kein gültiges JSON-Schema; Claude Code verwirft daraufhin die gesamte Werkzeugliste des MCP-Servers („tools fetch failed“). Das Schema liefert jetzt `{}`, wie die übrigen Werkzeuge ohne Eingabe. Der Test prüft die JSON-Form.
+
 ## [1.4.0] – 2026-11-24
 
 ### Behoben

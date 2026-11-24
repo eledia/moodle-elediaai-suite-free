@@ -58,7 +58,9 @@ class moodle_manage_sections implements ai_tool {
      */
     public static function description(): string {
         return 'Creates, renames or hides/shows a course section. Actions: create (appends a new '
-            . 'section, optional name), rename (section + name), set_visibility (section + visible). '
+            . 'section, optional name), rename (section + name), set_visibility (section + visible), '
+            . 'set_summary (section + summary as HTML; replaces the whole summary, section 0 allowed; '
+            . 'for learning objectives use moodle_set_learning_objectives instead). '
             . 'Requires moodle/course:update. Two-step flow: first call returns a preview; call '
             . 'again with confirm=true. Use moodle_course_contents to inspect the current sections.';
     }
@@ -77,12 +79,12 @@ class moodle_manage_sections implements ai_tool {
                 'course_id' => ['type' => 'integer', 'minimum' => 1],
                 'action' => [
                     'type' => 'string',
-                    'enum' => ['create', 'rename', 'set_visibility'],
+                    'enum' => ['create', 'rename', 'set_visibility', 'set_summary'],
                 ],
                 'section' => [
                     'type' => 'integer',
-                    'minimum' => 1,
-                    'description' => 'Section number for rename/set_visibility (section 0 cannot be managed).',
+                    'minimum' => 0,
+                    'description' => 'Section number for rename/set_visibility (from 1) and set_summary (from 0).',
                 ],
                 'name' => [
                     'type' => 'string',
@@ -92,6 +94,10 @@ class moodle_manage_sections implements ai_tool {
                 'visible' => [
                     'type' => 'boolean',
                     'description' => 'For set_visibility.',
+                ],
+                'summary' => [
+                    'type' => 'string',
+                    'description' => 'For set_summary: the new section summary as HTML.',
                 ],
                 'confirm' => ['type' => 'boolean', 'default' => false],
             ],
@@ -124,6 +130,8 @@ class moodle_manage_sections implements ai_tool {
                         'action' => ['type' => 'string'],
                         'course_fullname' => ['type' => 'string'],
                         'detail' => ['type' => 'string'],
+                        'before' => ['type' => 'string', 'description' => 'set_summary: current summary as short plain text.'],
+                        'after' => ['type' => 'string', 'description' => 'set_summary: new summary as short plain text.'],
                         'card_summary' => card_summary::schema(),
                     ],
                 ],
@@ -162,8 +170,8 @@ class moodle_manage_sections implements ai_tool {
         if ($courseid <= 0) {
             throw new tool_exception('course_id is required.');
         }
-        if (!in_array($action, ['create', 'rename', 'set_visibility'], true)) {
-            throw new tool_exception('Invalid action. Allowed: create, rename, set_visibility.');
+        if (!in_array($action, ['create', 'rename', 'set_visibility', 'set_summary'], true)) {
+            throw new tool_exception('Invalid action. Allowed: create, rename, set_visibility, set_summary.');
         }
         if ($courseid === (int) SITEID) {
             throw new tool_exception('Sections of the site home cannot be managed.');
@@ -181,8 +189,9 @@ class moodle_manage_sections implements ai_tool {
         $coursename = format_string($course->fullname, true, ['context' => $context]);
 
         $sectioninfo = null;
+        $summary = array_key_exists('summary', $arguments) ? trim((string) $arguments['summary']) : null;
         if ($action !== 'create') {
-            if ($sectionnum <= 0) {
+            if ($sectionnum <= 0 && $action !== 'set_summary') {
                 throw new tool_exception('section (>= 1) is required for ' . $action . '.');
             }
             $sectioninfo = $modinfo->get_section_info($sectionnum);
@@ -192,6 +201,12 @@ class moodle_manage_sections implements ai_tool {
         }
         if ($action === 'rename' && $name === '') {
             throw new tool_exception('name is required for rename.');
+        }
+        if ($action === 'set_summary' && !array_key_exists('section', $arguments)) {
+            throw new tool_exception('section is required for set_summary (0 for the general section).');
+        }
+        if ($action === 'set_summary' && $summary === null) {
+            throw new tool_exception('summary is required for set_summary.');
         }
         if ($action === 'set_visibility') {
             if ($visible === null) {
@@ -205,6 +220,8 @@ class moodle_manage_sections implements ai_tool {
             'rename' => 'Rename section ' . $sectionnum . ' ("'
                 . get_section_name($course, $sectioninfo) . '") to "' . $name . '".',
             'set_visibility' => ($visible ? 'Show' : 'Hide') . ' section ' . $sectionnum . ' ("'
+                . get_section_name($course, $sectioninfo) . '").',
+            'set_summary' => 'Replace the summary of section ' . $sectionnum . ' ("'
                 . get_section_name($course, $sectioninfo) . '").',
         };
 
@@ -221,17 +238,27 @@ class moodle_manage_sections implements ai_tool {
                     $visible ? 'cardsummary_section_show' : 'cardsummary_section_hide',
                     (object) ['course' => $coursename, 'section' => $cardsection]
                 ),
+                'set_summary' => card_summary::text(
+                    'cardsummary_section_summary',
+                    (object) ['course' => $coursename, 'section' => $cardsection]
+                ),
             };
+            $preview = [
+                'action' => $action,
+                'course_fullname' => $coursename,
+                'detail' => $detail,
+                'card_summary' => $card,
+            ];
+            if ($action === 'set_summary') {
+                // The whole summary is replaced, so the preview shows what goes and what comes.
+                $preview['before'] = shorten_text(html_to_text((string) $sectioninfo->summary, 0, false), 300);
+                $preview['after'] = shorten_text(html_to_text((string) $summary, 0, false), 300);
+            }
             return [
                 'done' => false,
                 'requires_confirmation' => true,
                 'section' => null,
-                'preview' => [
-                    'action' => $action,
-                    'course_fullname' => $coursename,
-                    'detail' => $detail,
-                    'card_summary' => $card,
-                ],
+                'preview' => $preview,
                 'summary' => $detail . ' Call again with confirm=true to apply.',
             ];
         }
@@ -250,6 +277,9 @@ class moodle_manage_sections implements ai_tool {
                     break;
                 case 'set_visibility':
                     set_section_visible($courseid, $sectionnum, $visible ? 1 : 0);
+                    break;
+                case 'set_summary':
+                    course_update_section($course, $sectioninfo, ['summary' => $summary, 'summaryformat' => FORMAT_HTML]);
                     break;
             }
         } catch (Throwable $ex) {

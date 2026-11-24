@@ -52,6 +52,8 @@ class stream_runner {
             'error_daily_limit', 'error_mode_unsupported',
             // Written for the learner by the backend or about the waiting time (#39).
             'error_backend_refused', 'error_backend_busy', 'error_backend_timeout',
+            // Names the open quiz, so a forgotten attempt can be found (#237).
+            'error_quiz_in_progress',
         ],
         'local_elediaai_core' => ['error_quota_token_exceeded', 'error_quota_unavailable'],
         'block_elediaai_tutor' => ['error_consentrequired', 'error_course_chat_disabled', 'error_global_chat_disabled'],

@@ -30,6 +30,7 @@ use local_elediaai_chatengine\local\mode;
 use local_elediaai_chatengine\local\persona;
 use local_elediaai_chatengine\local\system_prompt;
 use local_elediaai_chatengine\placement\placement as placement_contract;
+use local_elediaai_chatengine\placement\quiz_lock_policy;
 use local_elediaai_chatengine\placement\user_request_framing;
 
 /**
@@ -50,13 +51,17 @@ use local_elediaai_chatengine\placement\user_request_framing;
  * on requests with tools — create an activity, list what is due — so a
  * person's message has to count as their request, within their Moodle rights.
  *
+ * It answers the quiz lock per instance ({@see quiz_lock_policy}, #237): the
+ * block's `quizlock` setting, or the engine's site setting when it says
+ * nothing.
+ *
  * @package     block_elediaai_tutor
  * @author      Christopher Reimann <christopher.reimann@eledia.de>
  * @copyright   2026 eLeDia GmbH, Berlin
  * @link        https://eledia.de
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class placement implements placement_contract, user_request_framing {
+class placement implements placement_contract, quiz_lock_policy, user_request_framing {
     /** @var \context|null The surface this request's turn was sent from. */
     private static ?\context $surface = null;
 
@@ -318,6 +323,26 @@ class placement implements placement_contract, user_request_framing {
         }
 
         return (int) $blockconfig->dailylimit;
+    }
+
+    /**
+     * Whether an open quiz attempt closes this tutor.
+     *
+     * Read from the block the turn was sent from, like the daily limit, so the
+     * site-wide launcher follows the instance that unlocked it (#207). An
+     * instance that chose nothing falls back to the tutor's site value, and
+     * that one by default to the engine's setting.
+     *
+     * @param int $instanceid The course id, or 0.
+     * @return bool|null True to lock, false not to, null for the engine's setting.
+     */
+    #[\Override]
+    public function quiz_lock(int $instanceid): ?bool {
+        return match ((string) registry::effective('quizlock', (array) $this->instance_config($instanceid))) {
+            'on' => true,
+            'off' => false,
+            default => null,
+        };
     }
 
     /**
