@@ -18,7 +18,7 @@ Richtungen:
 
 | Erweiterungsachse | Beantwortete Frage | Mechanismus |
 |---|---|---|
-| **Quellentypen** | Was koennen wir lesen? | `aisourcesextractor_*`-Subplugins (17 mitgeliefert) |
+| **Quellentypen** | Was koennen wir lesen? | `aisourcesextractor_*`-Subplugins (15 mitgeliefert) |
 | **Ziele** | Wohin geht es? | Implementierungen des `sink`-Interface |
 
 Ziele sind heute die externe **Ingestion-API** und **LiteRAG** auf derselben
@@ -50,7 +50,7 @@ Kursoberflaeche.
 | Offiziell unterstuetzte Moodle-Versionen | `4.5` bis `5.2` in `version.php` |
 | Lokaler Kompatibilitaetscheck | Moodle `5.2.1` besteht die PHPUnit-Suite |
 | PHP | Moodle-unterstuetzte PHP-Version fuer die Zielversion |
-| Release | `1.0.1` (stable) |
+| Release | `1.6.0` (stable); massgeblich ist `version.php` |
 | Pflicht-Plugins | `local_elediaai_core` (eLeDia.ai Suite Core) |
 
 Moodle 5.2.1 wird lokal bereits fuer Entwicklung und Tests genutzt. Die
@@ -79,7 +79,7 @@ angehoben.
 **Inhalte lesen**
 
 - **Extractor-Subplugins:** ein `aisourcesextractor_*`-Subplugin je
-  Aktivitaetstyp; 17 sind mitgeliefert.
+  Aktivitaetstyp; 15 sind mitgeliefert.
 - **Untertitel als eigentlicher Text von E-Learning-Paketen:** SCORM-Pakete
   sind oft nur eine Player-Huelle ohne Fliesstext. Der Sprechertext wird aus
   eigenstaendigen `.vtt`/`.srt`-Spuren gelesen und bei Articulate Storyline aus
@@ -604,8 +604,17 @@ deklariert.
 ## Dokumentation
 
 ```text
-docs/user_manual.md        — Handbuch fuer Administration und Nutzung (auch auf der Hilfeseite des Plugins)
+docs/user_manual.md           — Handbuch fuer Administration und Nutzung (Hilfeseite des Plugins; nicht umbenennen)
+docs/02-user-doc.md           — Nutzerdoku in DevFlow-Struktur, verweist auf das Handbuch
+docs/api-specification.md     — Vertrag mit dem Ingestion-Dienst (v1.6)
+docs/data-flows.de.md         — Datenfluesse des Ingest-Pfads
+docs/format-support-matrix.md — welche Dokumentformate gesendet werden
+docs/privacy.md, docs/security.md, docs/releasenotes.md
+CHANGES.md                    — technische Aenderungen je Release
 ```
+
+Projektstand und Entwicklungsdokumentation (DevFlow):
+[`docs/00-master.md`](docs/00-master.md).
 
 ## Privacy
 

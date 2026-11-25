@@ -2,6 +2,19 @@
 
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
+Bis 1.0.22 hieß diese Datei `CHANGELOG.md`; seit der DevFlow-Übernahme heißt
+sie `CHANGES.md`, wie es das Moodle Plugins Directory erwartet.
+
+## Unreleased
+
+### Geändert
+
+- Dokumentation auf DevFlow umgestellt: `CHANGELOG.md` heißt `CHANGES.md`,
+  neu sind `docs/product.de.md`, `docs/product.en.md`, `docs/screenshots.md`,
+  `docs/releasenotes.md`, `docs/devflow-version.md` und `docs/playbooks/`.
+  Hilfe und README nennen die Einstellungen wieder dort, wo sie seit der
+  Chat-Engine liegen, und beschreiben Testsperre (#237), Gedächtnisansicht
+  (#238) und beschriftete Startschaltfläche (#234). Kein Code geändert.
 
 ## [1.0.22] – 2026-11-24
 

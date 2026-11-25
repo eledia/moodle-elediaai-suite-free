@@ -3,6 +3,18 @@
 Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
+## [Unreleased]
+
+### Dokumentation
+
+- DevFlow übernommen (Vorlagenstand 862c6298): `docs/00-master.md` bis
+  `05-quality.md`, Produktbeschreibung DE/EN, Datenschutz, Datensicherheit,
+  Release Notes, Bildinventar. Die Vertragsdokumente `docs/contract.md` und
+  `docs/rag_server_spec.md` bleiben unverändert an ihrem Platz.
+- `CHANGELOG.md` heißt jetzt `CHANGES.md`, wie es das Moodle Plugins Directory
+  erwartet. Inhalt unverändert.
+- Neue `README.md` als Einstieg.
+
 ## [1.6.0] – 2026-11-24
 
 ### Neu

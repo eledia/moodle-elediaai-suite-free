@@ -4,6 +4,15 @@ Wesentliche Änderungen, neueste zuerst. Version = `release` aus version.php.
 Format angelehnt an Keep a Changelog.
 Frühere Stände siehe git log.
 
+## [Unreleased]
+
+### Geändert
+
+- Dokumentation nach dem DevFlow-Standard: `CHANGELOG.md` heißt jetzt
+  `CHANGES.md` (Moodle-Konvention), unter `docs/` stehen Features,
+  Nutzerdoku, Qualität, Produktbeschreibung, Datenschutz, Sicherheit und
+  Release Notes. Kein Code geändert.
+
 ## [1.1.1] – 2026-10-23
 
 ### Behoben

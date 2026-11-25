@@ -28,7 +28,7 @@ eine **harte Abhängigkeit** in `version.php`. Das Gespräch selbst führt
 `local_elediaai_core` voraussetzt; core liefert die gemeinsame Suite-Oberfläche
 und die Stunden-/Tages-Tokenquota.
 
-- **Release:** `1.0.1` (stable)
+- **Release:** `1.0.22` (stable)
 - **Moodle-Unterstützung:** 4.5–5.2 (Mindestversion: 4.5)
 - **PHP-Unterstützung:** 8.3+
 - **Pflicht-Plugins:** `local_elediaai_core`, `local_elediaai_chatengine`,
@@ -46,9 +46,9 @@ und die Stunden-/Tages-Tokenquota.
 Browser (AMD chat.js)
   │  Moodle core/ajax  (authentifiziert, sesskey-geschützt)
   ▼
-block_elediaai_tutor external functions  ──►  chat_service
+Endpunkte von local_elediaai_chatengine  ──►  Placement des Blocks (Bereich, Zugang, Persona, Modus)
   │                                            │
-  │  webservice_elediamcp-Token (verpflichtend) │  rag_client (MCP Streamable HTTP, tools/call)
+  │  webservice_elediamcp-Token (verpflichtend) │  Verbindung der Engine (MCP Streamable HTTP, tools/call)
   ▼                                            ▼
 nutzerbezogenes Moodle-MCP-Token  ───────►  externer RAG-/Tutor-MCP-Server
                                                │
@@ -56,12 +56,12 @@ nutzerbezogenes Moodle-MCP-Token  ───────►  externer RAG-/Tutor-
                                       Moodle MCP Server / weitere Tools
 ```
 
-Geheimnisse werden nicht an den Browser ausgeliefert. MCP-Token, RAG-Token und
-RAG-Server-URL bleiben serverseitig in Moodle.
+Geheimnisse werden nicht an den Browser ausgeliefert. MCP-Token, Token und
+Adresse des Agenten bleiben serverseitig in der Konfiguration der Chat-Engine.
 
 ## Installation
 
-Release 1.0.1 unterstützt Moodle 4.5 bis 5.2 und PHP 8.3 oder neuer. Moodle
+Release 1.0.22 unterstützt Moodle 4.5 bis 5.2 und PHP 8.3 oder neuer. Moodle
 4.2–4.4 wird nicht unterstützt, weil der Block die Moodle Hooks API ohne
 Legacy-Callback-Fallbacks verwendet. Aktualisieren Sie Moodle vor der
 Installation auf Version 4.5 oder neuer.
@@ -84,20 +84,24 @@ Installation kein Build-Schritt nötig.
 
 ## Konfiguration
 
-Die Einstellungen finden sich unter:
+Seit der Tutor eine Placement der Chat-Engine ist, werden Verbindung und
+Grenzen dort eingestellt:
 
-**Website-Administration ▸ Plugins ▸ Blöcke ▸ eLeDia.ai Tutor**
-
-Wichtige Einstellungen:
+**Website-Administration ▸ Plugins ▸ Lokale Plugins ▸ KI-Chat-Engine**
 
 | Einstellung | Erforderlich | Beispiel |
 |---|---:|---|
-| RAG-MCP-Server-URL | ja | `https://rag.example.com/mcp` |
-| RAG-Authentifizierung / Token | falls benötigt | `Bearer` + Token |
-| Chat-Tool-Name | ja, Standard meist passend | `tutor_chat` |
-| History-Tool-Name | optional | `tutor_get_history` |
-| Externer MCP-Service | ja (verpflichtend) | Service aus `webservice_elediamcp` |
-| Token-Lebensdauer | ja, Standard meist passend | `3600` |
+| MCP-Endpunkt des Agenten | ja | `https://rag.example.com/mcp` |
+| Authentifizierung / Token | falls benötigt | `Bearer` + Token |
+| Webservice für Rückrufe | ja (verpflichtend) | Service aus `webservice_elediamcp` |
+| Gültigkeit des Rückruf-Tokens | ja, Standard meist passend | `3600` |
+| Antworten fortlaufend anzeigen | optional | braucht einen Webserver ohne Pufferung |
+
+Welches Backend antwortet, folgt dem Ziel, das in `local_elediaai_sources`
+(KI-Quellen) festgelegt ist. Die Einstellungen des Tutors selbst
+(Chat-Bereiche, Datenschutztext, Designs, Tutor-Profile) liegen unter
+**Website-Administration ▸ Plugins ▸ Blöcke ▸ eLeDia.ai Tutor** und in der
+Plugin-Shell des Tutors.
 
 Danach kann der Block in Kursen oder auf dem Dashboard hinzugefügt werden.
 
@@ -107,7 +111,7 @@ Für den vollständigen geerdeten Betrieb werden diese Komponenten kombiniert:
 
 - **eLeDia MCP** (`webservice_elediamcp`) für den nutzerbezogenen MCP-Rückruf und
   Moodle-Werkzeuge – im geerdeten Modus erforderlich.
-- **RAG-Ingest** (`local_elediaai_sources`) zur Indexierung von Moodle-Kursinhalten in
+- **KI-Quellen** (`local_elediaai_sources`) zur Indexierung von Moodle-Kursinhalten in
   die Wissensbasis – im geerdeten Modus erforderlich.
 - **LiteRAG** als RAG-/Tutor-MCP-Backend (alternativ ein externes Backend).
 
@@ -122,7 +126,7 @@ Verwaltenden einen Konfigurationsfehler, statt still schlechter zu antworten.
 php admin/tool/phpunit/cli/init.php
 vendor/bin/phpunit --filter block_elediaai_tutor
 
-vendor/bin/phpunit blocks/elediaai_tutor/tests/rag_client_test.php
+vendor/bin/phpunit blocks/elediaai_tutor/tests/placement_test.php
 
 php admin/tool/behat/cli/init.php
 vendor/bin/behat --tags @block_elediaai_tutor
@@ -135,6 +139,8 @@ vendor/bin/phpcs --standard=moodle blocks/elediaai_tutor
 - [Dokumentation für Nutzer/innen, Lehrende und Admins](docs/02-user-doc.de.md)
 - [Datenschutz](docs/privacy.md)
 - [Sicherheit](docs/security.md)
+- [Release Notes](docs/releasenotes.md) · [Änderungen](CHANGES.md)
+- Projektstand und Entwicklungsdokumentation: [DevFlow](docs/00-master.md)
 
 ## Gespeicherte Daten
 

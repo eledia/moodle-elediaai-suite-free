@@ -47,7 +47,7 @@ selection deliberately stays in the normal course UI instead.
 | Supported Moodle versions | `4.5` to `5.2` in `version.php` |
 | Local compatibility check | Moodle `5.2.1` passes the PHPUnit suite |
 | PHP | Moodle-supported PHP for the target Moodle version |
-| Release | `1.0.1` (stable) |
+| Release | `1.6.0` (stable); `version.php` is the source |
 | Required plugins | `local_elediaai_core` (eLeDia.ai Suite core) |
 
 Moodle 5.2.1 is used locally for development and tests, and the official
@@ -73,7 +73,7 @@ Moodle 5.2.1 is used locally for development and tests, and the official
 **Reading content**
 
 - **Subplugin extractors:** one `aisourcesextractor_*` subplugin per activity
-  type; 17 are bundled.
+  type; 15 are bundled.
 - **Captions as the real text of packaged e-learning:** SCORM packages are
   often a player shell with no readable prose. The transcript is read from
   standalone `.vtt`/`.srt` tracks and, for Articulate Storyline, unwrapped from
@@ -591,8 +591,17 @@ icon paths it uses are declared in `thirdpartylibs.xml`.
 ## Documentation
 
 ```text
-docs/user_manual.md        — administrator and user guide (also shown on the plugin's help page)
+docs/user_manual.md           — administrator and user guide (shown on the plugin's help page; do not rename)
+docs/02-user-doc.md           — user documentation in DevFlow structure (German), points to the guide
+docs/api-specification.md     — contract with the ingestion service (v1.6)
+docs/data-flows.de.md         — data flows of the ingest path (German)
+docs/format-support-matrix.md — which document formats are sent
+docs/privacy.md, docs/security.md, docs/releasenotes.md
+CHANGES.md                    — technical changes per release
 ```
+
+Project status and development documentation (DevFlow, German):
+[`docs/00-master.md`](docs/00-master.md).
 
 ## Privacy
 
@@ -634,3 +643,4 @@ GNU GPL v3 or later.
 ## Author
 
 Christopher Reimann, eLeDia GmbH.
+

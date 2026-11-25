@@ -27,7 +27,7 @@ The conversation itself is run by `local_elediaai_chatengine` (also a hard
 dependency), which in turn requires `local_elediaai_core`; core supplies the
 shared suite shell and the hourly/daily token quota.
 
-- **Release:** `1.0.1` (stable)
+- **Release:** `1.0.22` (stable)
 - **Moodle support:** 4.5–5.2 (minimum Moodle version: 4.5)
 - **PHP support:** 8.3+
 - **Required plugins:** `local_elediaai_core`, `local_elediaai_chatengine`,
@@ -45,9 +45,9 @@ shared suite shell and the hourly/daily token quota.
  Browser (AMD chat.js)
    │  Moodle core/ajax  (authenticated, sesskey-protected)
    ▼
- block_elediaai_tutor external functions  ──►  chat_service
+ local_elediaai_chatengine endpoints  ──►  block placement (scope, access, persona, mode)
    │                                            │
-   │  webservice_elediamcp token (mandatory)     │  rag_client (MCP Streamable HTTP, tools/call)
+   │  webservice_elediamcp token (mandatory)     │  engine connection (MCP Streamable HTTP, tools/call)
    ▼                                            ▼
  user-scoped Moodle MCP token  ───────────►  External RAG / Tutor MCP server
                                                 │
@@ -55,9 +55,9 @@ shared suite shell and the hourly/daily token quota.
                                        Moodle MCP server / other tools
 ```
 
-**Secrets never reach the browser.** The Moodle MCP token, the RAG authorization
-token and the RAG server URL all live server-side. The browser only ever talks
-to Moodle.
+**Secrets never reach the browser.** The Moodle MCP token, the agent's
+authorization token and its URL all live server-side, in the chat engine's
+configuration. The browser only ever talks to Moodle.
 
 See the consolidated documentation:
 
@@ -69,7 +69,7 @@ See the consolidated documentation:
 
 ## Installation
 
-Release 1.0.1 supports Moodle 4.5 through 5.2 and PHP 8.3 or newer. Moodle
+Release 1.0.22 supports Moodle 4.5 through 5.2 and PHP 8.3 or newer. Moodle
 4.2–4.4 are not supported because the block uses Moodle's Hooks API without
 legacy callback fallbacks; upgrade Moodle to 4.5 or newer before installing.
 
@@ -89,23 +89,28 @@ legacy callback fallbacks; upgrade Moodle to 4.5 or newer before installing.
 
 ## Required configuration
 
-At **Site administration ▸ Plugins ▸ Blocks ▸ eLeDia.ai Tutor**:
+Since the tutor became a placement on the chat engine, the connection and the
+limits are configured there, at **Site administration ▸ Plugins ▸ Local
+plugins ▸ AI Chat Engine**:
 
 | Setting | Required | Example |
 |---|---|---|
-| RAG MCP server URL | ✅ | `https://rag.example.com/mcp` |
-| RAG authorization method / token | if your server needs it | `Bearer` + token |
-| Chat tool name | ✅ (default ok) | `tutor_chat` |
-| History tool name | optional | `tutor_get_history` |
-| MCP external service | ✅ (mandatory) | one of the services configured in `webservice_elediamcp` |
-| Token lifetime | ✅ (default ok) | `3600` |
-| Stream answers | optional (on by default) | needs an unbuffered web server — see below |
+| Agent MCP endpoint | ✅ | `https://rag.example.com/mcp` |
+| Authentication method / token | if your agent needs it | `Bearer` + token |
+| Callback web service | ✅ (mandatory) | one of the services configured in `webservice_elediamcp` |
+| Callback token lifetime | ✅ (default ok) | `3600` |
+| Stream answers | optional | needs an unbuffered web server — see below |
+
+Which backend answers follows the destination configured in
+`local_elediaai_sources` (AI Sources). The tutor's own settings — chat areas,
+privacy text, designs, tutor profiles — are at **Site administration ▸
+Plugins ▸ Blocks ▸ eLeDia.ai Tutor** and in the tutor's plugin shell.
 
 Then add the **eLeDia.ai Tutor** block to a course or the Dashboard.
 
 ## Streaming answers: web server requirements
 
-With **Stream answers** enabled (`streamingenabled`, on by default) the block
+With **Stream answers** enabled (`streamingenabled`, a chat engine setting) the block
 opens `blocks/elediaai_tutor/stream.php` and renders the answer while the RAG
 server produces it. That only works if every layer between PHP and the browser
 passes chunks straight through. Most stacks buffer by default and will hold the
@@ -200,7 +205,7 @@ php public/admin/tool/phpunit/cli/init.php
 vendor/bin/phpunit --testsuite block_elediaai_tutor_testsuite
 
 # A single test file
-vendor/bin/phpunit public/blocks/elediaai_tutor/tests/rag_client_test.php
+vendor/bin/phpunit public/blocks/elediaai_tutor/tests/placement_test.php
 
 # Behat — initialise once, then run this plugin's tagged scenarios (needs Selenium).
 php public/admin/tool/behat/cli/init.php
@@ -222,3 +227,12 @@ The block itself keeps the confirmation on first use (only when that
 is switched on), short redacted admin diagnostics and the long-term memory preference. A stateful
 RAG/Tutor server keeps its own transcript according to its own policy. See
 [docs/privacy.md](docs/privacy.md).
+
+
+## Documentation
+
+- [User, teacher and admin documentation](docs/02-user-doc.md) (German:
+  [02-user-doc.de.md](docs/02-user-doc.de.md))
+- [Privacy](docs/privacy.md) · [Security](docs/security.md) ·
+  [Release notes](docs/releasenotes.md) · [Changes](CHANGES.md)
+- Project status and developer documentation (German): [DevFlow](docs/00-master.md)

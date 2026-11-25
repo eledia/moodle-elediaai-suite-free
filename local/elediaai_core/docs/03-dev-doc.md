@@ -4,7 +4,11 @@
 
 Dieses Dokument beschreibt, wie das Plugin tatsaechlich implementiert ist.
 
-Quelle der Wahrheit fuer den technischen Ist-Zustand. Begruendete Architektur-Entscheidungen stehen in `00-master.md` (adr01..adr04), das *Was/Warum* in `01-features.md`.
+Quelle der Wahrheit fuer den technischen Ist-Zustand. Begruendete Architektur-Entscheidungen stehen in `00-master.md` (adr01..adr05), das *Was/Warum* in `01-features.md`.
+
+**Dieses Dokument wird zur Laufzeit gelesen.** Der Guide-Reiter „Entwicklung" (`classes/elediaai_guide/guide_provider.php`) zeigt die Abschnitte „Die Vertraege der Suite", deren sieben nummerierte Unterabschnitte und „Feature-Discovery (Registry-Contract)"; die Entwicklerseite (`classes/output/developer_page.php`) zeigt „Design-System". Diese Ueberschriften nicht umbenennen, die Datei nicht verschieben (`00-master.md` §3).
+
+Weitere Dokumente: Datenschutz `privacy.md`, Sicherheit `security.md`, Konzepte und Audits in der Dokumentlandkarte von `00-master.md` §3 (u. a. `audit-neukonzeption-plan.md`, `audit-bestandsaufnahme.md`). Vertraege mit dem RAG-System und der Ingestionpipeline liegen nicht in diesem Plugin, sondern bei `local_elediaai_chatengine` (`docs/rag_server_spec.md`, `docs/contract.md`).
 
 ---
 

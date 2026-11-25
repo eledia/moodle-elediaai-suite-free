@@ -1,80 +1,109 @@
 # User and administration documentation
 
-This document consolidates the formerly separate user, teacher, admin,
-troubleshooting and solution-overview documents for the eLeDia.ai Tutor.
+## Meta
+
+Base user documentation of the eLeDia.ai Tutor (`feat01`–`feat08`). Base
+language: English (`docsBase: en`); the German version is `02-user-doc.de.md`.
+`help.php` shows this file at runtime to everyone whose language is not
+German; this section does not appear there. Do not rename or move the file.
+State: release 1.0.22.
 
 ---
 
 ## Audiences
 
 - **Learners** use the tutor as an AI-assisted chat in Moodle.
-- **Teachers** place and configure tutor block instances in courses.
-- **Administrators** set up RAG/MCP, limits, data protection and tutor designs
-  site-wide.
+- **Teachers** place and configure tutor block instances in courses and let the
+  tutor interpret what learners asked.
+- **Administrators** manage tutor profiles and designs, the privacy text and the
+  tutor settings, and set up the connection and limits in the AI Chat Engine.
 
 ---
 
 ## Product overview
 
-The eLeDia.ai Tutor is a Moodle block for an embedded AI chat. Responses are
-not generated in the browser or directly in the block, but server-side via a
-configured RAG/Tutor MCP endpoint. Moodle remains the source of trust and
-context: the tutor operates with the permissions of the logged-in person and
-can only use content that this person is also allowed to see in Moodle.
+The eLeDia.ai Tutor is a Moodle block for an embedded AI chat. Responses are not
+generated in the browser or in the block itself: the suite's AI Chat Engine runs
+the conversation and the connected AI service writes the answers, server-side.
+Moodle remains the source of trust and context: the tutor operates with the
+permissions of the logged-in person and can only use content that this person
+may also see in Moodle.
 
-Depending on the configuration, the tutor can appear as a course block, a docked
-panel, a dialog or a fullscreen view. Tutor designs, persona, greeting,
-suggested questions and answer style can be customized site-wide and, if
-permitted, per block instance.
+The tutor can appear as a course block, a docked panel, a dialog, a fullscreen
+view, a floating launcher on every page, a full-page start page (AI home) and in
+the Moodle App. Tutor designs, persona, greeting, suggested questions and answer
+style can be customised site-wide and, if permitted, per block instance.
 
 ---
 
 ## Learners: using the tutor
 
 1. Open Moodle and sign in.
-2. Open a course, the dashboard or a tutor page with the eLeDia.ai Tutor.
-3. Accept the data protection notice if you have not already done so.
-4. Type a question into the chat field.
-5. Read the answer and ask a follow-up question if needed.
+2. Open a course, the dashboard or a page with the eLeDia.ai Tutor.
+3. Type a question into the chat field or pick a suggested starter question.
+4. Read the answer and ask a follow-up question if needed.
 
 Key usage notes:
 
 - **Enter** sends a message, **Shift+Enter** inserts a line break.
 - Suggested starter questions appear as chips when they are configured.
-- Answer styles can switch between **Explain**, **Hints only** and
-  **Quiz me**, provided the site or the block allows it.
-- Answers can be copied.
-- Failed answers can be retried.
-- **New conversation** starts a fresh history.
+- Answer styles can switch between **Explain**, **Hints only** and **Quiz me**,
+  provided the site or the block allows it.
+- Answers can be copied. Failed answers can be retried.
+- **New conversation** (plus) starts a fresh conversation, even when the window
+  is currently empty.
 - When history is enabled, the history icon opens saved conversations.
-- In the data protection dialog, users can delete all of their local tutor
-  data: conversations, question analytics, usage counters, diagnostics and
-  the long-term-memory preference. External deletion remains best-effort and its
-  outcome is reported separately.
-- Deleting the Moodle account removes the same local tutor data automatically.
-  If the external user-deletion tool is configured, Moodle requests deletion
-  of transcripts and long-term memory before invalidating the account token;
-  backend failures never prevent the local cleanup.
-- In the plugin shell, the standalone tutor preview uses the full shell content
-  width. Embedded and shell-less tutor pages keep their compact layout.
-- Tutor administration pages use the wide shell layout; the help page remains
-  narrower for reading prose.
-- The shell's secondary action band appears in the header (Zone A), while the
-  information bar below it is reserved for progress and status. Keyboard focus
-  remains visibly marked on navigation, header actions and icon actions.
+- Answers that do not come from course material are marked as a general answer.
+- While you have a quiz attempt open, the tutor may refuse your messages and
+  name the quiz. After submitting, you can use it again (see "Lock during
+  quizzes").
 
-### Course context
+### Privacy guidelines, long-term memory and your data
+
+The shield in the tutor's header opens the **privacy guidelines**. There you
+find:
+
+- a note that AI answers can be wrong, and what is sent and stored;
+- the **long-term memory** switch: it allows the tutor to remember information
+  across conversations. It is off by default and only available when the site
+  offers it;
+- **"See what the tutor has remembered about me"**: an overview of the memories
+  by category and of the notes on your conversations with course and date. The
+  data is fetched when you open it and is not stored in Moodle. If nothing is
+  stored, it says so. If a memory is wrong, tell the tutor in the conversation;
+- **"Delete all my tutor data"**.
+
+Switching long-term memory off asks for confirmation first, because everything
+remembered is erased at once and for good. **Look first** shows what is stored.
+Cancelling or closing the dialog keeps memory switched on.
+
+Deleting all tutor data removes the local tutor data. If the AI service offers
+deletion tools, external deletion is requested as well; its outcome is reported
+separately. Deleting the Moodle account removes the same local tutor data
+automatically; external deletion is requested before the account's token
+becomes invalid, and service failures never prevent the local cleanup.
+
+### Course context and knowledge base
 
 Within a course, the tutor answers course-related questions, for example about
 activities, materials or next steps. Outside a course it can help more
-generally, for instance with Moodle navigation or visible courses. Course chat
-only works where the tutor is enabled for the course and course context is
-passed in.
+generally, for instance with Moodle navigation or visible courses.
+
+Which material the tutor may answer from is set per block instance:
+
+- **Knowledge base:** course categories and courses. A category includes every
+  course below it, also courses added later. Without a selection the tutor
+  searches the course it sits in. If the asking person is enrolled in none of
+  the selected courses, the tutor answers without course material.
+- **Answer source:** "Grounded in course materials" or "General knowledge (LLM
+  only)". The second mode exists only when the site allows LLM-only mode. A
+  course without an ingested knowledge base then answers from general
+  knowledge; if the mode is not allowed, the tutor shows "not available".
+- **Pass course context:** sends the current course to the tutor.
 
 Conversation history follows the same scope: global chat lists only global
-conversations, while course conversations appear inside their course. If
-course access is removed, its conversation metadata and transcripts are no
-longer available through the tutor.
+conversations, while course conversations appear inside their course. If course
+access is removed, its conversations are no longer available through the tutor.
 
 ---
 
@@ -92,61 +121,96 @@ Key block instance settings:
 |---|---|
 | Block title | Heading of the block. |
 | Display mode | Docked panel, embedded, dialog or fullscreen. |
-| Pass course context | Sends the current course ID to the tutor. |
-| Fixed course ID | Forces a specific course context, e.g. on the dashboard. |
-| Daily message limit | Optional limit for this instance. |
+| Pass course context | Sends the current course to the tutor. |
+| Answer source | Grounded in course materials, or general knowledge where allowed. |
+| Knowledge base | Course categories and courses the tutor may answer from. |
+| Daily message limit | -1 = site default, 0 = unlimited, otherwise messages per person and day. |
 | Greeting and suggested questions | Starter text and clickable starter questions. |
 | Persona | Name, role, tone, audience and free-form instructions. |
-| Design | Colors, surfaces, typography, message bubbles, launcher, logo and avatar. |
-| History | Shows saved conversations when allowed globally. |
+| Lock during quizzes | Whether this tutor refuses messages while a quiz attempt is open. |
+| Design | Colours, surfaces, typography, message bubbles, launcher, logo and avatar. |
+| History | Shows saved conversations when allowed. |
 
 Which design and persona fields are visible depends on the site's governance
 setting. Locked values always follow the site default.
+
+### Interpreting learners' questions
+
+Teachers with `block/elediaai_tutor:viewreports` open the page **AI
+analysis of the questions** in the course. It creates an AI analysis that
+summarises where learners struggle and suggests measures, based on anonymised
+learner questions. The numbers, topics and the questions themselves are in the
+suite's **course insights**, linked from that page. If too few questions have
+been logged, the page says so.
+
+Every night the tutor assigns a topic to new questions, if the backend offers
+it. A question keeps its topic once assigned. To repair drifted topics, switch
+on "Re-label all questions every 14 days"; on that day the numbers change.
+
+---
+
+## Lock during quizzes
+
+The tutor can refuse messages while a person has a quiz attempt open. Every open
+attempt counts, in every course; instead of an answer the tutor names the quiz.
+Preview attempts and quizzes the person can no longer reach do not count.
+Teachers are exempt through `local/elediaai_chatengine:bypassquizlock`.
+
+The setting **Lock during quizzes** exists site-wide and per block instance:
+
+- **Use site default**: whatever the tutor's site settings say.
+- **As set in the chat engine** (default): the AI Chat Engine's site setting
+  "Lock the chat during quizzes".
+- **Lock** / **Do not lock**: for this tutor, regardless of the site.
+
+The site-wide launcher follows the block instance that unlocks the course.
 
 ---
 
 ## Administrators: central setup
 
-The central configuration is located under **Site administration > Plugins >
-Blocks > eLeDia.ai Tutor** and in the tutor's plugin shell.
+Setup is split between two places.
 
-### RAG/Tutor MCP server
+### Tutor configuration
+
+The tutor's plugin shell, also under **Site administration > Plugins > Blocks >
+eLeDia.ai Tutor**, has the areas **Health** (surfaces, privacy text, last
+failure), **Settings**, **Tutors** and **Preview**, plus links to LiteRAG, AI
+Sources and MCP when installed.
+
+| Setting | Effect |
+|---|---|
+| Enable global chat / Enable course chat | Whether general and course conversations are allowed. |
+| Site-wide floating tutor | Shows the tutor outside block regions. Courses are still unlocked by adding the tutor block; afterwards the tutor stays available on course subpages and in activities. |
+| Allow LLM-only mode | Whether instances may answer from the language model's general knowledge. |
+| Require confirmation on first use | Off by default; for institutions that need a documented acknowledgement. |
+| Privacy guidelines text | Institution-specific text, always one click away in the tutor. |
+| Re-label all questions every 14 days | Off by default. |
+| Logging verbosity | How detailed failures are logged. |
+| Custom CSS | Trusted adjustments for the `.elediaai-chat-*` classes. |
+
+### AI Chat Engine
+
+Connection and limits for every chat surface of the suite are under **Site
+administration > Plugins > Local plugins > AI Chat Engine**:
 
 | Setting | Note |
 |---|---|
-| RAG MCP server URL | Streamable HTTP MCP endpoint, e.g. `https://rag.example.com/mcp`. |
-| RAG authorization method/token | Optional bearer token or custom header; stays server-side. |
-| Chat tool name | MCP tool for chat responses, default `tutor_chat`. |
-| History/Delete tools | Optional tools for history and deletion. |
-| Memory opt-in tool | Optional tool for long-term memory and opt-in sync. |
-| Allow insecure transport/private host | For local development or deliberately internal services only. |
-| Request timeout/Streaming | Transport behavior for responses. |
+| Agent MCP endpoint, authentication token | Address and access of the RAG agent. Which backend answers follows the destination set in AI Sources. |
+| Callback web service | Web service from MCP the user-scoped Moodle tokens are restricted to. |
+| Callback token lifetime | Lifetime of those tokens. |
+| Offer long-term memory, regroup questions nightly, history and deletion at the agent | Optional agent tools. |
+| Request timeout, maximum message length, requests per minute, messages per day | Limits per request and person. |
+| Stream answers | Needs an unbuffered web server (see README). |
+| Lock the chat during quizzes | Site-wide quiz lock, off by default. |
 
 ### Moodle MCP token
 
-For grounded answers the MCP call-back is **always on** — there is no off
-switch. Whenever a course is answered in grounded mode, the block uses
-`webservice_elediamcp` to mint a user-scoped Moodle MCP token for the configured
-external service, so the RAG/Tutor backend can call back into Moodle as that
-learner to fetch their courses, run Moodle AI tools, sync memory or run remote
-deletion. Grounded answers therefore require both the connector and a selected
-external service.
-
-LLM-only mode is how the tutor answers **without** calling back: it performs no
-retrieval, mints no token and needs neither the connector nor a selected
-service. It is the separate answer mode used (per the `allowllmonly` admin gate
-and the per-instance ragmode) when a course has no knowledge base. Tokens are
-provisioned server-side, held briefly in the application cache and never sent to
-the browser.
-
-### Behavior and limits
-
-Central options include global chat, course chat, maximum message length,
-rate limit, daily message limit, data protection texts, question analysis,
-logging verbosity and re-clustering for analysis hotspots.
-
-Each person must accept the data protection notice before their first chat.
-Details are in `privacy.md`.
+Every turn carries a user-scoped Moodle MCP token, grounded or LLM-only: the
+backend must know who is asking. For grounded answers the backend also uses it
+to call back into Moodle as that learner to fetch their courses, run Moodle AI
+tools, sync memory or run remote deletion. Tokens are provisioned server-side,
+held briefly in the application cache and never sent to the browser.
 
 ### Tutor designs and profiles
 
@@ -156,11 +220,17 @@ to the site or to individual block instances.
 
 The settings include, among others:
 
-- Colors, surfaces, lines, typography and shadows.
+- Colours, surfaces, lines, typography and shadows.
 - Message bubbles and status states.
-- Launcher button, footer, logo and avatar.
-- Chat window width: standard, wide or extra wide for the docked panel and the dialog, for example when answers often contain tables or code.
-- Persona, system prompt, greeting and suggested questions.
+- Launcher button, footer, logo and avatar. The launcher style **Floating
+  button with label (bottom corner)** shows logo and text as a pill; the text
+  comes from "Launcher label", and if that is empty the tutor's name is shown.
+  Below 768 pixels width it turns back into a circle.
+- Chat window width: standard (380 / 640 px), wide (480 / 800 px) or extra wide
+  (600 / 960 px) for the docked panel and the dialog. On small screens the
+  window never gets wider than the screen.
+- Persona, system prompt, greeting and suggested questions; on the dashboard
+  separately for learners, teachers and managers.
 - Governance over which values may be overridden per block instance.
 
 Greeting, persona, prompt starters, dashboard greeting, launcher label and
@@ -199,13 +269,14 @@ capabilities and limits apply just as they do on the web.
 
 | Symptom | Likely cause | Solution |
 |---|---|---|
-| Configuration problem in the block | RAG URL missing, or the course resolves to grounded mode but the connector / MCP external service is missing | Set the RAG URL; for grounded answers install `webservice_elediamcp` and select an MCP external service. (LLM-only courses need neither.) |
-| Tutor service unavailable | Transport error, wrong URL or server error | Test the URL from the Moodle server's perspective; check HTTP security/curl helper. |
-| Unexpected tutor response | RAG server does not return the expected MCP format | Check the server contract in `03-dev-doc.md`. |
-| Repeated auth errors | Moodle MCP token invalid or service disabled | Check the MCP service, capabilities and token lifetime. |
-| Messages too fast | Rate limit active | Adjust the limit in the settings. |
-| Chat JS looks outdated | AMD build or Moodle cache outdated | Rebuild AMD and purge Moodle caches. |
-| Course context missing | Course not indexed, course chat off or context passing disabled | Check the course block/instance, RAG ingest and the `Pass course context` setting. |
+| The tutor shows a hint instead of the chat | No reachable backend, or the course resolves to grounded mode but the callback web service is missing | Set the agent endpoint and the callback web service in the AI Chat Engine; check AI Sources. |
+| Tutor service unavailable | Transport error, wrong URL or server error | Test the endpoint from the Moodle server's perspective; check the cURL security helper. |
+| Repeated auth errors | Moodle MCP token invalid or web service disabled | Check the MCP web service, capabilities and token lifetime. |
+| Messages refused during a quiz | Quiz lock | Check "Lock during quizzes" on the instance and in the AI Chat Engine. |
+| Messages too fast | Rate limit active | Adjust the limit in the AI Chat Engine. |
+| Answers appear all at once after a wait | Web server buffers the stream | See "Streaming answers" in the README, or switch streaming off. |
+| Chat looks outdated | Moodle cache outdated | Purge Moodle caches. |
+| Course context missing | Course not ingested, course chat off, no context passed and no knowledge base | Check the block instance, AI Sources and "Pass course context". |
 
 ---
 
@@ -213,4 +284,4 @@ capabilities and limits apply just as they do on the web.
 
 The interface can be operated by keyboard, new answers are announced to screen
 readers and reduced motion is respected. Visible focus states are part of the
-UI baseline.
+UI baseline. The overlay panel is a modal dialog.
