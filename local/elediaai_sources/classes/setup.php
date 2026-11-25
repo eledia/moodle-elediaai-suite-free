@@ -28,6 +28,35 @@ use core_customfield\field_controller;
  */
 class setup {
     /**
+     * Encrypt a plaintext Ingestion API key stored before ai_suite#252.
+     *
+     * The setting became an admin_setting_encryptedpassword in 1.6.1. A key
+     * saved earlier sits in config_plugins as plaintext; this re-saves it as
+     * ciphertext with the site key, the same way the setting itself would.
+     *
+     * Idempotent: an empty value stays empty, and a value that already carries
+     * the encryption method prefix is left alone, so a second run does not
+     * encrypt the ciphertext again.
+     *
+     * @return bool True when a plaintext value was encrypted.
+     */
+    public static function encrypt_stored_apikey(): bool {
+        $stored = get_config('local_elediaai_sources', 'sink_ingestionapi_apikey');
+        if ($stored === false) {
+            return false;
+        }
+        $plain = trim((string) $stored);
+        if ($plain === '') {
+            return false;
+        }
+        if (str_starts_with($plain, \core\encryption::METHOD_SODIUM . ':')) {
+            return false;
+        }
+        set_config('sink_ingestionapi_apikey', \core\encryption::encrypt($plain), 'local_elediaai_sources');
+        return true;
+    }
+
+    /**
      * Create or update the per-course AI Sources override field.
      *
      * Idempotent: safe to call from both install and upgrade. The field is a

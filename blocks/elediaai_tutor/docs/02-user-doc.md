@@ -147,6 +147,10 @@ Every night the tutor assigns a topic to new questions, if the backend offers
 it. A question keeps its topic once assigned. To repair drifted topics, switch
 on "Re-label all questions every 14 days"; on that day the numbers change.
 
+How long the questions are kept is set by the suite core ("Keep questions and
+answers for" on the *AI audit* page, default 90 days); below 30 days the topic
+analysis becomes unusable.
+
 ---
 
 ## Lock during quizzes
@@ -188,6 +192,15 @@ Sources and MCP when installed.
 | Re-label all questions every 14 days | Off by default. |
 | Logging verbosity | How detailed failures are logged. |
 | Custom CSS | Trusted adjustments for the `.elediaai-chat-*` classes. |
+
+Under **Technical settings** there are two notes without a value of their own:
+**Connection to the agent** links to the AI Chat Engine settings, and
+**Retention of questions** links to the suite core's *AI audit* page, where
+"Keep questions and answers for" (default 90 days) decides when recorded
+questions are deleted. Up to 1.0.22 the tutor offered its own "Question
+analytics retention (days)"; it had no effect and was removed in 1.0.23. The
+upgrade hands the tutor value to the core if it is shorter than the core's
+retention; a longer one is never taken over.
 
 ### AI Chat Engine
 

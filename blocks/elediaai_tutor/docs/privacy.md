@@ -115,7 +115,16 @@ Earlier releases kept opt-in question analytics in `block_elediaai_tutor_qlog`.
 That table is dropped on upgrade. The question statistics now come from the
 suite-wide turn store `local_elediaai_core_turn`, which records the asker only
 as a pseudonymous key; it is declared, exported and erased by the privacy
-provider of `local_elediaai_core`.
+provider of `local_elediaai_core`. How long those records are kept is the
+core's setting `local_elediaai_core/turn_retentiondays` (default 90 days,
+deleted by the core's task `prune_turns`). The tutor has no retention of its
+own: the former setting "Question analytics retention (days)"
+(`analyticsretentiondays`, default 180) was never read by any code and was
+removed in 1.0.23 (ai_suite#251). Its upgrade step hands the tutor value to
+the core only if it is positive, not 180 and shorter than the core's current
+retention (a missing core value counts as 90, 0 as indefinite), so a shorter
+period an administrator chose there takes effect. A longer period is never
+handed over.
 
 When the backend offers topic assignment (for the RAG agent: the chat engine
 setting **Regroup questions nightly**, off by default), a nightly task

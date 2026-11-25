@@ -269,6 +269,12 @@ messages and return success:
 { "structuredContent": { "deleted": true, "conversation_id": "conv-9f2a1c" } }
 ```
 
+- Also called by Privacy API deletions narrower than a whole person (chatengine
+  1.6.1, ai_suite#250), for example when the retention of one course runs out:
+  one call per conversation concerned, from a Moodle scheduled task, with the
+  learner's own `moodle_token`. Delete only that conversation; keep the
+  learner's other conversations and long-term memory. An unknown or already
+  deleted `conversation_id` should answer success.
 - The block treats **any non-error result** as success. It's best-effort: if your
   server errors, the block still removes its local pointer and logs the failure,
   so the learner can always erase their own copy.
@@ -278,8 +284,14 @@ messages and return success:
 
 ### A.4 `tutor_delete_user_data` (optional, **recommended**)
 
-Called when the learner uses "Delete all my tutor data" (and by GDPR erasure
-flows). Arguments: `system_url`, `moodle_token` — no conversation ids, because
+Called when the learner uses "Delete all my tutor data", when a Moodle account
+is deleted, and by a Privacy API deletion that covers every context a person
+chatted in, whichever surface (`block_elediaai_tutor`, `mod_aichat`,
+`mod_elli`). Narrower deletions use A.3 instead. The same person may be erased
+more than once in a row, once by the tutor block and once by the chat engine:
+the tool **MUST be idempotent** and answer success when nothing is left.
+Privacy deletions run in a Moodle scheduled task; the `moodle_token` is still
+the learner's own. Arguments: `system_url`, `moodle_token` — no conversation ids, because
 the point of this tool is to be **complete by definition**: erase *everything*
 your server holds for the authenticated user, including
 
@@ -938,6 +950,7 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.6.1 | **Privacy deletions reach the server from the chat engine** (A.3, A.4, ai_suite#250), for every chat surface, not only through the tutor block. A deletion covering every context of a person calls `tutor_delete_user_data`; a narrower one (one course, retention) calls `tutor_delete_conversation` per conversation and must leave the rest. Expect repeated calls for the same person (tutor and engine) and calls from a scheduled task; both tools must be idempotent. Arguments unchanged. |
 | chatengine 1.5.9 (doc update) | **`topic` in `tutor_chat` deprecated** (A.1, A.6, ai_suite#240): topics come only from `tutor_recluster_questions`, which is therefore needed for a teacher report with topics. The label set is Moodle's (`labels` in each batch), not a server-side registry. Moodle still reads `topic`/`subject` from an answer; such a label counts as labelled and is skipped by the nightly run. Nothing changes for a server that already omits the field. |
 | chatengine 1.5.8 | **`tutor_get_memory`** (A.7): optional, read-only view of the user's long-term memory and session notes for the privacy panel; called whenever `enabletool_memoryoptin` is on. Additive: a server without it answers "Unknown tool", which the learner sees as "could not be loaded". The opt-out (A.5) is now confirmed by the learner first. |
 | block_elediaai_tutor 1.0.19 | **Recluster contract updated** (A.6): `mode`, `course {fullname, lang}` and `labels [{label, count, examples}]` instead of `existing_labels`; reserved result label `__none__`. Nightly runs send only questions without a topic, an optional full run every 14 days sends the whole window. Refused turns (empty prompt) are no longer sent (ai_suite#206). Requires a server that reads `labels`; ours does since 23.11.2026. |

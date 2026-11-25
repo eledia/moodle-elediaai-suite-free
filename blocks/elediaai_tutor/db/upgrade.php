@@ -372,5 +372,16 @@ function xmldb_block_elediaai_tutor_upgrade(int $oldversion): bool {
         upgrade_block_savepoint(true, 2026111201, 'elediaai_tutor');
     }
 
+    if ($oldversion < 2026112500) {
+        // "Aufbewahrung der Fragen-Analyse (Tage)" wirkte nie: kein Code las
+        // den Wert, geloescht wird nach local_elediaai_core/turn_retentiondays
+        // (ai_suite#251). Ein abweichender Wert geht an den Kern, wenn er
+        // kuerzer ist als dessen Frist; die Tutor-Einstellung entfaellt.
+        require_once(__DIR__ . '/upgradelib.php');
+        block_elediaai_tutor_retire_analytics_retention();
+
+        upgrade_block_savepoint(true, 2026112500, 'elediaai_tutor');
+    }
+
     return true;
 }

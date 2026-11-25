@@ -17,10 +17,11 @@
 /**
  * Global admin settings for the eLeDia.ai Tutor block.
  *
- * The infrastructure/security settings (RAG server, MCP token, limits, privacy)
- * are declared by hand. Everything that defines a *tutor* — persona, every visual
- * `--eac-*` token, launcher, footer, images and a few behaviour toggles — is
- * generated from {@see \block_elediaai_tutor\local\registry}, each followed by an
+ * Privacy, behaviour and logging settings are declared by hand; the connection
+ * to the agent and the user-scoped MCP tokens are configured in
+ * local_elediaai_chatengine. Everything that defines a *tutor* — persona, every
+ * visual `--eac-*` token, launcher, footer, images and a few behaviour toggles —
+ * is generated from {@see \block_elediaai_tutor\local\registry}, each followed by an
  * "allow per-instance override" checkbox (expose_<key>).
  *
  * @package     block_elediaai_tutor
@@ -124,24 +125,6 @@ if ($hassiteconfig) {
         new moodle_url('/blocks/elediaai_tutor/manage_tutors.php'),
         'moodle/site:config'
     ));
-
-    // Offer the MCP services declared by webservice_elediamcp when available,
-    // else fall back to all enabled external services.
-    $serviceoptions = [0 => get_string('setting_mcpserviceid_none', 'block_elediaai_tutor')];
-    if (during_initial_install() === false) {
-        $mcpapi = '\\webservice_elediamcp\\api';
-        if (class_exists($mcpapi)) {
-            foreach (call_user_func([$mcpapi, 'get_services']) as $svc) {
-                $serviceoptions[(int) $svc->id] = format_string($svc->name);
-            }
-        } else {
-            global $DB;
-            $services = $DB->get_records('external_services', ['enabled' => 1], 'name ASC', 'id, name');
-            foreach ($services as $svc) {
-                $serviceoptions[(int) $svc->id] = format_string($svc->name);
-            }
-        }
-    }
 
     // Friendly label/description with a sensible fallback for the ~40 raw tokens.
     $reglabel = function (string $key, array $entry): string {
@@ -435,33 +418,20 @@ if ($hassiteconfig) {
         ''
     ));
 
-    $settings->add(new admin_setting_heading(
-        'block_elediaai_tutor/headerrag',
-        get_string('setting_header_rag', 'block_elediaai_tutor'),
-        get_string('setting_header_rag_desc', 'block_elediaai_tutor')
+    // Verbindung zum Agenten und die nutzerbezogenen Moodle-Tokens liegen seit
+    // DEL-517 in der Chat-Engine. Hier stand bis 1.0.22 je eine Ueberschrift
+    // ohne Einstellung darunter (ai_suite#251); jetzt ein Hinweis mit Link.
+    // Eine Beschreibung statt einer Ueberschrift, weil die Einstellungsschale
+    // (amd/src/settings_shell.js) Ueberschriftentexte ausblendet.
+    $settings->add(new admin_setting_description(
+        'block_elediaai_tutor/chatengineconnection',
+        get_string('setting_chatengineconnection', 'block_elediaai_tutor'),
+        get_string(
+            'setting_chatengineconnection_desc',
+            'block_elediaai_tutor',
+            (new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_chatengine_settings']))->out(false)
+        )
     ));
-
-
-
-    // Encrypted at rest with the site encryption key (moodledata), decrypted
-    // server-side only in security::rag_auth_token(). See SUI-416.
-
-
-
-
-
-
-
-
-
-
-    $settings->add(new admin_setting_heading(
-        'block_elediaai_tutor/headertoken',
-        get_string('setting_header_token', 'block_elediaai_tutor'),
-        get_string('setting_header_token_desc', 'block_elediaai_tutor')
-    ));
-
-
 
     $settings->add(new admin_setting_heading(
         'block_elediaai_tutor/headerbehaviour',
@@ -469,12 +439,18 @@ if ($hassiteconfig) {
         ''
     ));
 
-    $settings->add(new admin_setting_configtext(
-        'block_elediaai_tutor/analyticsretentiondays',
-        get_string('setting_analyticsretention', 'block_elediaai_tutor'),
-        get_string('setting_analyticsretention_desc', 'block_elediaai_tutor'),
-        180,
-        PARAM_INT
+    // Die Aufbewahrung der Fragen regelt der Kern (turn_retentiondays, Task
+    // prune_turns). Die fruehere Tutor-Einstellung analyticsretentiondays las
+    // kein Code; db/upgrade.php uebernimmt einen abweichenden Wert in den Kern
+    // (ai_suite#251).
+    $settings->add(new admin_setting_description(
+        'block_elediaai_tutor/questionretention',
+        get_string('setting_questionretention', 'block_elediaai_tutor'),
+        get_string(
+            'setting_questionretention_desc',
+            'block_elediaai_tutor',
+            (new moodle_url('/admin/settings.php', ['section' => 'local_elediaai_core_audit']))->out(false)
+        )
     ));
 
     // Variante C aus ai_suite#210: Der naechtliche Recluster beschriftet nur
@@ -487,7 +463,6 @@ if ($hassiteconfig) {
         get_string('setting_reclusterfullrun_desc', 'block_elediaai_tutor'),
         0
     ));
-
 
     $settings->add(new admin_setting_configselect(
         'block_elediaai_tutor/loggingverbosity',

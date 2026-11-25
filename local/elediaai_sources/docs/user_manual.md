@@ -46,7 +46,9 @@ Die Einstellung **Aufnahmeziel** bietet:
   selbst — sie stehen in der API-Spezifikation und werden nicht konfiguriert.
 - **API-Schlüssel:** wird serverseitig als Header `X-API-Key` gesendet. Ohne
   Schlüssel gilt das Ziel als nicht konfiguriert und es werden keine Dokumente
-  gesendet.
+  gesendet. Der Schlüssel wird mit dem Website-Schlüssel verschlüsselt
+  gespeichert. Nach einem Klon der Website ohne deren Schlüsseldatei in
+  moodledata muss er neu eingetragen werden.
 
 Der Mandant wird **nicht** eingestellt. Er leitet sich aus der Adresse der
 Website ab, und der Dienst prüft, ob er zum Schlüssel passt. Ändert sich die
@@ -81,8 +83,8 @@ nichts.
 - **Maximale Dokumentgröße (MB):** Text und HTML werden bei Überschreitung
   gekürzt und trotzdem gesendet; Binärdokumente wie PDF lassen sich nicht sinnvoll
   kürzen und werden übersprungen.
-- **Anfrage-Timeout (Sekunden):** Netzwerk- und Serverfehler werden kurz erneut
-  versucht. Längere Ausfälle fängt Moodles Task-Wiederholung ab, damit
+- **Anfrage-Timeout (Sekunden):** Netzwerk- und Serverfehler werden einmal
+  nach einer Sekunde erneut versucht. Längere Ausfälle fängt Moodles Task-Wiederholung ab, damit
   Cron-Worker nicht blockieren.
 
 ## Statusanzeige

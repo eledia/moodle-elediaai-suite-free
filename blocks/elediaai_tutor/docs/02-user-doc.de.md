@@ -110,6 +110,8 @@ Wichtige Tutor-Einstellungen:
 | Protokollierungsdetailgrad | Wie ausführlich Fehler protokolliert werden. |
 | Eigenes CSS | Vertrauenswürdige Anpassungen für die Klassen `.elediaai-chat-*`. |
 
+Unter **Technische Einstellungen** stehen zwei Hinweise ohne eigenen Wert: **Verbindung zum Agenten** verlinkt die Einstellungen der KI-Chat-Engine, **Aufbewahrung der Fragen** die Seite *KI-Audit* des Suite-Kerns. Dort legt „Fragen und Antworten aufbewahren“ (Standard 90 Tage) fest, wann aufgezeichnete Fragen gelöscht werden. Bis 1.0.22 bot der Tutor eine eigene „Aufbewahrung der Fragen-Analyse (Tage)“ an; sie hatte keine Wirkung und ist seit 1.0.23 entfernt. Das Upgrade übernimmt den Tutor-Wert in den Kern, wenn er kürzer ist als die Frist des Kerns; eine längere Frist wird nie übernommen.
+
 **KI-Chat-Engine** (*Website-Administration > Plugins > Lokale Plugins > KI-Chat-Engine*): Hier liegen Verbindung und Grenzen, die für alle Chat-Flächen der Suite gelten.
 
 | Einstellung | Bedeutung |
@@ -175,6 +177,8 @@ Der websiteweite Startknopf folgt der Blockinstanz, die den Kurs freischaltet.
 Lehrende mit dem Recht `block/elediaai_tutor:viewreports` öffnen im Kurs die Seite **KI-Deutung der Fragen**. Dort lässt sich eine KI-Analyse erstellen: Sie fasst zusammen, womit Lernende Schwierigkeiten haben, und schlägt Maßnahmen vor. Grundlage sind anonymisierte Fragen der Lernenden. Die Zahlen, die Themen und die Fragen selbst stehen in den **Kurs-Einblicken** der Suite, die von dieser Seite verlinkt sind. Liegen noch zu wenige Fragen vor, sagt die Seite das.
 
 Jede Nacht ordnet der Tutor neue Fragen einem Thema zu, sofern das Backend das anbietet. Eine einmal eingeordnete Frage behält ihr Thema. Wer abgedriftete Themen reparieren will, schaltet „Alle 14 Tage alle Fragen neu einordnen“ ein; an diesem Tag ändern sich die Zahlen.
+
+Wie lange die Fragen aufbewahrt werden, legt der Kern der Suite fest („Fragen und Antworten aufbewahren“ auf der Seite *KI-Audit*, Standard 90 Tage); unter 30 Tagen wird die Themenauswertung unbrauchbar.
 
 ## Moodle App
 

@@ -349,10 +349,26 @@ class ingestion_api_sink implements sink, status_reporting_sink {
     /**
      * The tenant's API key, sent as X-API-Key.
      *
-     * @return string
+     * Stored encrypted with the site key (admin_setting_encryptedpassword,
+     * ai_suite#252). A value without the method prefix is a plaintext key from
+     * before the upgrade and is used as it is, so delivery does not stop
+     * between code and upgrade. A value that cannot be decrypted (site cloned
+     * without the key in moodledata) fails closed: the destination then counts
+     * as not configured instead of sending ciphertext as a credential.
+     *
+     * @return string The plaintext key, or '' when unset or undecryptable.
      */
     private function apikey(): string {
-        return trim((string) get_config('local_elediaai_sources', 'sink_ingestionapi_apikey'));
+        $stored = trim((string) get_config('local_elediaai_sources', 'sink_ingestionapi_apikey'));
+        if ($stored === '' || !str_starts_with($stored, \core\encryption::METHOD_SODIUM . ':')) {
+            return $stored;
+        }
+        try {
+            return trim(\core\encryption::decrypt($stored));
+        } catch (\moodle_exception $e) {
+            debugging('local_elediaai_sources: the Ingestion API key could not be decrypted', DEBUG_DEVELOPER);
+            return '';
+        }
     }
 
     /**

@@ -70,6 +70,7 @@ class provider implements
 
         $collection->add_external_location_link('rag_service', [
             'site_url' => 'privacy:metadata:rag_service:site_url',
+            'tenant_id' => 'privacy:metadata:rag_service:tenant_id',
             'course_id' => 'privacy:metadata:rag_service:course_id',
             'cmid' => 'privacy:metadata:rag_service:cmid',
             'module_url' => 'privacy:metadata:rag_service:module_url',

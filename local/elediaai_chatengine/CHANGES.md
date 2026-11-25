@@ -5,7 +5,39 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.6.1] – 2026-11-25
+
+### Behoben
+
+- Datenschutz-Löschung erreicht das Backend (ai_suite#250). Die
+  Privacy-API der Engine löschte nur in Moodle; Transkripte und Gedächtnis
+  beim Agenten blieben stehen, wenn die Person nur `mod_aichat` oder
+  `mod_elli` genutzt hatte, denn `tutor_delete_user_data` rief bisher nur der
+  Tutor-Block auf. Jetzt löscht die Privacy-API der Engine nach der
+  Löschung in Moodle auch beim Backend, in zwei Breiten: Eine vollständige
+  Löschanfrage (alle Kontexte, in denen die Person Gespräche hat) ruft
+  `tutor_delete_user_data`; jede engere Löschung (Teil der Kontexte,
+  `delete_data_for_users()`, `delete_data_for_all_users_in_context()`, etwa
+  bei abgelaufener Aufbewahrung eines Kurses) ruft nur
+  `tutor_delete_conversation` je Gespräch, sodass andere Gespräche und das
+  Langzeitgedächtnis bleiben. Geschaltet über `enabletool_deleteuser` bzw.
+  `enabletool_delete`; Gespräche ohne Konversations-ID, von Gästen oder
+  eines früheren Backends werden übersprungen.
+- Fehler beim Backend halten die Löschung in Moodle nie auf: Sie werden mit
+  `debugging()` protokolliert, auch wenn es kein `moodle_exception` ist. Das
+  Rückruf-Token wird für die Person ausgestellt, auch wenn ein Task von
+  `tool_dataprivacy` die Löschung ausführt, und gleich danach widerrufen.
+- Neue Klasse `local\backend_erasure` (`erase_users()`,
+  `erase_conversations()`), die auch andere
+  Plugins nutzen können. Der Tutor-Block ruft das Werkzeug vorerst weiter
+  selbst auf; doppelte Aufrufe sind erlaubt, das Werkzeug ist idempotent.
+
 ### Dokumentation
+
+- `rag_server_spec.md` A.3, A.4 und Contract changelog: weitere Aufrufer,
+  beide Löschwerkzeuge müssen idempotent sein.
+- `04-tasks.md`: q01 entfernt; die Antwort steht in `privacy.md`,
+  `03-dev-doc.md` und ai_suite#250.
 
 - DevFlow übernommen (Vorlagenstand 862c6298): `docs/00-master.md` bis
   `05-quality.md`, Produktbeschreibung DE/EN, Datenschutz, Datensicherheit,

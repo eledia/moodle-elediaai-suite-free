@@ -37,10 +37,10 @@ use local_elediaai_chatengine\local\hints;
  * id and therefore cannot carry both.
  *
  * So the tutor keeps its own front door, which the engine's contract invites
- * (docs/contract.md §6). It is thin on purpose: prove which surface the turn
- * came from, name it, and hand the turn to the engine unchanged. The
- * conversation, the safety framing, the quota, the backend and the audit trail
- * stay where they belong.
+ * (local/elediaai_chatengine/docs/contract.md §6). It is thin on purpose: prove
+ * which surface the turn came from, name it, and hand the turn to the engine
+ * unchanged. The conversation, the safety framing, the quota, the backend and
+ * the audit trail stay where they belong.
  *
  * Nothing here reaches the backend that did not before. What changes is where
  * the values come from: the instance a learner actually has in front of them,

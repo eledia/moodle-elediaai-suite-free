@@ -196,12 +196,12 @@ if ($hassiteconfig) {
     $baseurlsetting->set_updatedcallback($queuecallback);
     $settings->add($baseurlsetting);
 
-    // API key (password field, server-side only).
-    $apikeysetting = new admin_setting_configpasswordunmask(
+    // API key, stored encrypted with the site key (ai_suite#252). Read back
+    // through ingestion_api_sink::apikey(), which decrypts it.
+    $apikeysetting = new admin_setting_encryptedpassword(
         'local_elediaai_sources/sink_ingestionapi_apikey',
         get_string('sink_ingestionapi_apikey', 'local_elediaai_sources'),
-        get_string('sink_ingestionapi_apikey_desc', 'local_elediaai_sources'),
-        ''
+        get_string('sink_ingestionapi_apikey_desc', 'local_elediaai_sources')
     );
     $apikeysetting->set_updatedcallback($queuecallback);
     $settings->add($apikeysetting);

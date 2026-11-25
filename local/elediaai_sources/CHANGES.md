@@ -10,7 +10,30 @@ Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 
 ## [Unreleased]
 
+## [1.6.1] – 2026-11-25
+
+### Sicherheit
+
+- **API-Schlüssel der Ingestion-API verschlüsselt gespeichert**
+  (ai_suite#252). `sink_ingestionapi_apikey` ist jetzt ein
+  `admin_setting_encryptedpassword` statt `admin_setting_configpasswordunmask`
+  und liegt damit nicht mehr im Klartext in `config_plugins`.
+  `ingestion_api_sink::apikey()` entschlüsselt ihn; ein Klartext von vor dem
+  Upgrade wird weiter gelesen, ein nicht entschlüsselbarer Wert gilt als
+  nicht konfiguriert. Der Upgrade-Schritt 2026112500 verschlüsselt den
+  vorhandenen Wert (idempotent). Nach einem Klon der Website ohne die
+  Schlüsseldatei aus moodledata muss der Schlüssel neu eingetragen werden.
+
+### Datenschutz
+
+- `tenant_id` in den Privacy-Metadaten der Übermittlung `rag_service`
+  ergänzt, mit Sprachstring de/en (bug02, ai_suite#252).
+
 ### Dokumentation
+
+- `docs/api-specification.md` „Retry Behaviour“ an den Code angeglichen:
+  höchstens zwei Versuche je `POST` mit 1 s Pause, kein Retry bei `4xx`,
+  `GET /health` einmal (bug01, ai_suite#252). Der Code bleibt unverändert.
 
 - DevFlow übernommen (Vorlagenstand 862c6298): `docs/00-master.md` bis
   `05-quality.md`, Produktbeschreibung DE/EN, Datenschutz, Datensicherheit,

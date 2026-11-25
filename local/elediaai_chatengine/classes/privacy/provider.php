@@ -24,6 +24,7 @@ use core_privacy\local\request\approved_userlist;
 use core_privacy\local\request\contextlist;
 use core_privacy\local\request\transform;
 use core_privacy\local\request\userlist;
+use local_elediaai_chatengine\local\backend_erasure;
 use local_elediaai_chatengine\local\message;
 use core_privacy\local\request\writer;
 use local_elediaai_chatengine\local\thread_store;
@@ -43,6 +44,14 @@ use local_elediaai_chatengine\local\usage;
  *
  * The daily message counters are kept per person across every placement and
  * therefore live in the system context.
+ *
+ * Deletions reach the backend as well, whatever placement held the
+ * conversation (ai_suite#250). A complete deletion of a person asks it to
+ * erase everything about them (tutor_delete_user_data); anything narrower,
+ * a single context or part of a person's contexts, deletes only the
+ * conversations concerned (tutor_delete_conversation). The calls are
+ * best-effort and come after the Moodle data is gone; see
+ * {@see backend_erasure}.
  *
  * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -215,33 +224,111 @@ class provider implements
     public static function delete_data_for_all_users_in_context(\context $context): void {
         global $DB;
 
+        // Collected first: once the rows are gone, so are the conversation ids.
+        $threads = self::threads_in([(int) $context->id]);
+
         thread_store::delete_where(['contextid' => $context->id]);
 
         if ($context instanceof \core\context\system) {
             $DB->delete_records(usage::TABLE);
         }
+
+        // A context is narrower than a person: only its conversations go.
+        backend_erasure::erase_conversations($threads);
     }
 
     #[\Override]
     public static function delete_data_for_user(approved_contextlist $contextlist): void {
-        $userid = $contextlist->get_user()->id;
+        $userid = (int) $contextlist->get_user()->id;
+        $approved = [];
+        foreach ($contextlist->get_contexts() as $context) {
+            $approved[] = (int) $context->id;
+        }
+        $threads = self::threads_in($approved, [$userid]);
+        $complete = $threads !== [] && self::holds_threads_only_in($userid, $approved);
+
         foreach ($contextlist->get_contexts() as $context) {
             thread_store::delete_where(['contextid' => $context->id, 'userid' => $userid]);
             if ($context instanceof \core\context\system) {
-                usage::delete_for_user((int) $userid);
+                usage::delete_for_user($userid);
             }
+        }
+
+        // The Moodle data is gone first, so the backend can never stand in
+        // its way; neither call throws (ai_suite#250). Everything at the
+        // backend only when every conversation of the person was approved,
+        // otherwise the approved conversations alone.
+        if ($complete) {
+            backend_erasure::erase_users([$userid]);
+        } else {
+            backend_erasure::erase_conversations($threads);
         }
     }
 
     #[\Override]
     public static function delete_data_for_users(approved_userlist $userlist): void {
-        $contextid = $userlist->get_context()->id;
+        $contextid = (int) $userlist->get_context()->id;
         $issystem = $userlist->get_context() instanceof \core\context\system;
-        foreach ($userlist->get_userids() as $userid) {
-            thread_store::delete_where(['contextid' => $contextid, 'userid' => (int) $userid]);
+        $userids = array_map('intval', $userlist->get_userids());
+        $threads = self::threads_in([$contextid], $userids);
+
+        foreach ($userids as $userid) {
+            thread_store::delete_where(['contextid' => $contextid, 'userid' => $userid]);
             if ($issystem) {
-                usage::delete_for_user((int) $userid);
+                usage::delete_for_user($userid);
             }
         }
+
+        // One context, never the whole person: only these conversations go.
+        backend_erasure::erase_conversations($threads);
+    }
+
+    /**
+     * The personal conversations held in the given contexts.
+     *
+     * @param int[] $contextids The contexts.
+     * @param int[]|null $userids Only these owners, or every signed-in owner when null.
+     * @return \stdClass[] Records with id, userid, backend and convkey.
+     */
+    private static function threads_in(array $contextids, ?array $userids = null): array {
+        global $DB;
+
+        if ($contextids === [] || $userids === []) {
+            return [];
+        }
+        [$ctxsql, $params] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
+        $where = "contextid {$ctxsql} AND userid > 0";
+        if ($userids !== null) {
+            [$usersql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'usr');
+            $where .= " AND userid {$usersql}";
+            $params += $userparams;
+        }
+
+        return array_values($DB->get_records_select(
+            thread_store::THREAD_TABLE,
+            $where,
+            $params,
+            'id ASC',
+            'id, userid, backend, convkey'
+        ));
+    }
+
+    /**
+     * Whether every conversation of the person lies in the given contexts.
+     *
+     * That is what tells a complete deletion request apart from a partial
+     * one, such as the retention of a single course running out.
+     *
+     * @param int $userid The person.
+     * @param int[] $contextids The approved contexts.
+     * @return bool
+     */
+    private static function holds_threads_only_in(int $userid, array $contextids): bool {
+        global $DB;
+
+        [$ctxsql, $params] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx', false);
+        $params['userid'] = $userid;
+
+        return !$DB->record_exists_select(thread_store::THREAD_TABLE, "userid = :userid AND contextid {$ctxsql}", $params);
     }
 }

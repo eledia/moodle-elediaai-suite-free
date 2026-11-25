@@ -5,16 +5,44 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 Bis 1.0.22 hieß diese Datei `CHANGELOG.md`; seit der DevFlow-Übernahme heißt
 sie `CHANGES.md`, wie es das Moodle Plugins Directory erwartet.
 
-## Unreleased
+## [1.0.23] – 2026-11-25
+
+### Behoben
+
+- **„Aufbewahrung der Fragen-Analyse (Tage)“ entfernt** (ai_suite#251). Die
+  Einstellung `analyticsretentiondays` (Standard 180) las kein Code; ihr
+  Hilfetext versprach eine tägliche Löschung, die nicht stattfand. Gelöscht
+  wird nach `local_elediaai_core/turn_retentiondays` (Standard 90, Task
+  `prune_turns`). Der Upgrade-Schritt 2026112500
+  (`block_elediaai_tutor_retire_analytics_retention()` in `db/upgradelib.php`)
+  übernimmt einen Tutor-Wert in den Kern, wenn er größer als 0, ungleich 180
+  und kürzer als die aktuelle Frist des Kerns ist (fehlender Kern-Wert zählt
+  als 90, Kern-Wert 0 als unbegrenzt). Eine längere Frist wird nie
+  übernommen. Die Tutor-Einstellung wird in jedem Fall gelöscht. An
+  ihrer Stelle steht ein Hinweis mit Link auf die Einstellung des Kerns
+  (Seite `local_elediaai_core_audit`).
+- **Leere Einstellungsüberschriften ersetzt** (ai_suite#251). „RAG-/Tutor-MCP-
+  Server“ und „Moodle-MCP-Token“ standen ohne Einstellung darunter; die Werte
+  liegen seit DEL-517 in der Chat-Engine. Ein Hinweis „Verbindung zum
+  Agenten“ verlinkt jetzt deren Einstellungsseite
+  (`local_elediaai_chatengine_settings`). Entfallen sind die Strings
+  `setting_header_rag*`, `setting_header_token*`, `setting_analyticsretention*`
+  und `setting_mcpserviceid_none`, die leeren Zeilen in `settings.php` und die
+  dort noch berechnete, nirgends genutzte Liste der MCP-Dienste.
 
 ### Geändert
 
+- Veraltete Verweise korrigiert: `classes/external/send_message.php` nennt den
+  Vertrag jetzt unter `local/elediaai_chatengine/docs/contract.md` §6;
+  `.ci.env` begründet die Zusatz-Mounts richtig und hängt Kern und MCP nicht
+  mehr zusätzlich ein (beide sind harte Abhängigkeiten und kommen über
+  `ci/generate.sh`), nur noch LiteRAG und KI-Quellen.
 - Dokumentation auf DevFlow umgestellt: `CHANGELOG.md` heißt `CHANGES.md`,
   neu sind `docs/product.de.md`, `docs/product.en.md`, `docs/screenshots.md`,
   `docs/releasenotes.md`, `docs/devflow-version.md` und `docs/playbooks/`.
   Hilfe und README nennen die Einstellungen wieder dort, wo sie seit der
   Chat-Engine liegen, und beschreiben Testsperre (#237), Gedächtnisansicht
-  (#238) und beschriftete Startschaltfläche (#234). Kein Code geändert.
+  (#238) und beschriftete Startschaltfläche (#234).
 
 ## [1.0.22] – 2026-11-24
 

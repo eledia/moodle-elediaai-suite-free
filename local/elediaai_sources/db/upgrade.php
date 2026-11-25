@@ -351,5 +351,14 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026112402, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026112500) {
+        // The Ingestion API key is stored encrypted with the site key from now
+        // on (ai_suite#252). Re-save an existing plaintext key as ciphertext;
+        // empty and already encrypted values are left as they are.
+        \local_elediaai_sources\setup::encrypt_stored_apikey();
+
+        upgrade_plugin_savepoint(true, 2026112500, 'local', 'elediaai_sources');
+    }
+
     return true;
 }
