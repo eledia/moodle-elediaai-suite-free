@@ -157,6 +157,25 @@ final class health_provider implements health_provider_contract {
             );
         }
 
+        // Loeschungen, die das Ziel noch nicht ausgefuehrt hat (#242, #243):
+        // Solange sie warten, findet der Tutor die Dokumente noch. Aufgegebene
+        // Eintraege braucht ein Mensch, deshalb Fehler statt Warnung.
+        $loeschungen = \local_elediaai_sources\delete_queue::counts();
+        if ($loeschungen['pending'] > 0 || $loeschungen['failed'] > 0) {
+            $pruefungen[] = new check(
+                id: 'deletequeue',
+                component: self::COMPONENT,
+                label: get_string('health_deletequeue', self::COMPONENT),
+                status: $loeschungen['failed'] > 0 ? check::STATUS_ERROR : check::STATUS_WARNING,
+                detail: get_string('health_deletequeue_detail', self::COMPONENT, (object) [
+                    'pending' => $loeschungen['pending'],
+                    'failed' => $loeschungen['failed'],
+                ]),
+                actionurl: new moodle_url('/local/elediaai_sources/reindex.php', [], 'deletequeue'),
+                actionlabel: get_string('health_deletequeue_action', self::COMPONENT),
+            );
+        }
+
         // Ausstehende Kurse sind kein Fehler, aber der Grund, warum ein Tutor
         // gerade nicht aus dem Kurs antwortet -- und das sucht sonst niemand hier.
         if ($offen > 0) {

@@ -6,14 +6,39 @@ Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.4.2] – 2026-11-25
+
 ### Geändert
 
+- `quota_manager::role_bucket()` ordnet zusätzlich Website-Admins und alle
+  Personen mit einer Rolle der Archetypen `manager` oder `coursecreator` (in
+  jedem Kontext) dem Teacher-Limit zu. `editingteacher` und `teacher` bleiben
+  dort. Die Prüfung ist eine einzige Abfrage über `role_assignments` und
+  `role.archetype`; Admins erkennt `is_siteadmin()` ohne Abfrage. Neu:
+  `quota_manager::TEACHER_ARCHETYPES`.
+- Standardwerte für die Tageslimits in `settings.php`: `quota_student_day`
+  800000, `quota_teacher_day` 2700000 (rund 150 bzw. 500 Credits mit
+  gpt-oss-120b). Stunden- und Monatslimits bleiben 0. Neu:
+  `quota_manager::default_limit()`, `DEFAULT_STUDENT_DAY_LIMIT`,
+  `DEFAULT_TEACHER_DAY_LIMIT`. Kein Upgrade-Schritt; gespeicherte Werte
+  bleiben unverändert.
+- Die Beschreibungen der Limit-Einstellungen und der Audit-Einstellungsseite
+  nennen, wer zur Gruppe Student bzw. Teacher gehört, die Herkunft der
+  Standardwerte und dass 0 das Limit abschaltet.
 - Dokumentation nach dem DevFlow-Standard: `CHANGELOG.md` heißt jetzt
   `CHANGES.md` (Moodle-Konvention). Neu unter `docs/`: Produktbeschreibung
   (de/en), Datenschutz, Sicherheit, Release Notes, Bildinventar und
   Vorlagenstand; `00-master.md` ist auf die Vorlage gebracht. `03-dev-doc.md`
-  wird zur Laufzeit gelesen und ist nur im Meta-Block ergänzt. Kein Code
-  geändert.
+  wird zur Laufzeit gelesen und ist nur im Meta-Block ergänzt.
+
+### Tests
+
+- Neu `tests/quota_role_bucket_test.php`: Zuordnung je Archetyp und
+  Kontextebene, Website-Admin ohne Rolle, Teilnehmende, Wechsel der Gruppe im
+  laufenden Zeitfenster.
+- Neu `tests/quota_defaults_test.php`: Standardwerte einer Neuinstallation
+  (die PHPUnit-Site wird über `install_cli_database()` installiert), Upgrade
+  behält gespeicherte Werte, 0 schaltet ab.
 
 ## [1.4.1] – 2026-11-24
 

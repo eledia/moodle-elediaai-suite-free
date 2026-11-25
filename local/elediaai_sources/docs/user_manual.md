@@ -104,6 +104,14 @@ bestimmten Zeitpunkt nicht abrufbar ist. Die Abfrage übernimmt die geplante
 Aufgabe „Verarbeitungsstatus der KI Quellen-Dokumente bestätigen" (alle fünf
 Minuten); sie lässt sich in der Aufgabenliste wie jede andere abschalten.
 
+Ab 1.6.2 meldet er außerdem **ausstehende Löschungen**: Löschungen, die das
+Ziel noch nicht ausgeführt hat, etwa weil zum selben Dokument noch ein Job
+lief oder das Ziel nicht erreichbar war. Solange sie warten, findet der
+Tutor die Dokumente noch. Die geplante Aufgabe „Ausstehende Löschungen der
+KI Quellen wiederholen“ versucht sie alle fünf Minuten erneut, mit
+wachsenden Pausen und höchstens zehnmal. Aufgegebene Löschungen meldet der
+Bericht als Fehler; sie müssen auf Seiten des Ziels entfernt werden.
+
 ## Kurse freigeben
 
 Die Aufnahme ist Opt-in: ohne Markierung wird nichts gesendet. Drei Wege führen
@@ -264,6 +272,12 @@ Unterhalb der Aktionen listet die Reindex-Seite die **letzten Aufnahmefehler**
 je Aktivität, sofern es welche gibt — mit Kurs, Meldung und Zeitpunkt. Der
 zuvor indexierte Inhalt liegt dabei weiterhin im Index; nur der letzte Versuch
 schlug fehl.
+
+Darunter stehen die **ausstehenden Löschungen** (ab 1.6.2) mit Source-ID,
+Status („Wartet“ oder „Aufgegeben“), Zahl der Versuche, nächstem Versuch und
+letztem Fehler. „Aufgegeben“ heißt: Die Antwort des Ziels ändert sich nicht
+von selbst (etwa HTTP 403, 404 oder 422), oder die zehn Versuche sind
+verbraucht.
 
 Die Reindex-Seite kennt zwei Aktionen:
 

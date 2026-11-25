@@ -214,6 +214,66 @@ class ingestion_manager {
     }
 
     /**
+     * Remove the documents of a module that no longer exists, now or later.
+     *
+     * Tries the prefix delete once. When it fails, it goes into the
+     * {@see delete_queue} with the answer of this first attempt, and the
+     * module's state is dropped all the same: the queue now carries the
+     * delete, and the module cannot come back under this id (ai_suite#243).
+     * The stored source id is used when there is one, because it froze the
+     * tenant of the ingest moment.
+     *
+     * Only for deleted modules. A module that still exists converges through
+     * the reconcile; a queued prefix delete would also remove what it sends
+     * later.
+     *
+     * @param int $courseid The course id.
+     * @param int $cmid The id of the deleted course module.
+     * @return array Result array; 'status' is 'queued' when the delete waits in the queue.
+     */
+    public function remove_deleted_module(int $courseid, int $cmid): array {
+        $state = cm_state::get($cmid);
+        $sinkid = $this->sink::id();
+        $sourceid = ($state !== null && (string) $state->sink === $sinkid && (string) $state->sourceid !== '')
+            ? (string) $state->sourceid
+            : source_id_helper::build_from_ids($courseid, $cmid);
+
+        if (!$this->sink->is_configured()) {
+            delete_queue::enqueue($sourceid, delete_queue::SCOPE_PREFIX, $sinkid, $courseid, $cmid);
+            cm_state::forget($cmid);
+            return [
+                'cmid' => $cmid,
+                'success' => false,
+                'status' => 'queued',
+                'message' => get_string('deletequeue_queued', 'local_elediaai_sources', $sourceid),
+            ];
+        }
+
+        $result = $this->sink->delete($sourceid, delete_queue::SCOPE_PREFIX);
+        if (!empty($result['success'])) {
+            cm_state::forget($cmid);
+            mtrace(get_string('deletionsuccess', 'local_elediaai_sources', $sourceid));
+            return [
+                'cmid' => $cmid,
+                'success' => true,
+                'status' => 'success',
+                'message' => get_string('deletionsuccess', 'local_elediaai_sources', $sourceid),
+            ];
+        }
+
+        delete_queue::enqueue($sourceid, delete_queue::SCOPE_PREFIX, $sinkid, $courseid, $cmid, $result);
+        cm_state::forget($cmid);
+        $errorinfo = (object) ['source_id' => $sourceid, 'http_code' => (int) ($result['http_code'] ?? 0)];
+        mtrace(get_string('deletionfailed', 'local_elediaai_sources', $errorinfo));
+        return [
+            'cmid' => $cmid,
+            'success' => false,
+            'status' => 'queued',
+            'message' => get_string('deletequeue_queued', 'local_elediaai_sources', $sourceid),
+        ];
+    }
+
+    /**
      * Remove every document of a course from the RAG index.
      *
      * Used when a course is un-marked for ingestion. Each module is removed
@@ -492,6 +552,11 @@ class ingestion_manager {
             ];
         }
 
+        // A module that used to send several documents and now sends one
+        // leaves the others behind otherwise. Only a known previous set is
+        // cleared here; an unknown one would cost a prefix delete per edit.
+        $this->clear_previous_set($cm, $modulesourceid, [$prepared['sourceid']], $modulename, false);
+
         $result = $this->send_document($cm, $prepared, $modulename);
         if (($result['status'] ?? '') === 'queued') {
             cm_state::record_queued(
@@ -525,13 +590,13 @@ class ingestion_manager {
     /**
      * Ingest a module that produces several documents (one per sub-item).
      *
-     * The module's previous document set is cleared with a prefix-scoped delete
-     * before the current set is sent, so added/removed/renamed sub-items never
-     * leave orphaned vectors in the index. The first document is upserted as a
-     * probe BEFORE that delete: if the API rejects it, the previous set stays
-     * in the index instead of leaving a visibility hole (deleted old set, no
-     * new set). The prefix-scoped delete also removes the probe document, so
-     * the full set is sent again afterwards.
+     * Sub-documents that the previous set had and the current one does not
+     * are deleted one by one before the current set is sent, so removed or
+     * shifted sub-items never leave orphaned vectors in the index
+     * ({@see clear_previous_set()}). This replaced a prefix-scoped delete
+     * after a probe upsert (ai_suite#242): the pipeline refuses a delete with
+     * 409 while a job for the same source id is queued or running, which the
+     * probe had just created, and the result of that delete was never read.
      *
      * @param \cm_info $cm The course module.
      * @param multi_document_extractor $extractor The extractor.
@@ -655,23 +720,15 @@ class ingestion_manager {
             ];
         }
 
-        // Probe with the first document before touching the previous set, so a
-        // failing API never leaves the module invisible in the index.
-        $probe = $this->send_document($cm, $prepared[0], $modulename);
-        if (empty($probe['success'])) {
-            cm_state::record_error(
-                (int) $cm->course,
-                (int) $cm->id,
-                $modulesourceid,
-                (string) $probe['message'],
-                $this->sink::id()
-            );
-            return $probe;
+        // Remove what the previous set had and the current one does not, then
+        // send the current set (ai_suite#242). Documents in both are replaced
+        // by their upsert and are never deleted, so the index keeps them while
+        // the new jobs run.
+        $newids = array_column($prepared, 'sourceid');
+        $blocked = $this->clear_previous_set($cm, $modulesourceid, $newids, $modulename, true);
+        if ($blocked !== null) {
+            return $blocked;
         }
-
-        // Clear the previous document set for this module (this also removes
-        // the probe document), then send the full current set.
-        $this->sink->delete($modulesourceid, 'prefix');
 
         $sent = 0;
         $failed = 0;
@@ -685,6 +742,13 @@ class ingestion_manager {
                 }
             } else {
                 $failed++;
+                // The first document failing usually means the destination
+                // is down; trying every further file would only stretch the
+                // cron run by one timeout each. This is what the probe used
+                // to protect against.
+                if ($sent === 0) {
+                    break;
+                }
             }
         }
 
@@ -736,6 +800,96 @@ class ingestion_manager {
             'success' => $ok,
             'status' => $queued ? 'queued' : ($ok ? 'success' : 'error'),
             'message' => $summary,
+        ];
+    }
+
+    /**
+     * Remove the previous document set of a module where the current one differs.
+     *
+     * Variant A of ai_suite#242. The previous set is known for a destination
+     * that confirms asynchronously: its document rows name every source id
+     * that was last accepted. Each id that the current set no longer has is
+     * deleted exactly; ids in both sets are left alone and replaced by their
+     * upsert. A delete that fails goes into the {@see delete_queue} and is
+     * retried there, so a `409` for a job still in flight no longer leaves an
+     * orphan behind. The delete runs before the new documents go out, so it
+     * can never meet a job of the current set.
+     *
+     * Without document rows the previous set is unknown: a synchronous
+     * destination keeps none, and a failed attempt drops them. When the
+     * module may still hold documents there, a multi-document module is
+     * cleared with one prefix delete before sending, as before the probe was
+     * introduced. That delete cannot be queued, because it would also remove
+     * the set sent right after it; when it fails, nothing is sent, the
+     * previous set stays in the index, and the module is retried through the
+     * normal attempt budget.
+     *
+     * Pending exact deletes of the ids about to be sent are cancelled: a file
+     * that was removed and put back must not be deleted by the queue later.
+     *
+     * @param \cm_info $cm The course module.
+     * @param string $modulesourceid The module-level source id.
+     * @param string[] $newids Source ids of the set about to be sent.
+     * @param string $modulename The formatted module name.
+     * @param bool $allowprefix Whether an unknown previous set is cleared by prefix.
+     * @return array|null An error result when nothing may be sent, otherwise null.
+     */
+    private function clear_previous_set(
+        \cm_info $cm,
+        string $modulesourceid,
+        array $newids,
+        string $modulename,
+        bool $allowprefix
+    ): ?array {
+        delete_queue::cancel($newids);
+
+        $state = cm_state::get((int) $cm->id);
+        $sinkid = $this->sink::id();
+        if ($state === null || (string) $state->sink !== $sinkid || $state->laststatus === cm_state::STATUS_EMPTY) {
+            return null;
+        }
+
+        $previous = cm_state::sent_source_ids((int) $cm->id);
+        if ($previous !== []) {
+            foreach (array_diff($previous, $newids) as $staleid) {
+                $result = $this->sink->delete($staleid, delete_queue::SCOPE_EXACT);
+                if (!empty($result['success'])) {
+                    mtrace(get_string('deletionsuccess', 'local_elediaai_sources', $staleid));
+                    continue;
+                }
+                delete_queue::enqueue(
+                    $staleid,
+                    delete_queue::SCOPE_EXACT,
+                    $sinkid,
+                    (int) $cm->course,
+                    (int) $cm->id,
+                    $result
+                );
+            }
+            return null;
+        }
+
+        if (!$allowprefix) {
+            return null;
+        }
+
+        $result = $this->sink->delete($modulesourceid, delete_queue::SCOPE_PREFIX);
+        if (!empty($result['success'])) {
+            return null;
+        }
+
+        $message = get_string('previoussetnotcleared', 'local_elediaai_sources', (object) [
+            'source_id' => $modulesourceid,
+            'http_code' => (int) ($result['http_code'] ?? 0),
+        ]);
+        mtrace($message);
+        cm_state::record_error((int) $cm->course, (int) $cm->id, $modulesourceid, $message, $sinkid);
+        return [
+            'cmid' => $cm->id,
+            'module_name' => $modulename,
+            'success' => false,
+            'status' => 'error',
+            'message' => $message,
         ];
     }
 

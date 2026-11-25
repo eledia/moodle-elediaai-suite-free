@@ -44,6 +44,24 @@ final class quota_manager {
     /** @var string Quota bucket for teachers and other editing roles. */
     public const BUCKET_TEACHER = 'teacher';
 
+    /**
+     * Role archetypes that put a user into the teacher bucket.
+     *
+     * Any assignment in any context counts. `teacher` (non-editing) stays in
+     * the list so that no existing site loses headroom; `manager` and
+     * `coursecreator` are the people who build courses without necessarily
+     * holding a course role.
+     *
+     * @var string[]
+     */
+    public const TEACHER_ARCHETYPES = ['editingteacher', 'teacher', 'manager', 'coursecreator'];
+
+    /** @var int Default daily limit for the student bucket on a new installation. */
+    public const DEFAULT_STUDENT_DAY_LIMIT = 800000;
+
+    /** @var int Default daily limit for the teacher bucket on a new installation. */
+    public const DEFAULT_TEACHER_DAY_LIMIT = 2700000;
+
     /** @var string Rolling one-hour quota window. */
     public const WINDOW_HOUR = 'hour';
 
@@ -506,25 +524,50 @@ final class quota_manager {
     /**
      * Student/teacher bucket for quota settings.
      *
+     * Teacher bucket: site administrators and everyone holding a role whose
+     * archetype is in {@see TEACHER_ARCHETYPES}, in any context. Everyone else
+     * is counted as a student. One indexed query; the admin check reads
+     * $CFG->siteadmins and needs no query.
+     *
      * @param int $userid
      * @return string
      */
     public static function role_bucket(int $userid): string {
         global $DB;
 
-        if (
-            $DB->record_exists_sql(
-                "SELECT 1
-               FROM {role_assignments} ra
-               JOIN {role} r ON r.id = ra.roleid
-              WHERE ra.userid = :userid
-                AND r.archetype IN ('editingteacher', 'teacher')",
-                ['userid' => $userid]
-            )
-        ) {
+        if ($userid <= 0) {
+            return self::BUCKET_STUDENT;
+        }
+        if (is_siteadmin($userid)) {
             return self::BUCKET_TEACHER;
         }
-        return self::BUCKET_STUDENT;
+
+        [$insql, $params] = $DB->get_in_or_equal(self::TEACHER_ARCHETYPES, SQL_PARAMS_NAMED, 'archetype');
+        $params['userid'] = $userid;
+        $sql = "SELECT 1
+                  FROM {role_assignments} ra
+                  JOIN {role} r ON r.id = ra.roleid
+                 WHERE ra.userid = :userid
+                   AND r.archetype {$insql}";
+        return $DB->record_exists_sql($sql, $params) ? self::BUCKET_TEACHER : self::BUCKET_STUDENT;
+    }
+
+    /**
+     * Default limit a new installation gets for a bucket/window.
+     *
+     * Only the daily windows have a default; hourly and monthly stay unlimited.
+     * The value is applied by Moodle's default-settings pass on install and for
+     * settings that have never been stored, never over a stored value.
+     *
+     * @param string $bucket
+     * @param string $window
+     * @return int
+     */
+    public static function default_limit(string $bucket, string $window): int {
+        if ($window !== self::WINDOW_DAY) {
+            return 0;
+        }
+        return $bucket === self::BUCKET_TEACHER ? self::DEFAULT_TEACHER_DAY_LIMIT : self::DEFAULT_STUDENT_DAY_LIMIT;
     }
 
     /**

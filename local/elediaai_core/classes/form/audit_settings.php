@@ -147,6 +147,12 @@ final class audit_settings extends moodleform {
                 $mform->setType($name, PARAM_INT);
                 $mform->addRule($name, null, 'numeric', null, 'client');
             }
+            $mform->addElement(
+                'static',
+                'quota_' . $bucket . '_helptext',
+                '',
+                get_string('quota_bucket_' . $bucket . '_desc', 'local_elediaai_core')
+            );
         }
 
         $mform->addElement(

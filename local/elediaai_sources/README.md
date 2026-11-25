@@ -47,7 +47,7 @@ selection deliberately stays in the normal course UI instead.
 | Supported Moodle versions | `4.5` to `5.2` in `version.php` |
 | Local compatibility check | Moodle `5.2.1` passes the PHPUnit suite |
 | PHP | Moodle-supported PHP for the target Moodle version |
-| Release | `1.6.0` (stable); `version.php` is the source |
+| Release | `1.6.2` (stable); `version.php` is the source |
 | Required plugins | `local_elediaai_core` (eLeDia.ai Suite core) |
 
 Moodle 5.2.1 is used locally for development and tests, and the official

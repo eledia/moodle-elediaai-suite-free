@@ -22,7 +22,9 @@ use local_elediaai_sources\ingestion_manager;
  * Ad-hoc task to delete a module's document from the RAG index.
  *
  * Queued by the event observer when a course module is deleted.
- * Runs asynchronously via Moodle cron.
+ * Runs asynchronously via Moodle cron. A delete that fails here is not lost:
+ * it goes into the delete queue and is retried by the delete queue task
+ * (ai_suite#243).
  *
  * @package    local_elediaai_sources
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -41,8 +43,9 @@ class delete_module_task extends \core\task\adhoc_task {
     /**
      * Execute the deletion task.
      *
-     * Sends a delete request to the RAG API for the given module's source_id.
-     * Errors are logged but never thrown to prevent cron disruption.
+     * Sends a delete request to the RAG API for the given module's source_id;
+     * a failure is queued for a later attempt. Errors are logged but never
+     * thrown to prevent cron disruption.
      */
     public function execute(): void {
         $data = $this->get_custom_data();
@@ -56,7 +59,7 @@ class delete_module_task extends \core\task\adhoc_task {
 
         try {
             $manager = new ingestion_manager();
-            $result = $manager->delete_module((int) $data->courseid, (int) $data->cmid);
+            $result = $manager->remove_deleted_module((int) $data->courseid, (int) $data->cmid);
 
             if ($result['success']) {
                 mtrace("  [local_elediaai_sources] Deletion succeeded for cmid {$data->cmid}.");

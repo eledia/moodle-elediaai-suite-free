@@ -55,6 +55,16 @@ rsync -a blocks local webservice /pfad/zu/moodle/
 
 Danach *Website-Administration → Benachrichtigungen* aufrufen und die Installation bestätigen.
 
+## Token-Limits
+
+`local_elediaai_core` begrenzt den KI-Verbrauch je Person. Eine Neuinstallation beginnt mit
+einem Tageslimit von 800.000 Tokens für Lernende und 2.700.000 Tokens für Personen mit
+Trainer-, Manager- oder Kursersteller-Rolle sowie Website-Administrator:innen; Stunden- und
+Monatslimit stehen auf 0. Die Werte sind für das Modell gpt-oss-120b gerechnet (rund 150 bzw.
+500 Credits) und als Sicherheitsnetz gedacht. Mit eigenem Modellzugang passen Sie sie unter
+*Website-Administration → Plugins → Lokale Plugins → KI-Audit* („KI-Guthabenlimits“) an.
+**0 schaltet ein Limit ab.** Ein Upgrade ändert gespeicherte Werte nicht.
+
 ## Umstieg vom früheren `block_eledia_aitutor`
 
 Wer eine frühere Fassung des Tutors mit dem Komponentennamen `block_eledia_aitutor`

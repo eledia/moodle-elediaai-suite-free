@@ -1127,6 +1127,26 @@ class cm_state {
     }
 
     /**
+     * The source ids of the module's last accepted document set, in send order.
+     *
+     * Only a destination that confirms asynchronously leaves document rows,
+     * and a failed attempt drops them; an empty answer therefore means "not
+     * known", not "nothing in the index" (ai_suite#242).
+     *
+     * @param int $cmid The course module id.
+     * @return string[]
+     */
+    public static function sent_source_ids(int $cmid): array {
+        global $DB;
+
+        $ids = $DB->get_fieldset_sql(
+            "SELECT sourceid FROM {" . self::DOC_TABLE . "} WHERE cmid = :cmid ORDER BY ordinal ASC, id ASC",
+            ['cmid' => $cmid]
+        );
+        return array_values(array_map('strval', $ids));
+    }
+
+    /**
      * Course counters for the display: indexed, being processed, failed, nothing to index.
      *
      * Computed from rows the caller already holds, so the page needs no

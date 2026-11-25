@@ -360,5 +360,38 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026112500, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026112501) {
+        // Deletes the destination has not carried out yet (ai_suite#242, #243):
+        // a 409 while a job is in flight, a 5xx or a network error used to be
+        // logged once and forgotten, so documents of deleted activities,
+        // deleted courses and removed folder files stayed in the index.
+        // No data migration: deletes that failed before this step are not
+        // known to the plugin any more.
+        $table = new xmldb_table('local_elediaai_sources_delq');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE);
+        $table->add_field('sourceid', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL);
+        $table->add_field('scope', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL);
+        $table->add_field('sink', XMLDB_TYPE_CHAR, '50', null, XMLDB_NOTNULL);
+        $table->add_field('tenant', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('cmid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('status', XMLDB_TYPE_CHAR, '10', null, XMLDB_NOTNULL);
+        $table->add_field('attempts', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('nextattempt', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('lasthttpcode', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('lasterror', XMLDB_TYPE_TEXT);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_index('sourceid-scope', XMLDB_INDEX_UNIQUE, ['sourceid', 'scope']);
+        $table->add_index('status-nextattempt', XMLDB_INDEX_NOTUNIQUE, ['status', 'nextattempt']);
+
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2026112501, 'local', 'elediaai_sources');
+    }
+
     return true;
 }

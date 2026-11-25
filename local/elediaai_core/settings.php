@@ -120,13 +120,27 @@ if ($hassiteconfig) {
         get_string('quota_settings_desc', 'local_elediaai_core')
     ));
 
-    foreach (['student', 'teacher'] as $bucket) {
-        foreach (['hour', 'day', 'month'] as $window) {
+    // Nur die Tageslimits haben einen Standard (Sicherheitsnetz fuer neue
+    // Installationen). Moodle setzt ihn bei der Installation und nie ueber
+    // einen gespeicherten Wert; bestehende Systeme behalten ihr 0.
+    // Credits je Standardwert, gerechnet fuer gpt-oss-120b.
+    $quotadefaultcredits = [quota_manager::BUCKET_STUDENT => 150, quota_manager::BUCKET_TEACHER => 500];
+    foreach ([quota_manager::BUCKET_STUDENT, quota_manager::BUCKET_TEACHER] as $bucket) {
+        foreach ([quota_manager::WINDOW_HOUR, quota_manager::WINDOW_DAY, quota_manager::WINDOW_MONTH] as $window) {
+            $default = quota_manager::default_limit($bucket, $window);
+            $description = get_string('quota_bucket_' . $bucket . '_desc', 'local_elediaai_core')
+                . ' ' . get_string('quota_limit_desc', 'local_elediaai_core');
+            if ($default > 0) {
+                $description .= ' ' . get_string('quota_day_default_desc', 'local_elediaai_core', (object) [
+                    'tokens' => $default,
+                    'credits' => $quotadefaultcredits[$bucket],
+                ]);
+            }
             $settings->add(new admin_setting_configtext(
                 'local_elediaai_core/quota_' . $bucket . '_' . $window,
                 get_string('quota_' . $bucket . '_' . $window, 'local_elediaai_core'),
-                get_string('quota_limit_desc', 'local_elediaai_core'),
-                0,
+                $description,
+                $default,
                 PARAM_INT
             ));
         }

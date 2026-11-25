@@ -10,6 +10,52 @@ Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 
 ## [Unreleased]
 
+## [1.6.2] – 2026-11-25
+
+### Behoben
+
+- **Entfernte Dateien eines Verzeichnisses verschwinden aus dem Index**
+  (ai_suite#242). Beim erneuten Senden einer Aktivität mit mehreren
+  Dokumenten (Verzeichnis, SCORM u. a.) sandte das Plugin zuerst ein
+  Probedokument und löschte danach den alten Satz per Präfix. Die Pipeline
+  lehnt diesen Delete mit `409` ab, solange zur selben `source_id` ein Job
+  läuft, und das Ergebnis wurde nicht ausgewertet: Entfernte oder
+  verschobene Dateien blieben als Waisen im Index. Jetzt löscht das Plugin
+  vor dem Senden gezielt die Teildokumente, die der bisherige Satz hatte und
+  der neue nicht mehr hat (`exact`); die übrigen ersetzt der Upsert, sie
+  bleiben während der Neuverarbeitung auffindbar. Das Probedokument entfällt.
+  Ist der bisherige Satz nicht bekannt (LiteRAG, Einträge von vor 1.6.0,
+  nach einem Fehlversuch), wird einmal per Präfix vor dem Senden geräumt;
+  gelingt das nicht, wird nichts gesendet und die Aktivität später erneut
+  versucht.
+- **Gescheiterte Löschungen werden wiederholt** (ai_suite#243). Neue
+  Löschwarteschlange (Tabelle `local_elediaai_sources_delq`, geplanter Task
+  „Ausstehende Löschungen der KI Quellen wiederholen“, alle 5 Minuten).
+  Wiederholt wird bei Netzfehlern, `409`, `429` und `5xx`, mit Pausen von
+  5 Minuten, verdoppelt bis höchstens 12 Stunden, und höchstens zehn
+  Versuchen; andere Antworten geben den Eintrag sofort auf. `404` gilt
+  weiterhin nicht als „schon gelöscht“. Darüber laufen das gelöschte Modul
+  (`delete_module_task`), entfallene Teildokumente und die Kurslöschung.
+- **Kurslöschung bei nicht erreichbarem Ziel** (ai_suite#243).
+  `observer::course_deleted` reiht je Aktivität mit Indexzustand einen
+  Präfix-Delete unter der gespeicherten `source_id` ein, bevor es die
+  Zustandszeilen entfernt. Während der Kurslöschung geht keine Anfrage
+  hinaus. Der Hook `before_course_deleted` wird dafür nicht mehr gebraucht
+  und ist entfernt.
+
+### Hinzugefügt
+
+- Zustandsbericht der Suite: Prüfung „Ausstehende Löschungen“ (Warnung bei
+  wartenden, Fehler bei aufgegebenen Löschungen). Die Reindex-Seite listet
+  die Einträge mit Versuchen, nächstem Versuch und letztem Fehler.
+
+### Dokumentation
+
+- `docs/api-specification.md`: Nachtrag zu 1.6 (nur Verhalten des Plugins,
+  nichts ändert sich auf der Leitung): `exact`-Deletes beim erneuten Senden,
+  Löschwarteschlange, `404` bleibt Fehler. `docs/data-flows.de.md`:
+  Auslöser, Verarbeitungskette, Löschtabelle und lokale Tabellen ergänzt.
+
 ## [1.6.1] – 2026-11-25
 
 ### Sicherheit

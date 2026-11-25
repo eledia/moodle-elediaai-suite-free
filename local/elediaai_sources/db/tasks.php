@@ -57,4 +57,17 @@ $tasks = [
         'month' => '*',
         'dayofweek' => '*',
     ],
+    [
+        // Retries deletes the destination refused or could not be reached for
+        // (409 while a job is in flight, 5xx, network), with backoff and a
+        // limited number of attempts (ai_suite#242, #243). With nothing due a
+        // run is a single query.
+        'classname' => 'local_elediaai_sources\task\delete_queue_task',
+        'blocking' => 0,
+        'minute' => '*/5',
+        'hour' => '*',
+        'day' => '*',
+        'month' => '*',
+        'dayofweek' => '*',
+    ],
 ];

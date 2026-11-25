@@ -29,8 +29,4 @@ $callbacks = [
         'hook' => \core_course\hook\after_form_definition::class,
         'callback' => \local_elediaai_sources\hook_callbacks::class . '::after_course_form_definition',
     ],
-    [
-        'hook' => \core_course\hook\before_course_deleted::class,
-        'callback' => \local_elediaai_sources\hook_callbacks::class . '::before_course_deleted',
-    ],
 ];

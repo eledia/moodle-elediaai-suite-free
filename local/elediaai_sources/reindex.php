@@ -469,6 +469,54 @@ if ($purgeoldsink && confirm_sesskey()) {
             ['class' => 'rg-panel']
         );
     }
+
+    // Deletes the destination has not carried out yet (ai_suite#242, #243).
+    // Until they go through, the tutor can still find these documents.
+    $queueentries = \local_elediaai_sources\delete_queue::entries(50);
+    if (!empty($queueentries)) {
+        $queuetable = new html_table();
+        $queuetable->head = [
+            get_string('deletequeue_sourceid', 'local_elediaai_sources'),
+            get_string('status', 'local_elediaai_sources'),
+            get_string('deletequeue_attempts', 'local_elediaai_sources'),
+            get_string('deletequeue_nextattempt', 'local_elediaai_sources'),
+            get_string('details', 'local_elediaai_sources'),
+        ];
+        $queuetable->attributes['class'] = 'generaltable table-striped table-sm';
+
+        foreach ($queueentries as $entry) {
+            $failed = $entry->status === \local_elediaai_sources\delete_queue::STATUS_FAILED;
+            $queuetable->data[] = [
+                html_writer::tag('code', s($entry->sourceid))
+                    . ($entry->scope === \local_elediaai_sources\delete_queue::SCOPE_PREFIX
+                        ? ' ' . get_string('deletequeue_prefix', 'local_elediaai_sources') : ''),
+                html_writer::tag(
+                    'span',
+                    get_string($failed ? 'deletequeue_failed' : 'deletequeue_pending', 'local_elediaai_sources'),
+                    ['class' => $failed ? 'badge badge-danger bg-danger' : 'badge badge-warning bg-warning text-dark']
+                ),
+                (int) $entry->attempts,
+                $failed ? '–' : userdate((int) $entry->nextattempt),
+                s((string) $entry->lasterror),
+            ];
+        }
+
+        echo html_writer::tag(
+            'section',
+            html_writer::tag(
+                'h3',
+                get_string('deletequeue', 'local_elediaai_sources'),
+                ['class' => 'rg-section-title']
+            ) .
+            html_writer::tag(
+                'p',
+                get_string('deletequeue_desc', 'local_elediaai_sources', \local_elediaai_sources\delete_queue::MAX_ATTEMPTS),
+                ['class' => 'rg-section-desc']
+            ) .
+            html_writer::table($queuetable),
+            ['class' => 'rg-panel', 'id' => 'deletequeue']
+        );
+    }
 }
 
 echo html_writer::end_div();

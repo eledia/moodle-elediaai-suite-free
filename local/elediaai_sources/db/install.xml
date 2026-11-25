@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="local/elediaai_sources/db" VERSION="20261124" COMMENT="AI Sources plugin schema."
+<XMLDB PATH="local/elediaai_sources/db" VERSION="20261125" COMMENT="AI Sources plugin schema."
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -88,6 +88,31 @@
         <INDEX NAME="sourceid" UNIQUE="true" FIELDS="sourceid" COMMENT="One row per sent source id."/>
         <INDEX NAME="cmid" UNIQUE="false" FIELDS="cmid"/>
         <INDEX NAME="courseid-nextcheck" UNIQUE="false" FIELDS="courseid, nextcheck"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_elediaai_sources_delq" COMMENT="Deletes the destination has not carried out yet (ai_suite#242, #243). One row per source id and scope; a pending row is retried with backoff, a failed row was given up and stays for the report. Holds identifiers and transport errors only, no content and no user data.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="sourceid" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="The source id to delete, as sent: a module id for a prefix delete, a (sub-)document id for an exact one."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="exact (one document) or prefix (the module and all its sub-documents)."/>
+        <FIELD NAME="sink" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false" COMMENT="Destination id the delete is meant for. Rows for another destination than the active one are dropped."/>
+        <FIELD NAME="tenant" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false" COMMENT="Tenant id derived from wwwroot when the row was written. A row whose tenant no longer matches is given up instead of being sent."/>
+        <FIELD NAME="courseid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The course the documents belonged to, for the report. Not a foreign key: the course is usually gone."/>
+        <FIELD NAME="cmid" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="The course module the documents belonged to. Not a foreign key: the module is usually gone."/>
+        <FIELD NAME="status" TYPE="char" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="pending (waiting for the next attempt) or failed (given up)."/>
+        <FIELD NAME="attempts" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Failed attempts so far."/>
+        <FIELD NAME="nextattempt" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Earliest next attempt; 0 once given up."/>
+        <FIELD NAME="lasthttpcode" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="HTTP status of the last failed attempt; 0 for a network error or before the first attempt."/>
+        <FIELD NAME="lasterror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Why the last attempt failed."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="When the delete was first queued."/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Last row change."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="sourceid-scope" UNIQUE="true" FIELDS="sourceid, scope" COMMENT="One row per delete."/>
+        <INDEX NAME="status-nextattempt" UNIQUE="false" FIELDS="status, nextattempt"/>
       </INDEXES>
     </TABLE>
   </TABLES>

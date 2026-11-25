@@ -42,59 +42,6 @@ class hook_callbacks {
     }
 
     /**
-     * Course deletion: schedule removal of the course's documents.
-     *
-     * This has to happen *before* the course is torn down. Deleting a whole
-     * course does not fire course_module_deleted per module — remove_course_contents()
-     * calls each module's own delete_instance() and drops the course_modules
-     * rows directly — so the module observer never sees these modules and their
-     * documents would stay in the index for good. This hook runs while the
-     * course still exists, which is the last point at which the module ids can
-     * be read at all.
-     *
-     * Only courses the plugin believes to be indexed are cleared. A course that
-     * was last written to a different destination is left alone, for the same
-     * reason a target switch does not purge the old one: that backend is
-     * usually unreachable by then and a failing purge must not break course
-     * deletion.
-     *
-     * @param \core_course\hook\before_course_deleted $hook The hook.
-     */
-    public static function before_course_deleted(\core_course\hook\before_course_deleted $hook): void {
-        $courseid = (int) $hook->course->id;
-        if ($courseid <= 0 || $courseid == SITEID) {
-            return;
-        }
-
-        // A course whose documents were accepted but not yet confirmed is not
-        // "ingested" yet (ai_suite#232) -- its documents may still land in
-        // the index, so it is cleared all the same.
-        $queued = cm_state::has_queued_modules($courseid, sink\sink_manager::active()::id());
-        if (!course_state::is_ingested($courseid) && !$queued) {
-            return;
-        }
-
-        try {
-            $modinfo = get_fast_modinfo($courseid);
-        } catch (\Throwable $e) {
-            debugging(
-                '[local_elediaai_sources] before_course_deleted could not read modinfo: ' . $e->getMessage(),
-                DEBUG_DEVELOPER
-            );
-            return;
-        }
-
-        foreach ($modinfo->get_cms() as $cm) {
-            $task = new task\delete_module_task();
-            $task->set_custom_data([
-                'courseid' => $courseid,
-                'cmid' => (int) $cm->id,
-            ]);
-            \core\task\manager::queue_adhoc_task($task, true);
-        }
-    }
-
-    /**
      * Remove the marking custom field (and its now-empty section header) from a
      * course edit form.
      *

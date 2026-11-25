@@ -50,7 +50,7 @@ Kursoberflaeche.
 | Offiziell unterstuetzte Moodle-Versionen | `4.5` bis `5.2` in `version.php` |
 | Lokaler Kompatibilitaetscheck | Moodle `5.2.1` besteht die PHPUnit-Suite |
 | PHP | Moodle-unterstuetzte PHP-Version fuer die Zielversion |
-| Release | `1.6.0` (stable); massgeblich ist `version.php` |
+| Release | `1.6.2` (stable); massgeblich ist `version.php` |
 | Pflicht-Plugins | `local_elediaai_core` (eLeDia.ai Suite Core) |
 
 Moodle 5.2.1 wird lokal bereits fuer Entwicklung und Tests genutzt. Die

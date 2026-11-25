@@ -229,17 +229,29 @@ jedem Schwester-Plugin aufrufbar.
 ### Buckets, Fenster und Limits
 
 - **Buckets:** `BUCKET_STUDENT` / `BUCKET_TEACHER`. `role_bucket()` liefert
-  `teacher`, sobald der Nutzer irgendwo eine Rolle mit Archetyp
-  `editingteacher` oder `teacher` hält — sonst `student`. Die Prüfung ist
-  bewusst site-weit und nicht kurskontext-abhängig, weil die Quota selbst
-  nutzerweit ist.
+  `teacher` für Website-Admins (`is_siteadmin()`, ohne Abfrage) und sobald der
+  Nutzer irgendwo eine Rolle mit einem Archetyp aus `TEACHER_ARCHETYPES` hält
+  (`editingteacher`, `teacher`, `manager`, `coursecreator`) — sonst `student`.
+  Die Rollenprüfung ist eine einzige Abfrage über `role_assignments` und
+  `role.archetype`; es gibt keinen Cache, weil der Aufruf einmal je
+  Reservierung fällt. Die Prüfung ist bewusst site-weit und nicht
+  kurskontext-abhängig, weil die Quota selbst nutzerweit ist.
 - **Fenster:** `WINDOW_HOUR`, `WINDOW_DAY`, `WINDOW_MONTH`. `window_start()`
   rastert auf die volle Stunde, den Tagesbeginn bzw. den Monatsersten in der
   Serverzeitzone. Es sind Kalenderfenster, keine gleitenden.
 - **Limit:** `get_config('local_elediaai_core', 'quota_<bucket>_<window>')`.
-  `0` (Default) bedeutet **unbegrenzt** — das Fenster wird dann komplett
+  `0` bedeutet **unbegrenzt** — das Fenster wird dann komplett
   übersprungen, es entsteht auch keine Reservierung. Sind alle sechs Limits
   `0`, ist die Quota faktisch aus.
+- **Standardwerte:** `default_limit($bucket, $window)` liefert den Default aus
+  `settings.php`: `DEFAULT_STUDENT_DAY_LIMIT` (800000) und
+  `DEFAULT_TEACHER_DAY_LIMIT` (2700000) für die Tagesfenster, sonst 0. Moodle
+  speichert ihn bei der Installation über `admin_apply_default_settings()`
+  (in `install_cli_database()`, also CLI-Installation und PHPUnit-Site) und
+  bei `admin/cli/upgrade.php` nur für nie gespeicherte Einstellungen.
+  `limit()` liest weiter nur den gespeicherten Wert; eine Installation, die die
+  Einstellung schon mit 0 gespeichert hat, bleibt unbegrenzt. Kein
+  Upgrade-Schritt.
 
 ### Reservieren → Verbuchen → Freigeben
 
@@ -291,7 +303,8 @@ Workspace-Quota aus `local_elediaai_subscription` läuft daneben.
 | `record_usage(int $userid, ?int $prompttokens, ?int $completiontokens, string $component): void` | Rückwärtskompatible Verbuchung ohne Reservierung (= `commit()` mit `$reservedtokens = 0`). |
 | `used_tokens(int $userid, string $bucket, string $window): int` | Verbuchte `totaltokens` im aktuellen Fenster (**ohne** offene Reservierungen). |
 | `estimate_tokens(string $text): int` | Grobe Schätzung `ceil(strlen / 4)` für Systeme ohne Usage-Werte. |
-| `role_bucket(int $userid): string` | `student` oder `teacher`. |
+| `role_bucket(int $userid): string` | `student` oder `teacher` (Admins und Archetypen aus `TEACHER_ARCHETYPES`). |
+| `default_limit(string $bucket, string $window): int` | Standardwert einer Limit-Einstellung für Neuinstallationen. |
 | `prune(int $days = self::RETENTION_DAYS): int` | Löscht Zeilen mit `windowstart` älter als `$days` (Default 90) und gibt die Anzahl zurück. |
 | `delete_for_user(int $userid): int` | Löscht alle Zähler eines Nutzers und gibt die Anzahl zurück. |
 

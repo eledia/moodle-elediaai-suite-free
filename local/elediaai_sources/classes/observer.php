@@ -208,20 +208,59 @@ class observer {
     }
 
     /**
-     * Handle course deleted: forget our per-course state row.
+     * Handle course deleted: queue the removal of its documents, then forget its state.
      *
-     * The documents themselves are already scheduled for removal by
-     * {@see hook_callbacks::before_course_deleted()}, which runs while the
-     * course still exists. It has to: deleting a whole course does not fire
-     * course_module_deleted per module, so {@see self::course_module_deleted()}
-     * never sees them.
+     * Deleting a whole course does not fire course_module_deleted per module
+     * (remove_course_contents() drops the course_modules rows directly), so
+     * the module observer never sees these modules. The module state rows are
+     * the only record left of what the index holds, under the stored source
+     * id that froze the tenant of the ingest moment. Each module that may
+     * hold documents in the active destination therefore goes into the
+     * {@see delete_queue} as a prefix delete BEFORE its row is dropped; the
+     * delete queue task sends it and keeps retrying while the destination is
+     * unreachable (ai_suite#243). No request is made here, so a destination
+     * that is down cannot slow down or break the course deletion.
+     *
+     * Modules last written to another destination are left alone, for the
+     * same reason a destination switch does not purge the old one.
      *
      * @param \core\event\course_deleted $event The event.
      */
     public static function course_deleted(\core\event\course_deleted $event): void {
-        course_state::forget((int) $event->objectid);
-        activity_gate::forget_course((int) $event->objectid);
-        cm_state::forget_course((int) $event->objectid);
+        $courseid = (int) $event->objectid;
+
+        try {
+            self::queue_course_deletes($courseid);
+        } catch (\Throwable $e) {
+            debugging(
+                '[local_elediaai_sources] course_deleted could not queue the removal of documents: ' . $e->getMessage(),
+                DEBUG_DEVELOPER
+            );
+        }
+
+        course_state::forget($courseid);
+        activity_gate::forget_course($courseid);
+        cm_state::forget_course($courseid);
+    }
+
+    /**
+     * Queue a prefix delete for every module of the course that may hold documents.
+     *
+     * @param int $courseid The deleted course.
+     * @return void
+     */
+    private static function queue_course_deletes(int $courseid): void {
+        $sinkid = sink\sink_manager::active_id();
+
+        foreach (cm_state::for_course($courseid) as $cmid => $row) {
+            if ($row->laststatus === cm_state::STATUS_EMPTY || (string) $row->sink !== $sinkid) {
+                continue;
+            }
+            $sourceid = (string) $row->sourceid !== ''
+                ? (string) $row->sourceid
+                : source_id_helper::build_from_ids($courseid, (int) $cmid);
+            delete_queue::enqueue($sourceid, delete_queue::SCOPE_PREFIX, $sinkid, $courseid, (int) $cmid);
+        }
     }
 
     /**
