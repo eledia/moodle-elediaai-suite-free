@@ -164,6 +164,29 @@ class backend_resolver {
     }
 
     /**
+     * The name of a backend id for people outside the administration (#259).
+     *
+     * The verification page of a provenance record is read by learners and by
+     * any signed-in person holding its link. „RAG agent" is the name the settings page uses
+     * and means something to the person who configured it; to everybody else
+     * it does not say whose agent answered. A backend may therefore carry a
+     * separate public name (`backend_<id>_public`); one that has none keeps
+     * its {@see display_name()}, so the settings and reports are unchanged.
+     *
+     * @param string $id The stored backend id.
+     * @return string The public name, the adapter's name, or the id unchanged.
+     */
+    public static function public_name(string $id): string {
+        $stringid = 'backend_' . $id . '_public';
+        $known = $id !== '' && preg_match('/^[a-z0-9_]+$/', $id)
+            && get_string_manager()->string_exists($stringid, 'local_elediaai_chatengine');
+        if ($known) {
+            return get_string($stringid, 'local_elediaai_chatengine');
+        }
+        return self::display_name($id);
+    }
+
+    /**
      * An adapter by id, whether or not it is the active one.
      *
      * Availability is not checked: a caller that needs to address the backend

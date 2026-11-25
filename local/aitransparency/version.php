@@ -30,8 +30,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_aitransparency';
-$plugin->version   = 2026102300;
-$plugin->release   = '1.1.1';
+$plugin->version   = 2026112500;
+$plugin->release   = '1.1.2';
 $plugin->requires  = 2024100700; // Moodle 4.5+.
 $plugin->supported = [405, 502];
 $plugin->maturity  = MATURITY_STABLE;

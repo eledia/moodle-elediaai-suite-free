@@ -96,6 +96,27 @@ if ($hassiteconfig) {
         0
     ));
 
+    // Which model writes the agent's answers, for the provenance record (#259).
+    // A fallback only: an agent that reports its model in the answer wins.
+    // Two fields rather than one free line, because that is the shape the
+    // agent reports in -- the record then reads the same whichever side
+    // supplied it.
+    $settings->add(new admin_setting_configtext(
+        'local_elediaai_chatengine/backend_ingestionapi_modelname',
+        get_string('setting_backend_ingestionapi_modelname', 'local_elediaai_chatengine'),
+        get_string('setting_backend_ingestionapi_modelname_desc', 'local_elediaai_chatengine'),
+        '',
+        PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+        'local_elediaai_chatengine/backend_ingestionapi_modelprovider',
+        get_string('setting_backend_ingestionapi_modelprovider', 'local_elediaai_chatengine'),
+        get_string('setting_backend_ingestionapi_modelprovider_desc', 'local_elediaai_chatengine'),
+        '',
+        PARAM_TEXT
+    ));
+
     // The tool names are part of the backend contract and fixed in code (#54).
     // What is left to decide here is which of the optional tools the agent
     // should be asked for at all.

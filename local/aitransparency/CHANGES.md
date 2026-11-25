@@ -6,8 +6,21 @@ Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.1.2] – 2026-11-26
+
 ### Geändert
 
+- Die Prüfseite nennt Backend und Modell verständlich (ai_suite#259):
+  `marker::public_provider_label()` setzt den öffentlichen Namen aus der
+  Chat-Engine (`backend_resolver::public_name()`, etwa „eLeDia.ai RAG-Agent“)
+  und das gespeicherte Modell zu „Backend / Modell“ zusammen. Fehlt die
+  Methode in einer älteren Chat-Engine, gilt `provider_label()`. Der Bericht
+  der Verwaltung bleibt bei `provider_label()`. Bestehende Nachweise werden
+  nicht verändert.
+
+### Dokumentation
+
+- 01 (feat03.AC07), 02, 03, 05 (test08), `releasenotes.md` zu ai_suite#259.
 - Dokumentation nach dem DevFlow-Standard: `CHANGELOG.md` heißt jetzt
   `CHANGES.md` (Moodle-Konvention), unter `docs/` stehen Features,
   Nutzerdoku, Qualität, Produktbeschreibung, Datenschutz, Sicherheit und

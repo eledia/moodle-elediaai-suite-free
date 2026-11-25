@@ -125,6 +125,8 @@ class simulator_adapter implements adapter {
             'iserror' => false,
             'prompttokens' => null,
             'completiontokens' => null,
+            'modelname' => '',
+            'modelprovider' => '',
             'messages' => [],
             'structured' => [],
         ];

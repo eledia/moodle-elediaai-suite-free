@@ -220,6 +220,29 @@ final class marker {
     }
 
     /**
+     * „Provider and model" as the verification page shows it (#259).
+     *
+     * The page is read by learners and by any signed-in person given the
+     * link, so a backend is named by its public name where the chat engine has one --
+     * „eLeDia.ai RAG agent" rather than the settings' „RAG agent" -- and the
+     * model the record holds follows after a slash. The administration's
+     * report keeps {@see provider_label()}. An older chat engine without
+     * public names falls back to that as well.
+     *
+     * @param string $provider The stored provider value.
+     * @param string $model The stored model, '' when unknown.
+     * @return string For example „eLeDia.ai RAG agent / gpt-oss-120b (IONOS)".
+     */
+    public static function public_provider_label(string $provider, string $model): string {
+        $resolver = '\\local_elediaai_chatengine\\backend_resolver';
+        $label = ($provider !== '' && class_exists($resolver) && method_exists($resolver, 'public_name'))
+            ? $resolver::public_name($provider)
+            : self::provider_label($provider);
+
+        return trim($label . ($model !== '' ? ' / ' . $model : ''));
+    }
+
+    /**
      * A readable name for a generating component, asked from that plugin.
      *
      * The suite does not hold a table of plugin names (06.09.2026); it asks the

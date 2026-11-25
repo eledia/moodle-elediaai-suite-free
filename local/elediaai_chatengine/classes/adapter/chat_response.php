@@ -57,6 +57,8 @@ class chat_response {
      * @param bool $iserror Whether the backend answered but reported a tool-level error.
      * @param int|null $prompttokens Measured prompt tokens, or null when not reported.
      * @param int|null $completiontokens Measured completion tokens, or null when not reported.
+     * @param string $modelname The model that wrote the answer, as the backend reported it, or ''.
+     * @param string $modelprovider Who runs that model, as the backend reported it, or ''.
      */
     public function __construct(
         /** @var string The answer as Markdown. */
@@ -77,7 +79,41 @@ class chat_response {
         public readonly ?int $prompttokens = null,
         /** @var int|null Measured completion tokens. */
         public readonly ?int $completiontokens = null,
+        /** @var string The model that wrote the answer, as reported; '' when not reported. */
+        public readonly string $modelname = '',
+        /** @var string Who runs that model, as reported; '' when not reported. */
+        public readonly string $modelprovider = '',
     ) {
+    }
+
+    /**
+     * The reported model as one readable line, or '' when none was reported.
+     *
+     * @return string For example „gpt-oss-120b (IONOS)".
+     */
+    public function reported_model(): string {
+        return self::model_label($this->modelname, $this->modelprovider);
+    }
+
+    /**
+     * Model and provider as one readable line.
+     *
+     * The provenance record has a single model field and is written once, so
+     * the line is composed here rather than by each reader. The name comes
+     * first because it is what the question „which model?" asks for; the
+     * provider follows in brackets. Either half may be missing.
+     *
+     * @param string $name The model name, or ''.
+     * @param string $provider The provider, or ''.
+     * @return string The line, or '' when both halves are empty.
+     */
+    public static function model_label(string $name, string $provider): string {
+        $name = trim($name);
+        $provider = trim($provider);
+        if ($name !== '' && $provider !== '') {
+            return $name . ' (' . $provider . ')';
+        }
+        return $name !== '' ? $name : $provider;
     }
 
     /**
@@ -100,6 +136,8 @@ class chat_response {
             $this->iserror,
             $this->prompttokens,
             $this->completiontokens,
+            $this->modelname,
+            $this->modelprovider,
         );
     }
 }

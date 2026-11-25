@@ -24,6 +24,7 @@ use local_elediaai_chatengine\adapter\backend_refusal;
 use local_elediaai_chatengine\adapter\capabilities;
 use local_elediaai_chatengine\adapter\chat_request;
 use local_elediaai_chatengine\adapter\chat_response;
+use local_elediaai_chatengine\adapter\ingestionapi_adapter;
 use local_elediaai_chatengine\local\connection;
 use local_elediaai_chatengine\local\course_scope;
 use local_elediaai_chatengine\local\guard;
@@ -775,6 +776,8 @@ class chat_service {
             $cmid = isset($primary['cmid']) ? (int) $primary['cmid'] : null;
         }
 
+        $model = self::model_of($adapter, $response);
+
         return call_user_func([$recorder, 'record'], ...[
             'component' => $component,
             // Ein Klick auf die Bestaetigungskarte ("Ja, ausfuehren") ist ein
@@ -806,8 +809,35 @@ class chat_service {
             'sourcetitle' => $sourcetitle,
             'cmid' => $cmid,
             'provider' => $adapter::id(),
+            // Dieselbe Angabe wie im Herkunftsnachweis (#259), damit Protokoll
+            // und Pruefseite nicht zwei Modelle fuer eine Antwort nennen.
+            'model' => $model !== '' ? $model : null,
             'timestarted' => $turnstarted,
         ]);
+    }
+
+    /**
+     * The model behind an answer, as one readable line (#259).
+     *
+     * What the backend reported wins: it knows which model wrote this answer,
+     * an administrator only knows which one it usually is. Without a report
+     * the RAG agent's configured fallback stands in. Nothing known stays
+     * empty -- a guessed model in a provenance record would be worse than a
+     * missing one.
+     *
+     * @param adapter $adapter The backend that answered.
+     * @param chat_response $response The answer.
+     * @return string For example „gpt-oss-120b (IONOS)", or ''.
+     */
+    public static function model_of(adapter $adapter, chat_response $response): string {
+        $reported = $response->reported_model();
+        if ($reported !== '') {
+            return $reported;
+        }
+        if ($adapter::id() === ingestionapi_adapter::id()) {
+            return connection::agent_model();
+        }
+        return '';
     }
 
     /**
@@ -844,7 +874,10 @@ class chat_service {
                 // that is a plugin; for the RAG agent it is a service outside
                 // this site, so the id is the only name it has here.
                 provider: $adapter::id(),
-                model: '',
+                // Which model wrote the text (#259): what the backend reported,
+                // else what the site configured for it, else nothing. Written
+                // once; a later change of the setting leaves this record alone.
+                model: self::model_of($adapter, $response),
                 userid: $userid,
                 contextid: $contextid,
                 assettype: 'text',

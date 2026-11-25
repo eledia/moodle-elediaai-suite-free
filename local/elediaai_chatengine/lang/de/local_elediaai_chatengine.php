@@ -60,6 +60,7 @@ $string['privacy:path:usage'] = 'Tägliche Nachrichtenzahl';
 
 // Backends.
 $string['backend_ingestionapi'] = 'RAG-Agent';
+$string['backend_ingestionapi_public'] = 'eLeDia.ai RAG-Agent';
 $string['backend_literag'] = 'LiteRAG (in dieser Instanz)';
 $string['backend_simulator'] = 'Simulator (ohne Sprachmodell)';
 $string['setting_simulator'] = 'Simulierter Backend (ohne Sprachmodell)';
@@ -151,6 +152,10 @@ $string['setting_backend_ingestionapi_allowinsecure'] = 'Einfaches HTTP erlauben
 $string['setting_backend_ingestionapi_allowinsecure_desc'] = 'Erlaubt einen http://-Endpunkt. Nur für die Entwicklung gedacht; ein über einfaches HTTP gesendetes Token ist unterwegs mitlesbar.';
 $string['setting_backend_ingestionapi_allowprivate'] = 'Adressen im privaten Netz erlauben';
 $string['setting_backend_ingestionapi_allowprivate_desc'] = 'Umgeht die Sperrliste der Instanz für den Host des Agenten. Nur nötig, wenn der Agent im internen Netz oder auf einem Entwicklungsrechner läuft.';
+$string['setting_backend_ingestionapi_modelname'] = 'Modell (Ersatzwert)';
+$string['setting_backend_ingestionapi_modelname_desc'] = 'Das Sprachmodell, mit dem der Agent antwortet, zum Beispiel gpt-oss-120b. Es wird im Herkunftsnachweis jeder neuen Antwort festgehalten und auf deren Prüfseite angezeigt, solange der Agent sein Modell nicht selbst meldet. Ein vom Agenten gemeldetes Modell hat Vorrang. Lassen Sie das Feld leer, wenn Sie es nicht kennen; bestehende Nachweise werden nicht geändert.';
+$string['setting_backend_ingestionapi_modelprovider'] = 'Anbieter des Modells (Ersatzwert)';
+$string['setting_backend_ingestionapi_modelprovider_desc'] = 'Wer dieses Modell betreibt, zum Beispiel IONOS. Erscheint in Klammern hinter dem Modell. Wird zusammen mit dem Modell oben verwendet und nur, wenn der Agent nichts meldet.';
 $string['setting_enabletool_history'] = 'Verlauf vom Agenten laden';
 $string['setting_enabletool_history_desc'] = 'Fragt den Agenten nach dem Verlauf einer Unterhaltung (Werkzeug <code>{$a}</code>).';
 $string['setting_enabletool_delete'] = 'Unterhaltungen auch beim Agenten löschen';

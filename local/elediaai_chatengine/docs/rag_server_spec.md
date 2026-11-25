@@ -144,6 +144,8 @@ Recognised fields (several aliases accepted, so you can keep your own naming):
 | Sources / citations | `sources`, `citations`, `documents`, `references` |
 | Topic label (deprecated, see below) | `topic`, `subject` |
 | Confirmation card | `confirmation` (object, see below) |
+| Token usage | `usage` (object, see "Reporting token usage") |
+| Model of the answer | `model` (object `{provider, name}`, see "Reporting the model") |
 
 A **source** entry may be a plain string, or an object with any of:
 `title`/`name`/`source`, `url`/`link`/`uri`, `snippet`/`text`/`excerpt`.
@@ -188,7 +190,8 @@ set yourself; otherwise leave it out and let the recluster label the question.
     "sources": [
       { "title": "My courses", "url": "https://moodle.example.com/my/courses.php", "snippet": "Biology 101, …" }
     ],
-    "usage": { "prompt_tokens": 1840, "completion_tokens": 260 }
+    "usage": { "prompt_tokens": 1840, "completion_tokens": 260 },
+    "model": { "provider": "IONOS", "name": "gpt-oss-120b" }
   },
   "isError": false
 }
@@ -227,6 +230,38 @@ totals drift apart.
 The block also accepts `input_tokens`/`output_tokens` and the same names without
 the underscore, and reads them from the top level when there is no `usage`
 object — existing servers therefore keep working unchanged.
+
+#### Reporting the model (optional, recommended)
+
+Moodle writes a provenance record for every answer (EU AI Act Art. 50) and
+shows it on a verification page under "Provider and model". Only the
+server knows which model wrote the text, so report it next to `usage`:
+
+```json
+"model": { "provider": "IONOS", "name": "gpt-oss-120b" }
+```
+
+| Field | Meaning |
+|---|---|
+| `name` | The model that produced the **answer text**, as its provider names it |
+| `provider` | Who runs that model, written as a reader should see it (`IONOS`, `OpenAI`, `Azure OpenAI`) |
+
+**The model of the answer text, not of every step.** A turn may call several
+models — an embedding model for retrieval, a reranker, a small model for
+routing. Report the one whose output is the `answer`. If a fallback model took
+over within the turn, report the one that actually answered.
+
+**Shown as sent, after cleaning.** Moodle displays `name (provider)`, for
+example "eLeDia.ai RAG agent / gpt-oss-120b (IONOS)". Each field is reduced to
+plain text on one line and cut at 100 characters. Send no secrets, deployment
+ids or URLs: any signed-in person holding the record's link can open the page.
+
+**Optional by design.** Omit the field and nothing breaks: Moodle records the
+model an administrator configured as a fallback in the chat engine settings,
+or no model at all. A reported value takes precedence over the fallback. A
+`model` that is not an object of strings is ignored; a bare string is read as
+`name`. The record is written once per answer — a value reported later does
+not change older records.
 
 ### A.2 `tutor_get_history` (optional)
 
@@ -929,6 +964,8 @@ differently trustworthy depending on where the facts came from.
 - [ ] Respect the block's timeout (default 120 s) — stream long answers.
 - [ ] Optional: report `usage` (prompt/completion tokens) summed over the whole
       turn, so Moodle's quota reflects real consumption.
+- [ ] Optional: report `model` (`provider`, `name`) of the model that wrote the
+      answer text, so the provenance record names it.
 - [ ] Optional: stream (B.2.1) — when the request accepts `text/event-stream`,
       emit `token` frames while generating, always close with `final` + `done`,
       and disable proxy buffering.
@@ -957,6 +994,7 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.6.3 | **`model`** response field (A.1, ai_suite#259): `{"provider": "…", "name": "…"}`, the model that produced the answer text. Moodle records it in the answer's provenance record and shows it on the verification page. Optional and additive: without it Moodle uses the model configured as a fallback in the chat engine settings, or none; a reported value takes precedence. |
 | chatengine 1.6.2 | **Deleting or emptying a conversation reaches the server** (A.3, ai_suite#256). The engine's `clear_conversation` calls `tutor_delete_conversation` for the conversation the learner deletes from the history or empties in the chat panel, on every chat surface. Before, the history deletion only forgot the `conversation_id` in Moodle and the transcript stayed on the server. Arguments unchanged; the tool must be idempotent. |
 | chatengine 1.6.1 | **Privacy deletions reach the server from the chat engine** (A.3, A.4, ai_suite#250), for every chat surface, not only through the tutor block. A deletion covering every context of a person calls `tutor_delete_user_data`; a narrower one (one course, retention) calls `tutor_delete_conversation` per conversation and must leave the rest. Expect repeated calls for the same person (tutor and engine) and calls from a scheduled task; both tools must be idempotent. Arguments unchanged. |
 | chatengine 1.5.9 (doc update) | **`topic` in `tutor_chat` deprecated** (A.1, A.6, ai_suite#240): topics come only from `tutor_recluster_questions`, which is therefore needed for a teacher report with topics. The label set is Moodle's (`labels` in each batch), not a server-side registry. Moodle still reads `topic`/`subject` from an answer; such a label counts as labelled and is skipped by the nightly run. Nothing changes for a server that already omits the field. |

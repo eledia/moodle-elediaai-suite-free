@@ -151,6 +151,12 @@ class ingestionapi_adapter implements adapter {
             iserror: (bool) $result['iserror'],
             prompttokens: $result['prompttokens'],
             completiontokens: $result['completiontokens'],
+            // Which model wrote the answer, when the agent says (#259). The
+            // fallback from the settings is applied where the record is
+            // written, so that a reported value and a configured one stay
+            // distinguishable up to that point.
+            modelname: $result['modelname'],
+            modelprovider: $result['modelprovider'],
         );
     }
 

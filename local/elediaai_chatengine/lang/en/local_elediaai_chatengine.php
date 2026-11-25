@@ -60,6 +60,7 @@ $string['privacy:path:usage'] = 'Daily message counts';
 
 // Backends.
 $string['backend_ingestionapi'] = 'RAG agent';
+$string['backend_ingestionapi_public'] = 'eLeDia.ai RAG agent';
 $string['backend_literag'] = 'LiteRAG (in this site)';
 $string['backend_simulator'] = 'Simulator (no language model)';
 $string['setting_simulator'] = 'Simulated backend (no language model)';
@@ -151,6 +152,10 @@ $string['setting_backend_ingestionapi_allowinsecure'] = 'Allow plain HTTP';
 $string['setting_backend_ingestionapi_allowinsecure_desc'] = 'Permit an http:// endpoint. Intended for development only; a token sent over plain HTTP is readable in transit.';
 $string['setting_backend_ingestionapi_allowprivate'] = 'Allow private network addresses';
 $string['setting_backend_ingestionapi_allowprivate_desc'] = 'Bypass the site\'s blocked-hosts policy for the agent host. Needed only when the agent lives on an internal network or a development host.';
+$string['setting_backend_ingestionapi_modelname'] = 'Model (fallback)';
+$string['setting_backend_ingestionapi_modelname_desc'] = 'The language model the agent answers with, for example gpt-oss-120b. It is recorded in the provenance record of every new answer and shown on its verification page, as long as the agent does not report its model itself. A model the agent reports takes precedence. Leave empty if unknown; existing records are not changed.';
+$string['setting_backend_ingestionapi_modelprovider'] = 'Model provider (fallback)';
+$string['setting_backend_ingestionapi_modelprovider_desc'] = 'Who runs that model, for example IONOS. Shown in brackets after the model. Used together with the model above, and only when the agent reports nothing.';
 $string['setting_enabletool_history'] = 'Load transcripts from the agent';
 $string['setting_enabletool_history_desc'] = 'Asks the agent for the transcript of a conversation (tool <code>{$a}</code>).';
 $string['setting_enabletool_delete'] = 'Delete conversations at the agent as well';

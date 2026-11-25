@@ -163,6 +163,29 @@ class connection {
     }
 
     /**
+     * The model the RAG agent answers with, as configured by an administrator.
+     *
+     * A fallback for the provenance record (#259): it is used only while the
+     * agent does not report the model in its answer. Both halves are bounded
+     * like a reported value, so a record reads the same whichever side
+     * supplied it.
+     *
+     * @return string For example „gpt-oss-120b (IONOS)", or '' when unset.
+     */
+    public static function agent_model(): string {
+        $text = static fn(string $name): string => \core_text::substr(
+            trim((string) preg_replace('/[\s\p{Cc}]+/u', ' ', clean_param((string) self::get($name, ''), PARAM_TEXT))),
+            0,
+            mcp_client::MAX_MODEL_FIELD
+        );
+
+        return \local_elediaai_chatengine\adapter\chat_response::model_label(
+            $text('backend_ingestionapi_modelname'),
+            $text('backend_ingestionapi_modelprovider')
+        );
+    }
+
+    /**
      * Request timeout in seconds.
      *
      * Two minutes by default. An agent turn is not one model call: retrieval,

@@ -5,6 +5,36 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.6.3] – 2026-11-26
+
+### Hinzugefügt
+
+- Modell im Herkunftsnachweis (ai_suite#259). Auf der Prüfseite stand bei
+  Antworten des RAG-Agenten unter „Anbieter und Modell“ nur „RAG-Agent“,
+  weil `chat_service::audit()` das Modell leer schrieb.
+  `mcp_client::normalise_tool_result()` liest jetzt das optionale Antwortfeld
+  `model` (`{provider, name}`; eine Zeichenkette gilt als Name) als
+  einzeiligen Text mit höchstens 100 Zeichen je Hälfte; Fehlendes oder
+  Ungültiges wird übergangen. `chat_response` trägt es als
+  `modelname`/`modelprovider` bis zu `audit()`.
+- Einstellungen `backend_ingestionapi_modelname` und
+  `backend_ingestionapi_modelprovider` (Abschnitt RAG-Agent, Standard leer)
+  als Ersatzwert, solange der Agent nichts meldet. Zwei Felder statt einer
+  freien Zeile, weil der Agent in derselben Form meldet und der Nachweis so
+  gleich aussieht, egal woher die Angabe stammt.
+- `chat_service::model_of()`: gemeldetes Modell vor Ersatzwert vor leer;
+  der Ersatzwert gilt nur für `ingestionapi`. Ergebnis als
+  „name (provider)“ im Nachweis und im Feld `model` des Turn-Protokolls.
+- `backend_resolver::public_name()` und String `backend_ingestionapi_public`
+  („eLeDia.ai RAG-Agent“) für die öffentliche Prüfseite. `display_name()` und
+  damit Einstellungen und Berichte der Verwaltung bleiben bei „RAG-Agent“.
+
+### Dokumentation
+
+- `rag_server_spec.md` A.1: Abschnitt „Reporting the model“, Feldtabelle,
+  Beispielantwort, Checkliste und Contract changelog. 01 (feat07.AC04–AC06),
+  02, 03, 05 (test20), `privacy.md`, `security.md`, `releasenotes.md`.
+
 ## [1.6.2] – 2026-11-26
 
 ### Behoben

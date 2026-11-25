@@ -80,8 +80,7 @@ $rows = [
         'component' => s(marker::component_label($record->component)),
     ]),
     'verify_assettype' => get_string('assettype_' . $record->assettype, 'local_aitransparency'),
-    'verify_provider' => s(trim(marker::provider_label($record->provider)
-        . ($record->model !== '' ? ' / ' . $record->model : ''))),
+    'verify_provider' => s(marker::public_provider_label((string) $record->provider, (string) $record->model)),
     'verify_time' => userdate($record->timecreated),
     'verify_markstate' => get_string('markstate_' . $record->markstate, 'local_aitransparency'),
     'verify_contenthash' => html_writer::tag('code', s($record->contenthash), [

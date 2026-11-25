@@ -57,6 +57,9 @@ class mcp_client {
     /** @var int Most outline sections a confirmation card lists. */
     private const MAX_OUTLINE_SECTIONS = 50;
 
+    /** @var int Longest model name or provider taken from an answer (#259). */
+    public const MAX_MODEL_FIELD = 100;
+
     /** @var moodle_url Validated RAG endpoint. */
     private moodle_url $endpoint;
 
@@ -159,7 +162,7 @@ class mcp_client {
      * @return array{
      *     answer: string, conversation_id: ?string, sources: array, topic: ?string,
      *     answer_origin: string, confirmation: ?array, iserror: bool,
-     *     prompttokens: ?int, completiontokens: ?int
+     *     prompttokens: ?int, completiontokens: ?int, modelname: string, modelprovider: string
      * }
      * @throws adapter_exception On transport or protocol failure.
      */
@@ -723,7 +726,7 @@ class mcp_client {
      * @return array{
      *     answer: string, conversation_id: ?string, sources: array, topic: ?string,
      *     answer_origin: string, confirmation: ?array, iserror: bool,
-     *     prompttokens: ?int, completiontokens: ?int
+     *     prompttokens: ?int, completiontokens: ?int, modelname: string, modelprovider: string
      * }
      */
     public static function normalise_tool_result(array $result): array {
@@ -747,6 +750,7 @@ class mcp_client {
         $confirmation = null;
         $prompttokens = null;
         $completiontokens = null;
+        $model = ['name' => '', 'provider' => ''];
 
         if (is_array($payload)) {
             foreach (['answer', 'text', 'message', 'response', 'content', 'output'] as $key) {
@@ -801,6 +805,7 @@ class mcp_client {
             $usage = is_array($payload['usage'] ?? null) ? $payload['usage'] : $payload;
             $prompttokens = self::first_int($usage, ['prompt_tokens', 'prompttokens', 'input_tokens', 'inputtokens']);
             $completiontokens = self::first_int($usage, ['completion_tokens', 'completiontokens', 'output_tokens', 'outputtokens']);
+            $model = self::normalise_model($payload['model'] ?? null);
         }
 
         if ($answer === '') {
@@ -827,7 +832,39 @@ class mcp_client {
             'iserror' => $iserror,
             'prompttokens' => $prompttokens,
             'completiontokens' => $completiontokens,
+            'modelname' => $model['name'],
+            'modelprovider' => $model['provider'],
         ];
+    }
+
+    /**
+     * The model the backend says wrote the answer, as plain bounded text (#259).
+     *
+     * It lands in the provenance record, which is written once and shown on a
+     * verification page any signed-in person may open, so whatever arrives is
+     * reduced to one line of text and shortened. Anything that is not the documented object -- or a bare
+     * string, which some servers send as the model name -- is ignored rather
+     * than failing the turn: the field is optional and the site has a fallback.
+     *
+     * @param mixed $model The raw `model` value.
+     * @return array{name: string, provider: string} Both '' when nothing usable was sent.
+     */
+    private static function normalise_model($model): array {
+        if (is_string($model)) {
+            $model = ['name' => $model];
+        }
+        if (!is_array($model)) {
+            return ['name' => '', 'provider' => ''];
+        }
+        $text = static function ($value): string {
+            if (!is_string($value)) {
+                return '';
+            }
+            $value = clean_param($value, PARAM_TEXT);
+            $value = trim((string) preg_replace('/[\s\p{Cc}]+/u', ' ', $value));
+            return \core_text::substr($value, 0, self::MAX_MODEL_FIELD);
+        };
+        return ['name' => $text($model['name'] ?? null), 'provider' => $text($model['provider'] ?? null)];
     }
 
     /**
