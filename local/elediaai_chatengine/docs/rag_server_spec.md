@@ -269,6 +269,13 @@ messages and return success:
 { "structuredContent": { "deleted": true, "conversation_id": "conv-9f2a1c" } }
 ```
 
+- Called by the chat engine for every chat surface (chatengine 1.6.2,
+  ai_suite#256), not only by the tutor block: when a learner deletes a
+  conversation from the history, and also when they empty the conversation
+  they are in (the clear button of the chat panel, e.g. in the AI chat
+  activity). The next turn of an emptied conversation comes without
+  `conversation_id`. Afterwards `tutor_get_history` for that id should report
+  the conversation as not found.
 - Also called by Privacy API deletions narrower than a whole person (chatengine
   1.6.1, ai_suite#250), for example when the retention of one course runs out:
   one call per conversation concerned, from a Moodle scheduled task, with the
@@ -950,6 +957,7 @@ unless a row says otherwise — one does, and it says so in its first line.
 
 | Plugin version | Change |
 |---|---|
+| chatengine 1.6.2 | **Deleting or emptying a conversation reaches the server** (A.3, ai_suite#256). The engine's `clear_conversation` calls `tutor_delete_conversation` for the conversation the learner deletes from the history or empties in the chat panel, on every chat surface. Before, the history deletion only forgot the `conversation_id` in Moodle and the transcript stayed on the server. Arguments unchanged; the tool must be idempotent. |
 | chatengine 1.6.1 | **Privacy deletions reach the server from the chat engine** (A.3, A.4, ai_suite#250), for every chat surface, not only through the tutor block. A deletion covering every context of a person calls `tutor_delete_user_data`; a narrower one (one course, retention) calls `tutor_delete_conversation` per conversation and must leave the rest. Expect repeated calls for the same person (tutor and engine) and calls from a scheduled task; both tools must be idempotent. Arguments unchanged. |
 | chatengine 1.5.9 (doc update) | **`topic` in `tutor_chat` deprecated** (A.1, A.6, ai_suite#240): topics come only from `tutor_recluster_questions`, which is therefore needed for a teacher report with topics. The label set is Moodle's (`labels` in each batch), not a server-side registry. Moodle still reads `topic`/`subject` from an answer; such a label counts as labelled and is skipped by the nightly run. Nothing changes for a server that already omits the field. |
 | chatengine 1.5.8 | **`tutor_get_memory`** (A.7): optional, read-only view of the user's long-term memory and session notes for the privacy panel; called whenever `enabletool_memoryoptin` is on. Additive: a server without it answers "Unknown tool", which the learner sees as "could not be loaded". The opt-out (A.5) is now confirmed by the learner first. |

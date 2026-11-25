@@ -125,5 +125,18 @@ function xmldb_local_elediaai_chatengine_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026101401, 'local', 'elediaai_chatengine');
     }
 
+    if ($oldversion < 2026112600) {
+        // Deleting a conversation from the history used to empty it only, and
+        // every such thread stayed in the list as an empty row (#256). Those
+        // remains go: no turn, no backend conversation id. A thread used
+        // within the last day is left alone -- it may have been opened by a
+        // turn that is still waiting for its answer, and that turn is only
+        // written once the answer is there. The scenario activity keeps a row
+        // of its own for every thread, so its threads are not touched here.
+        \local_elediaai_chatengine\local\thread_store::delete_empty(time() - DAYSECS, ['mod_elli']);
+
+        upgrade_plugin_savepoint(true, 2026112600, 'local', 'elediaai_chatengine');
+    }
+
     return true;
 }

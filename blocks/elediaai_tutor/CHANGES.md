@@ -5,6 +5,31 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 Bis 1.0.22 hieß diese Datei `CHANGELOG.md`; seit der DevFlow-Übernahme heißt
 sie `CHANGES.md`, wie es das Moodle Plugins Directory erwartet.
 
+## [1.0.24] – 2026-11-26
+
+### Behoben
+
+- **Gelöschtes Gespräch blieb im Fenster stehen** (ai_suite#256). Der
+  Papierkorb im Verlauf entfernte das Gespräch, in dem das Fenster gerade
+  war, aus der Liste, ließ aber seine Nachrichten im Fenster stehen. Jetzt
+  leert `deleteConversation()` in `amd/src/chat.js` das Fenster und zeigt die
+  Einstiegsvorschläge, wie es der Papierkorb im Kopf schon tat.
+- **Verlauf zeigte nach dem Neuladen „keine Gespräche“** (ai_suite#256,
+  beim Behat-Test gefunden). `toggleHistory()` lud die Liste nur, solange
+  `historyLoaded` falsch war; dieselbe Eigenschaft setzt die Engine, wenn sie
+  beim Seitenaufruf das offene Gespräch wiederherstellt. Mit einem
+  wiederhergestellten Gespräch wurde die Liste deshalb nie geholt. Jetzt lädt
+  der Verlauf die Liste bei jedem Öffnen; der Tutor liest das Flag nicht mehr.
+- Löschen aus dem Verlauf löscht das Gespräch jetzt wirklich, auch beim
+  Agenten, und die Liste zeigt keine leeren Zeilen mehr. Das leistet die
+  Chat-Engine 1.6.2; die Abhängigkeit steht auf `2026112600`.
+
+### Tests
+
+- Behat `chat_ui.feature`: „A conversation deleted from the history leaves no
+  empty row behind“, mit dem Schritt `"<user>" has a tutor conversation
+  "<frage>" in course "<kurs>"` in `tests/behat/behat_block_elediaai_tutor.php`.
+
 ## [1.0.23] – 2026-11-25
 
 ### Behoben

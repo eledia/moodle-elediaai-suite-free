@@ -22,15 +22,26 @@ use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
 use core_external\external_value;
+use local_elediaai_chatengine\local\backend_erasure;
 use local_elediaai_chatengine\local\thread_store;
 use local_elediaai_chatengine\placement\registry;
 
 /**
- * Drop the turns of a conversation at its owner's request.
+ * Delete or empty a conversation at its owner's request.
  *
- * The backend's own conversation id is forgotten at the same time, so the next
- * turn starts a new transcript rather than resuming one the person just asked
- * to be rid of on a service that never heard about it.
+ * Two requests share the endpoint (ai_suite#256):
+ *
+ *  - With a thread id the reader deletes that conversation, typically out of
+ *    the history list. The thread goes with its turns; an emptied thread
+ *    would come back as an empty row at the top of the list.
+ *  - Without one the reader empties the conversation they are in, as the
+ *    clear button of a surface with one conversation per activity does. The
+ *    thread stays, so the next turn carries on in it.
+ *
+ * Either way the backend's transcript is deleted too (tutor_delete_conversation,
+ * when switched on) and its conversation id forgotten, so the next turn starts
+ * a new transcript instead of resuming the one the person asked to be rid of.
+ * A backend that fails does not keep the conversation in Moodle alive.
  *
  * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
@@ -46,17 +57,17 @@ class clear_conversation extends external_api {
         return new external_function_parameters([
             'component' => new external_value(PARAM_COMPONENT, 'Frankenstyle component of the placement'),
             'instanceid' => new external_value(PARAM_INT, 'Placement instance id, 0 for site-wide', VALUE_DEFAULT, 0),
-            'threadid' => new external_value(PARAM_INT, 'Conversation to clear, 0 for the current one', VALUE_DEFAULT, 0),
+            'threadid' => new external_value(PARAM_INT, 'Conversation to delete, 0 to empty the current one', VALUE_DEFAULT, 0),
         ]);
     }
 
     /**
-     * Clear the conversation.
+     * Delete the named conversation, or empty the current one.
      *
      * @param string $component Frankenstyle component of the placement.
      * @param int $instanceid Placement instance id.
-     * @param int $threadid Conversation to clear, 0 for the current one.
-     * @return array Whether anything was cleared.
+     * @param int $threadid Conversation to delete, 0 to empty the current one.
+     * @return array Whether anything was deleted or emptied.
      */
     public static function execute(string $component, int $instanceid, int $threadid = 0): array {
         global $USER;
@@ -83,11 +94,25 @@ class clear_conversation extends external_api {
             ? thread_store::owned((int) $params['threadid'], (int) $USER->id)
             : thread_store::current((string) $params['component'], (int) $params['instanceid'], (int) $USER->id);
 
-        if ($thread === null) {
+        // The placement's rule above only holds for its own conversations. A
+        // thread id from another surface, or another instance, would let one
+        // placement's yes delete what another one protects -- a scenario
+        // handed in, say -- so such a thread counts as not there.
+        $here = $thread !== null && (string) $thread->placement === (string) $params['component'];
+        $here = $here && (int) $thread->instanceid === (int) $params['instanceid'];
+        if (!$here) {
             return ['cleared' => false];
         }
 
-        thread_store::clear((int) $thread->id);
+        // The record as it was: clear() forgets the conversation id the
+        // backend needs to find its transcript.
+        if ($params['threadid'] > 0) {
+            thread_store::delete((int) $thread->id);
+        } else {
+            thread_store::clear((int) $thread->id);
+        }
+        // Moodle first: the backend is best effort and never throws.
+        backend_erasure::erase_conversations([$thread]);
 
         return ['cleared' => true];
     }
@@ -99,7 +124,7 @@ class clear_conversation extends external_api {
      */
     public static function execute_returns(): external_single_structure {
         return new external_single_structure([
-            'cleared' => new external_value(PARAM_BOOL, 'Whether a conversation was cleared'),
+            'cleared' => new external_value(PARAM_BOOL, 'Whether a conversation was deleted or emptied'),
         ]);
     }
 }

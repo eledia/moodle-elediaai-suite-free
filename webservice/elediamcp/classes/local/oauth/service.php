@@ -190,20 +190,21 @@ class service {
         $clean = array_values(array_unique($clean));
 
         // Only the authorization_code grant with the code response type and PKCE
-        // (public client) is supported; reject anything else up front.
+        // (public client) is supported. A client that asks for more (OpenAI clients also
+        // list refresh_token) is registered with what this server offers: RFC 7591 section 3.2.1
+        // lets the server restrict the requested metadata and return the registered values.
+        // A registration that does not ask for authorization_code at all stays rejected.
         $granttypes = $request['grant_types'] ?? ['authorization_code'];
         if (!is_array($granttypes)) {
             $granttypes = [];
         }
-        foreach ($granttypes as $grant) {
-            if ($grant !== 'authorization_code') {
-                throw new oauth_exception(
-                    'invalid_client_metadata',
-                    get_string('oauth_err_unsupported_grant_registration', 'webservice_elediamcp'),
-                    400,
-                    false
-                );
-            }
+        if ($granttypes !== [] && !in_array('authorization_code', $granttypes, true)) {
+            throw new oauth_exception(
+                'invalid_client_metadata',
+                get_string('oauth_err_unsupported_grant_registration', 'webservice_elediamcp'),
+                400,
+                false
+            );
         }
         $authmethod = $request['token_endpoint_auth_method'] ?? 'none';
         if ($authmethod !== 'none') {

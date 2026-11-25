@@ -1651,12 +1651,18 @@ export class ChatPanel {
     /**
      * Drop the conversation, the confirmation having been given.
      *
+     * The panel empties the conversation it is in and names none: with a
+     * thread id the engine deletes that thread outright (ai_suite#256), which
+     * is what a history list asks for, not this button. A surface may keep
+     * rows of its own that point at the thread - the scenario activity does -
+     * and the next turn is meant to carry on in it.
+     *
      * @return {void}
      */
     doClearConversation() {
         Ajax.call([{
             methodname: this.methods().clear,
-            args: {component: this.component, instanceid: this.instanceid, threadid: this.threadId || 0}
+            args: {component: this.component, instanceid: this.instanceid, threadid: 0}
         }])[0].then(() => {
             this.resetLog();
             this.threadId = 0;

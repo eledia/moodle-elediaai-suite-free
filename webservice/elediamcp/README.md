@@ -274,14 +274,14 @@ with your token pre-filled at creation time — copy it straight into the config
 Discovery for OAuth-aware clients:
 
 ```
-GET https://your-moodle-site.com/webservice/elediamcp/.well-known/oauth-protected-resource
+GET https://your-moodle-site.com/webservice/elediamcp/.well-known/oauth-protected-resource.php
 ```
 
 When a request is unauthenticated, the server responds with:
 
 ```
 HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer realm="Moodle MCP", resource_metadata="https://.../webservice/elediamcp/.well-known/oauth-protected-resource"
+WWW-Authenticate: Bearer realm="Moodle MCP", resource_metadata="https://.../webservice/elediamcp/.well-known/oauth-protected-resource.php"
 ```
 
 ---
@@ -424,7 +424,7 @@ issued).
 | OAuth endpoints | `oauth/register.php` (no sign-in): 5 registrations per minute and 30 per hour per address, `oauth/token.php`: site rate limit per address, HTTP 429 with `Retry-After`. `oauth/authorize.php` shows faulty requests as an error page; only the person's own allow or deny goes back to the client's redirect address. |
 | Endpoint capability | `webservice/elediamcp:use` checked at system context after authentication, in addition to per-function Moodle capability checks. |
 | Per-tool authorisation | Each tool re-checks the relevant Moodle capability with the explicit user id and stays scoped to the authenticated user's data. |
-| Audit | `tool_invoked`, `write_performed`, `context_verified`, `token_created`, `token_revoked` events under *Site admin → Reports → Logs* (forwardable via Logstore plugins). |
+| Audit | `tool_invoked`, `write_performed`, `context_verified`, `token_created`, `token_revoked` events under *Site admin → Reports → Logs* (forwardable via Logstore plugins). `write_performed` is emitted only when a tool actually changed data, not for the preview of a two-step write. |
 | Emergency disable | Returns HTTP 503 immediately, before any other processing. |
 
 ### Server-side confirmation of write tools
@@ -609,9 +609,11 @@ public (no client secret), and redirect URIs must be pre-registered. Tokens
 issued this way appear under **Preferences → MCP tokens** and can be revoked
 there. Existing bearer-token clients keep working regardless of the setting.
 
-> The extensionless `/.well-known/*` discovery URLs require the web server to
-> rewrite them to the matching `*.php` files (same requirement as the existing
-> Protected Resource Metadata document).
+> The address announced in the `WWW-Authenticate` header (the Protected Resource
+> Metadata document, with `.php`) works without a web server rule. The
+> extensionless `/.well-known/*` discovery URLs at the root of the site, such as
+> `/.well-known/oauth-authorization-server` (RFC 8414), still require the web
+> server to rewrite them to the matching `*.php` files.
 
 ## 🤝 Contributing
 

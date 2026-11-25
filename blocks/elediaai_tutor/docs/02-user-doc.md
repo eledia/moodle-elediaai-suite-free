@@ -52,7 +52,8 @@ Key usage notes:
 - Answers can be copied. Failed answers can be retried.
 - **New conversation** (plus) starts a fresh conversation, even when the window
   is currently empty.
-- When history is enabled, the history icon opens saved conversations.
+- When history is enabled, the history icon opens saved conversations. The bin
+  next to a conversation deletes it, here and at the AI agent.
 - Answers that do not come from course material are marked as a general answer.
 - While you have a quiz attempt open, the tutor may refuse your messages and
   name the quiz. After submitting, you can use it again (see "Lock during

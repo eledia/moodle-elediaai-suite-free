@@ -321,7 +321,7 @@ $string['oauth_err_registration_disabled'] = 'Die dynamische Client-Registrierun
 $string['oauth_err_response_type'] = 'Nicht unterstützter response_type. Nur "code" wird unterstützt.';
 $string['oauth_err_token_issue'] = 'Die Autorisierung konnte für Ihr Konto nicht abgeschlossen werden.';
 $string['oauth_err_unknown_client'] = 'Unbekannter OAuth-Client.';
-$string['oauth_err_unsupported_grant_registration'] = 'Nur der Grant-Typ authorization_code wird unterstützt.';
+$string['oauth_err_unsupported_grant_registration'] = 'Der Grant-Typ authorization_code ist erforderlich, weitere Grant-Typen werden nicht unterstützt.';
 $string['oauth_privacy_codes_heading'] = 'MCP-OAuth-Autorisierungscodes';
 $string['oauth_token_label'] = 'OAuth · {$a}';
 

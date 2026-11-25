@@ -319,7 +319,7 @@ $string['oauth_err_registration_disabled'] = 'Dynamic client registration is dis
 $string['oauth_err_response_type'] = 'Unsupported response_type. Only "code" is supported.';
 $string['oauth_err_token_issue'] = 'The authorization could not be completed for your account.';
 $string['oauth_err_unknown_client'] = 'Unknown OAuth client.';
-$string['oauth_err_unsupported_grant_registration'] = 'Only the authorization_code grant type is supported.';
+$string['oauth_err_unsupported_grant_registration'] = 'The grant type authorization_code is required; other grant types are not supported.';
 $string['oauth_privacy_codes_heading'] = 'MCP OAuth authorization codes';
 $string['oauth_token_label'] = 'OAuth · {$a}';
 

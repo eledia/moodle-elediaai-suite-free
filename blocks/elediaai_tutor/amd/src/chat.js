@@ -946,7 +946,14 @@ class TutorChat extends ChatPanel {
     }
 
     /**
-     * Toggle the history panel, loading conversations on first open.
+     * Toggle the history panel, loading the conversations each time it opens.
+     *
+     * The list is fetched on every opening rather than once. A flag for
+     * "already loaded" was shared with the engine, which sets it when it
+     * replays the turns of the open conversation: with a conversation
+     * restored on page load the list was never fetched and the browser said
+     * there were no conversations (ai_suite#256). One small call per opening
+     * also keeps the list true to what other tabs deleted or started.
      *
      * @return {void}
      */
@@ -957,9 +964,7 @@ class TutorChat extends ChatPanel {
         const willShow = this.historyPanel.hasAttribute('hidden');
         if (willShow) {
             this.historyPanel.removeAttribute('hidden');
-            if (!this.historyLoaded) {
-                this.loadConversationList();
-            }
+            this.loadConversationList();
         } else {
             this.historyPanel.setAttribute('hidden', 'hidden');
         }
@@ -981,7 +986,6 @@ class TutorChat extends ChatPanel {
             methodname: 'local_elediaai_chatengine_list_conversations',
             args: {component: this.component, instanceid: this.instanceid}
         }])[0].then((response) => {
-            this.historyLoaded = true;
             const conversations = (response.conversations || []).map((c) => ({
                 id: c.id,
                 title: c.title,
@@ -1079,8 +1083,13 @@ class TutorChat extends ChatPanel {
             if (id === this.threadId) {
                 // The conversation the panel was in is gone. Without the wish
                 // the next turn would land in whatever conversation is now the
-                // most recent - an older one the learner did not reopen.
+                // most recent - an older one the learner did not reopen. Its
+                // turns leave the log as well: they no longer exist anywhere,
+                // and the panel would otherwise go on showing them under the
+                // history it just closed over (ai_suite#256).
+                this.resetLog();
                 this.startNewThread();
+                this.showStarters();
             }
             this.dropHistoryItem(id);
             return null;

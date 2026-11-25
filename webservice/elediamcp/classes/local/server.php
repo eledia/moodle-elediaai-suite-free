@@ -835,7 +835,8 @@ class server extends webservice_base_server {
      */
     protected function oauth_metadata_url(): string {
         global $CFG;
-        return $CFG->wwwroot . '/webservice/elediamcp/.well-known/oauth-protected-resource';
+        // With the file extension: this address works without a web server rewrite rule.
+        return $CFG->wwwroot . '/webservice/elediamcp/.well-known/oauth-protected-resource.php';
     }
 
     /**
@@ -1004,6 +1005,7 @@ class server extends webservice_base_server {
         $errormessage = null;
         $exceptionclass = null;
         $withheld = false;
+        $output = null;
 
         try {
             // Moodle decides whether the person agreed, not the agent's model
@@ -1076,9 +1078,38 @@ class server extends webservice_base_server {
                 $errorcode,
                 $errormessage,
                 $exceptionclass,
-                $withheld
+                $withheld,
+                $iserror ? null : self::tool_result_changed_state($output)
             );
         }
+    }
+
+    /**
+     * Whether a tool result says that the tool changed data (#249).
+     *
+     * A preview (`requires_confirmation` true, which is also what a confirmation withheld by
+     * the gate answers with) changed nothing. A result with a success flag of the write tools
+     * (`created`, `updated`, `done`, `sent`, `enrolled`, `graded`, `finished`) is as that flag
+     * says. Any other result, from a tool that writes without a confirmation step (saving a
+     * quiz answer), counts as a change, so that an unknown shape never hides a write from the
+     * audit.
+     *
+     * @param mixed $output The array a tool returned.
+     * @return bool|null True or false as the result says, null when the shape is not known.
+     */
+    public static function tool_result_changed_state(mixed $output): ?bool {
+        if (!is_array($output)) {
+            return null;
+        }
+        if (($output['requires_confirmation'] ?? null) === true) {
+            return false;
+        }
+        foreach (['created', 'updated', 'done', 'sent', 'enrolled', 'graded', 'finished'] as $flag) {
+            if (array_key_exists($flag, $output) && is_bool($output[$flag])) {
+                return $output[$flag];
+            }
+        }
+        return true;
     }
 
     /**
@@ -1378,6 +1409,8 @@ class server extends webservice_base_server {
      * @param string|null $errormessage The message of a business error, shortened for the event (#182).
      * @param string|null $exceptionclass The class of an unexpected exception, never its message (#182).
      * @param bool $withheld Whether `confirm` was withheld for lack of the person's approval (#178).
+     * @param bool|null $changed Whether the tool result says data was changed; false for a preview, null when
+     *     unknown (a failed call, or a Moodle function, which has no preview step) (#249).
      * @return void
      */
     protected function record_tool_invocation(
@@ -1389,7 +1422,8 @@ class server extends webservice_base_server {
         ?string $errorcode = null,
         ?string $errormessage = null,
         ?string $exceptionclass = null,
-        bool $withheld = false
+        bool $withheld = false,
+        ?bool $changed = null
     ): void {
         try {
             $durationms = (int) round((microtime(true) - $start) * 1000);
@@ -1424,7 +1458,8 @@ class server extends webservice_base_server {
             ]);
             $event->trigger();
 
-            $iswrite = $this->is_write_tool($toolname, $aitool);
+            // A preview is no write (#249): the event says that something was written.
+            $iswrite = $this->is_write_tool($toolname, $aitool) && $changed !== false;
             if (!$iserror && $iswrite) {
                 $write = write_performed::create([
                     'context' => \core\context\system::instance(),

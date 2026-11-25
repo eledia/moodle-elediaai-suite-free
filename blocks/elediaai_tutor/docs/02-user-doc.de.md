@@ -38,7 +38,7 @@ Hinweise zur Bedienung:
 - Wenn die Website oder der Block es erlaubt, wechseln Sie den Antwortstil zwischen **Erklären**, **Nur Hinweise** und **Abfragen**.
 - Antworten lassen sich kopieren. Schlägt eine Antwort fehl, können Sie es erneut versuchen.
 - **Neues Gespräch** (Plus) beginnt ein neues Gespräch, auch wenn das Fenster gerade leer ist.
-- Ist der Gesprächsverlauf eingeschaltet, öffnen Sie frühere Gespräche über das Verlaufssymbol.
+- Ist der Gesprächsverlauf eingeschaltet, öffnen Sie frühere Gespräche über das Verlaufssymbol. Der Papierkorb neben einem Gespräch löscht es, hier und beim KI-Agenten.
 - Antworten, die nicht aus den Kursmaterialien stammen, sind als „Allgemeine Antwort“ gekennzeichnet.
 - Haben Sie gerade einen Test offen, lehnt der Tutor Ihre Nachrichten möglicherweise ab und nennt den Test. Nach der Abgabe können Sie ihn wieder nutzen (siehe „Während Tests sperren“).
 

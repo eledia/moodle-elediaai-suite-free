@@ -34,6 +34,10 @@ use local_elediaai_chatengine\placement\registry;
  * placement that happens to use it first is how the four implementations came
  * about in the first place.
  *
+ * Threads without a turn are left out (ai_suite#256): they have nothing to
+ * show or reopen. One the current turn has only just opened appears once the
+ * turn is recorded.
+ *
  * @package    local_elediaai_chatengine
  * @copyright  2026 Christopher Reimann, eLeDia GmbH <christopher.reimann@eledia.de>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -79,7 +83,8 @@ class list_conversations extends external_api {
             (int) $params['instanceid'],
             (int) $USER->id,
             null,
-            self::MAX_ROWS
+            self::MAX_ROWS,
+            true
         );
 
         return [

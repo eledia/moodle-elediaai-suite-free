@@ -50,7 +50,11 @@ vendor/bin/behat --tags @webservice_elediamcp
    use `format_string()`/`format_text()` with the correct context on any output.
 4. Set `annotations()` honestly: read-only tools must declare `readOnlyHint: true`;
    anything that changes state must declare it (the audit layer relies on this to
-   emit `write_performed`).
+   emit `write_performed`). The event is emitted only when the result says that
+   something was written: a tool with a confirmation step must report
+   `requires_confirmation: true` in its preview, and a success flag (`created`,
+   `updated`, `done`, `sent`, `enrolled`, `graded` or `finished`) must be `false`
+   when nothing was changed.
 5. Register the class in `classes/local/ai/registry.php`.
 6. Add tests under `tests/` (happy path, invalid input, unauthorised user, and a
    permission-boundary case).

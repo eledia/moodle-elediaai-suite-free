@@ -5,6 +5,44 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.6.2] – 2026-11-26
+
+### Behoben
+
+- Gespräch löschen im Verlauf hinterließ leere Einträge und erreichte den
+  Agenten nicht (ai_suite#256). `clear_conversation` mit Thread-ID leerte den
+  Thread nur und gab ihm einen neuen Zeitstempel; `list_conversations` zeigte
+  ihn danach als Zeile ohne Titel und Vorschau ganz oben. Jetzt löscht
+  `clear_conversation` mit Thread-ID den Thread samt Nachrichten
+  (`thread_store::delete()`), ohne Thread-ID leert es wie bisher das aktuelle
+  Gespräch. In beiden Fällen geht `tutor_delete_conversation` an den Agenten
+  (`backend_erasure::erase_conversations()`, Schalter `enabletool_delete`);
+  ein Fehler dort blockiert das Löschen in Moodle nicht.
+- `list_conversations` liefert keine Threads ohne Nachricht
+  (`thread_store::threads_for()`, neuer Parameter `withturnsonly`).
+- `clear_conversation` nimmt nur Threads der aufrufenden Platzierung und
+  Instanz an. Vorher ließ sich über eine Platzierung, die das Löschen erlaubt,
+  ein Gespräch einer anderen leeren, die es verbietet (Elli nach der Abgabe).
+
+### Geändert
+
+- Das Chat-Panel (`chat_panel.js`, KI-Chat, Elli) schickt beim Leeren keine
+  Thread-ID mehr: Es leert, statt zu löschen. `mod_elli` führt je Thread eine
+  eigene Zeile, die beim Löschen verwaist wäre.
+
+### Upgrade
+
+- Upgrade-Schritt 2026112600: `thread_store::delete_empty()` entfernt die
+  Reste des früheren Leerens, also Threads ohne Nachricht und ohne `convkey`,
+  die seit über einem Tag unverändert sind. Threads von `mod_elli` bleiben.
+
+### Dokumentation
+
+- `rag_server_spec.md` A.3 und Contract changelog: weitere Aufrufer von
+  `tutor_delete_conversation`. `contract.md` §3 (`may_clear`), `privacy.md`
+  (Löschen durch die Person erreicht den Agenten), 01, 02, 03, 05,
+  `releasenotes.md`.
+
 ## [1.6.1] – 2026-11-25
 
 ### Behoben

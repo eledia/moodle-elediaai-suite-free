@@ -199,6 +199,7 @@ class thread_store {
      * @param int $userid The owner, or 0 for a guest.
      * @param string|null $guestkey Guest identifier when userid is 0.
      * @param int $limit Maximum rows, 0 for all.
+     * @param bool $withturnsonly Leave out threads without a single turn.
      * @return \stdClass[] Thread records.
      */
     public static function threads_for(
@@ -206,14 +207,24 @@ class thread_store {
         int $instanceid,
         int $userid,
         ?string $guestkey = null,
-        int $limit = 0
+        int $limit = 0,
+        bool $withturnsonly = false
     ): array {
         global $DB;
 
         $conditions = self::owner_conditions($placement, $instanceid, $userid, $guestkey);
+        $where = self::where_clause($conditions);
+        if ($withturnsonly) {
+            // A thread without a turn has nothing to show: no title, no
+            // preview, nothing to reopen. Listing it put an empty row at the
+            // top of the history (ai_suite#256).
+            $where .= ' AND EXISTS (SELECT 1 FROM {' . self::MESSAGE_TABLE . '} m WHERE m.threadid = {'
+                . self::THREAD_TABLE . '}.id)';
+        }
 
-        return array_values($DB->get_records(
+        return array_values($DB->get_records_select(
             self::THREAD_TABLE,
+            $where,
             $conditions,
             'timemodified DESC, id DESC',
             '*',
@@ -374,6 +385,63 @@ class thread_store {
             'lastpreview' => null,
             'timemodified' => time(),
         ]);
+    }
+
+    /**
+     * Delete one thread and its turns.
+     *
+     * Unlike {@see clear()} nothing is left behind: a thread the reader threw
+     * away out of the history must not come back as an empty row (ai_suite#256).
+     *
+     * @param int $threadid The thread id.
+     * @return void
+     */
+    public static function delete(int $threadid): void {
+        global $DB;
+
+        $DB->delete_records(self::MESSAGE_TABLE, ['threadid' => $threadid]);
+        $DB->delete_records(self::THREAD_TABLE, ['id' => $threadid]);
+    }
+
+    /**
+     * Delete the empty threads earlier versions left behind.
+     *
+     * Before ai_suite#256 deleting a conversation from the history only
+     * emptied it. What remains is a thread without a turn and without a
+     * backend conversation id. A thread that was opened a moment ago and is
+     * still waiting for its first answer looks the same, which is why only
+     * threads not used since the cutoff are taken.
+     *
+     * @param int $cutoff Only threads last modified before this time.
+     * @param string[] $keep Placements whose threads are left alone, because
+     *     they keep rows of their own that point at a thread.
+     * @return int How many threads were deleted.
+     */
+    public static function delete_empty(int $cutoff, array $keep = []): int {
+        global $DB;
+
+        $params = ['cutoff' => $cutoff, 'nokey' => ''];
+        $placementsql = '';
+        if ($keep !== []) {
+            [$notin, $keepparams] = $DB->get_in_or_equal(array_values($keep), SQL_PARAMS_NAMED, 'keep', false);
+            $placementsql = " AND t.placement $notin";
+            $params += $keepparams;
+        }
+        $sql = 'SELECT t.id
+                  FROM {' . self::THREAD_TABLE . '} t
+                 WHERE t.timemodified < :cutoff
+                       AND (t.convkey IS NULL OR t.convkey = :nokey)' . $placementsql . '
+                       AND NOT EXISTS (SELECT 1 FROM {' . self::MESSAGE_TABLE . '} m WHERE m.threadid = t.id)';
+        $ids = $DB->get_fieldset_sql($sql, $params);
+        if ($ids === []) {
+            return 0;
+        }
+        foreach (array_chunk($ids, 500) as $chunk) {
+            [$insql, $params] = $DB->get_in_or_equal($chunk, SQL_PARAMS_NAMED, 'tid');
+            $DB->delete_records_select(self::THREAD_TABLE, "id $insql", $params);
+        }
+
+        return count($ids);
     }
 
     /**

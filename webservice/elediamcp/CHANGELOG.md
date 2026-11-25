@@ -5,6 +5,25 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.24.2] – 2026-11-25
+
+### Behoben
+
+- `write_performed` und die Kennzeichnung „schreibend“ im Handlungsprotokoll der Suite melden nur noch, was wirklich geschrieben wurde (#249). Bisher löste jeder erfolgreiche Aufruf eines schreibenden Werkzeugs das Ereignis aus, auch die Vorschau des ersten Schritts und eine vom Bestätigungs-Gate zurückgehaltene Bestätigung: Ein angelegter Kurs ergab zwei Ereignisse. Jetzt entscheidet das Ergebnis des Werkzeugs: `requires_confirmation: true` ist keine Schreibaktion, ebenso ein Erfolgsfeld (`created`, `updated`, `done`, `sent`, `enrolled`, `graded`, `finished`) mit dem Wert `false`. Werkzeuge ohne Bestätigungsschritt (Antworten speichern) lösen das Ereignis wie bisher aus. `tool_invoked` bleibt unverändert und kommt bei jedem Aufruf. Bereits protokollierte Ereignisse werden nicht geändert; Zählungen für die Zeit vor dem Update enthalten die Vorschauen.
+- Bekannt und bewusst unverändert: `moodle_quiz_get_page` zählt weiter als Schreibaktion (es merkt sich die Seite und kann einen abgelaufenen Versuch schließen).
+
+### Tests
+
+- `write_event_test`: Vorschau ohne Ereignis, Vorschau plus bestätigter Aufruf genau ein Ereignis, Fehler und „nichts zu tun“ ohne Ereignis, Schreibaktion ohne Bestätigungsschritt mit Ereignis, Lesart aller Ergebnisfelder, und jedes Werkzeug mit `confirm` nennt `requires_confirmation` in seiner Ausgabe.
+
+## [1.24.1] – 2026-11-24
+
+### Behoben
+
+- OAuth, dynamische Client-Registrierung (#245): Ein Client, der neben `authorization_code` weitere Grant-Typen anmeldet (zum Beispiel `refresh_token`, wie es OpenAI-Clients tun), wird nicht mehr mit `invalid_client_metadata` abgelehnt. Der Server registriert ihn mit `authorization_code` und nennt in der Antwort nur diesen Typ (RFC 7591, Abschnitt 3.2.1). Fehlt `authorization_code` in der Anfrage, bleibt es bei HTTP 400. Die Meldung sagt jetzt, dass `authorization_code` erforderlich ist.
+- OAuth, Discovery (#245): Der `WWW-Authenticate`-Header und die Server-Info der anonymen GET-Anfrage nennen die Adresse der Protected-Resource-Metadaten mit `.php`. Sie funktioniert damit ohne Umschreibungsregel des Webservers; ohne sie lieferte die Adresse ohne Endung auf Servern ohne `mod_rewrite` den Status 404. Die Adressen unter `/.well-known/` an der Wurzel der Website (RFC 8414) brauchen die Webserver-Regel weiter, die README sagt das.
+- Tests: `oauth_service_test` (Registrierung mit `authorization_code` und `refresh_token`, nur mit `refresh_token`, Antwort nennt nur `authorization_code`) und `server_test` (Adresse mit `.php` in der Server-Info).
+
 ## [1.24.0] – 2026-11-21
 
 ### Neu
