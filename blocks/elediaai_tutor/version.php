@@ -26,12 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026112600;
+$plugin->version = 2026112601;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'block_elediaai_tutor';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.24';
+$plugin->release = '1.0.25';
 $plugin->dependencies = [
     // The block always talks to the backend through a user-scoped Moodle MCP
     // token, on grounded and model-only turns alike, so the connector is
@@ -52,5 +52,6 @@ $plugin->dependencies = [
     // nur MCP und Chat-Engine (N-02).
     // 2026112401: insights::labels_with_examples(), TOPIC_NONE und die
     // Variante-B-Abfrage von fetch_for_recluster() (ai_suite#210).
-    'local_elediaai_core' => 2026112401,
+    // 2026112501: help_document loest relative Bildpfade der Hilfeseite auf.
+    'local_elediaai_core' => 2026112501,
 ];

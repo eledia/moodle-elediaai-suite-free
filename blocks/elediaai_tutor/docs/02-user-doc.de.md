@@ -5,7 +5,7 @@
 Deutsche Fassung der Nutzerdokumentation (`feat01`–`feat08`). Die Basisdatei
 `02-user-doc.md` ist Englisch (`docsBase: en`). `help.php` zeigt diese Datei für
 deutschsprachige Personen zur Laufzeit an; dieser Abschnitt erscheint dort
-nicht. Datei nicht umbenennen oder verschieben. Stand: Release 1.0.22.
+nicht. Datei nicht umbenennen oder verschieben. Stand: Release 1.0.25.
 
 ---
 
@@ -32,6 +32,10 @@ Das Plugin ist die Moodle-Oberfläche des Tutors. Das Gespräch führt die KI-Ch
 3. Geben Sie eine Frage ein oder wählen Sie eine vorgeschlagene Einstiegsfrage.
 4. Lesen Sie die Antwort und stellen Sie bei Bedarf eine Folgefrage.
 
+![Kursseite „Klimawandel verstehen“ mit geöffnetem Tutor-Fenster „Klima-Tutor“. Oben der Hinweis „Was der Tutor ist“ mit den Schaltflächen „Alles klar“ und „So arbeiten Sie mit dem Tutor“, darunter die Begrüßung, zwei Vorschlagsfragen, die Antwortstile „Erklären“, „Nur Hinweise“ und „Abfragen“ und das Eingabefeld „Stellen Sie eine Frage …“. Die Kopfzeile trägt Symbole für Vergrößern, Verlauf, neues Gespräch, Datenschutz und Schließen.](screenshots/de/shot01-chat-geoeffnet-de.png)
+
+![Vergrößertes Tutor-Fenster: Auf die Frage „Was ist der Treibhauseffekt?“ antwortet der Klima-Tutor in drei Stichpunkten zum natürlichen und zum verstärkten Treibhauseffekt und zu den wichtigsten Treibhausgasen. Neben dem Namen steht die Marke „Quellenbasiert“, unter der Antwort unter „Quellen“ als Quelle S1 der Link „Der Treibhauseffekt“ auf die Kursseite und ein Symbol zum Kopieren.](screenshots/de/shot02-antwort-mit-quelle-de.png)
+
 Hinweise zur Bedienung:
 
 - **Enter** sendet eine Nachricht, **Shift+Enter** fügt einen Zeilenumbruch ein.
@@ -39,8 +43,14 @@ Hinweise zur Bedienung:
 - Antworten lassen sich kopieren. Schlägt eine Antwort fehl, können Sie es erneut versuchen.
 - **Neues Gespräch** (Plus) beginnt ein neues Gespräch, auch wenn das Fenster gerade leer ist.
 - Ist der Gesprächsverlauf eingeschaltet, öffnen Sie frühere Gespräche über das Verlaufssymbol. Der Papierkorb neben einem Gespräch löscht es, hier und beim KI-Agenten.
+- Antworten aus dem Kursmaterial tragen die Marke **Quellenbasiert** und nennen unter **Quellen** die Aktivitäten, auf die sie sich stützen. Ein Klick öffnet die Aktivität.
 - Antworten, die nicht aus den Kursmaterialien stammen, sind als „Allgemeine Antwort“ gekennzeichnet.
+- Ist die KI-Kennzeichnung der Suite installiert, steht unter jeder Antwort „Dieser Inhalt wurde von einer KI erzeugt.“ Über **Herkunft prüfen** sehen Sie, wann und von welchem System der Text erzeugt wurde.
 - Haben Sie gerade einen Test offen, lehnt der Tutor Ihre Nachrichten möglicherweise ab und nennt den Test. Nach der Abgabe können Sie ihn wieder nutzen (siehe „Während Tests sperren“).
+
+![Weiterer Verlauf desselben Gesprächs: Auf die Folgefrage „Warum widerlegt ein kalter Winter den Klimawandel nicht?“ erklärt der Tutor quellenbasiert den Unterschied zwischen Wetter und Klima und nennt als Quelle S1 „Wetter und Klima“. Beide Antworten tragen den Hinweis „Dieser Inhalt wurde von einer KI erzeugt.“ mit dem Link „Herkunft prüfen“.](screenshots/de/shot03-folgefrage-de.png)
+
+![Geöffneter Gesprächsverlauf über dem Chat: ein früheres Gespräch mit dem Titel „Warum widerlegt ein kalter Winter den Klimawandel nicht?“ und rechts daneben ein Papierkorbsymbol zum Löschen. Das Uhrsymbol in der Kopfzeile ist als aktiv hervorgehoben.](screenshots/de/shot04-gespraechsverlauf-de.png)
 
 ### Datenschutzhinweise, Langzeitgedächtnis und Ihre Daten
 
@@ -53,6 +63,10 @@ Das Schild in der Kopfzeile des Tutors öffnet die **Datenschutzhinweise**. Dort
 
 Wenn Sie das Langzeitgedächtnis abschalten, fragt der Tutor nach: Alles Gemerkte wird sofort und endgültig gelöscht. Mit **Vorher ansehen** prüfen Sie zuerst, was gespeichert ist. Abbrechen oder Schließen lässt das Gedächtnis eingeschaltet.
 
+![Dialog „Datenschutzhinweise“: ein Kasten „KI-Antworten können falsch sein“, dann die Abschnitte „Was beim Chatten gesendet wird“, „Was gespeichert wird“ und „Langzeitgedächtnis (optional)“. Darunter das nicht angehakte Kästchen „Dem Tutor erlauben, sich Informationen über Gespräche hinweg zu merken (Langzeitgedächtnis)“ und der Link „Ansehen, was der Tutor sich über mich gemerkt hat“.](screenshots/de/shot05-datenschutzhinweise-de.png)
+
+Welcher Text in den Datenschutzhinweisen steht, legt Ihre Einrichtung fest. Er kann von der Abbildung abweichen.
+
 ## Kurskontext und Wissensbasis
 
 Aus welchem Material der Tutor antwortet, legt die Blockinstanz fest. Für kursbezogene Antworten müssen drei Dinge zusammenpassen:
@@ -62,6 +76,8 @@ Aus welchem Material der Tutor antwortet, legt die Blockinstanz fest. Für kursb
 3. Die Kursinhalte wurden über **KI-Quellen** eingelesen und sind beim KI-Dienst verfügbar.
 
 Die **Wissensbasis** einer Instanz besteht aus Kursbereichen und Kursen. Ein Bereich schließt alle Kurse darunter ein, auch später hinzugefügte. Ohne Auswahl sucht der Tutor in dem Kurs, in dem er steht. Ist die fragende Person in keinem der gewählten Kurse eingeschrieben, antwortet der Tutor ohne Kursmaterial.
+
+![Abschnitt „Wissensbasis“: „Kurskontext übergeben“ steht auf „Ja“, „Antwortquelle“ auf „In Kursmaterialien verankert“, und unter „Wissensbasis“ ist nichts ausgewählt („Keine Auswahl“ mit Suchfeld).](screenshots/de/shot09-instanz-wissensbasis-de.png)
 
 Die **Antwortquelle** einer Instanz ist entweder „In Kursmaterialien verankert“ oder „Allgemeinwissen (nur LLM)“. Den zweiten Modus gibt es nur, wenn die Website „Nur-LLM-Modus erlauben“ eingeschaltet hat. Ein Kurs ohne eingelesene Wissensbasis antwortet dann aus dem Allgemeinwissen; ist der Modus nicht erlaubt, zeigt der Tutor „nicht verfügbar“.
 
@@ -82,6 +98,22 @@ Wenn der Tutor nur allgemeine Antworten gibt, obwohl er im Kurs verwendet wird, 
    - **Während Tests sperren**
    - **Design-Einstellungen**, falls pro Instanz erlaubt
 6. Speichern Sie und testen Sie den Tutor mit einer Rolle, die den Block nutzen darf (`block/elediaai_tutor:use`).
+
+Den Block wählen Sie im Bearbeitungsmodus über **Block hinzufügen** in der Blockleiste. Danach zeigt der Kurs dort die Schaltfläche zum Öffnen des Tutors.
+
+![Dialog „Block hinzufügen“ mit einer alphabetischen Liste der verfügbaren Blöcke, darunter der Eintrag „eLeDia.ai | Tutor“; unten die Schaltfläche „Abbrechen“.](screenshots/de/shot06-block-hinzufuegen-de.png)
+
+![Kursseite „Klimawandel verstehen“ mit den Abschnitten Allgemeines, Grundlagen, Folgen des Klimawandels und Wissen prüfen. In der rechten Blockleiste steht der Tutor-Block mit der Schaltfläche „eLeDia.ai | Tutor öffnen“.](screenshots/de/shot07-kurs-mit-block-de.png)
+
+Die Blockkonfiguration öffnen Sie über das Aktionsmenü des Blocks. Die Einstellungsseite gliedert sich in die Bereiche **Design**, **Gespräch & Anzeige**, **Wissensbasis** und **Technische Einstellungen**; rechts zeigt eine **Live-Vorschau** Änderungen sofort.
+
+![Einstellungsseite „eLeDia.ai | Tutor | Einstellungen (Klimawandel verstehen)“ mit den Reitern Einstellungen, Tutor, Vorschau und MCP-Tokens. Darunter die Kacheln „Design“ (ausgewählt), „Gespräch & Anzeige“, „Wissensbasis“ und „Technische Einstellungen“, Sprungmarken zu den Design-Abschnitten und der Farbwähler „Akzentfarbe“. Rechts eine Live-Vorschau des Chatfensters, unten die Schaltflächen „Änderungen speichern“ und „Abbrechen“.](screenshots/de/shot08-instanz-einstellungen-de.png)
+
+Im Bereich **Gespräch & Anzeige** legen Sie Persona, Begrüßung und Vorschlagsfragen fest (eine Frage pro Zeile).
+
+![Abschnitt „Persona & System-Prompt“: Persona-Name „Klima-Tutor“, Rolle beginnend mit „Lernbegleitung im Kurs“, Tonfall beginnend mit „freundlich, klar, ermutig…“, Zielgruppe beginnend mit „Lernende ohne Vorkennt…“ und ein leeres Feld „Eigene Anweisungen“. Die längeren Werte sind im Feld abgeschnitten.](screenshots/de/shot10-instanz-persona-de.png)
+
+![Feld „Begrüßungsnachricht“ mit dem Text „Hallo! Ich bin der Klima-Tutor. Ich beantworte Ihre Fragen zu den Materialien dieses Kurses.“ und Feld „Vorgeschlagene Fragen“ mit zwei Zeilen: „Was ist der Treibhauseffekt?“ und „Worin unterscheiden sich Wetter und Klima?“.](screenshots/de/shot11-instanz-begruessung-de.png)
 
 ## Einrichtung
 
@@ -175,6 +207,8 @@ Der websiteweite Startknopf folgt der Blockinstanz, die den Kurs freischaltet.
 ## KI-Deutung der Fragen
 
 Lehrende mit dem Recht `block/elediaai_tutor:viewreports` öffnen im Kurs die Seite **KI-Deutung der Fragen**. Dort lässt sich eine KI-Analyse erstellen: Sie fasst zusammen, womit Lernende Schwierigkeiten haben, und schlägt Maßnahmen vor. Grundlage sind anonymisierte Fragen der Lernenden. Die Zahlen, die Themen und die Fragen selbst stehen in den **Kurs-Einblicken** der Suite, die von dieser Seite verlinkt sind. Liegen noch zu wenige Fragen vor, sagt die Seite das.
+
+![Seite „KI-Deutung der Fragen“ im Kurs „Klimawandel verstehen“: ein Erklärtext, dass Zahlen, Lückenliste und Fragen in den Kurs-Einblicken stehen, die Schaltfläche „Kurs-Einblicke öffnen“ und der Kasten „Copilot“ mit der Schaltfläche „Analyse erstellen“.](screenshots/de/shot12-ki-deutung-fragen-de.png)
 
 Jede Nacht ordnet der Tutor neue Fragen einem Thema zu, sofern das Backend das anbietet. Eine einmal eingeordnete Frage behält ihr Thema. Wer abgedriftete Themen reparieren will, schaltet „Alle 14 Tage alle Fragen neu einordnen“ ein; an diesem Tag ändern sich die Zahlen.
 

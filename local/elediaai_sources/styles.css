@@ -417,6 +417,17 @@ body.path-local-elediaai_sources .lh-plugin-content-area {
     padding: 0.08rem 0.25rem;
 }
 
+/* Bildschirmfotos der Hilfe: mit doppelter Pixeldichte aufgenommen, also nie
+   breiter als der Text, und als Bild vom Text abgesetzt. */
+.rg-docs-content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+    border: 1px solid var(--rg-border);
+    border-radius: var(--rg-radius);
+}
+
 @media (max-width: 760px) {
     .rg-action-panel {
         align-items: stretch;

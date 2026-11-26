@@ -67,7 +67,7 @@ final class help_document {
             return '';
         }
         $text = file_get_contents($pfad);
-        return $text === false ? '' : self::clean($text);
+        return $text === false ? '' : self::clean(self::resolve_images($text, dirname($pfad)));
     }
 
     /**
@@ -122,7 +122,70 @@ final class help_document {
             $abschnitt = (string) preg_split('~^\#{' . ($ebene + 1) . '}\s~m', $abschnitt, 2)[0];
         }
 
-        return self::clean(trim($abschnitt));
+        return self::clean(self::resolve_images(trim($abschnitt), dirname($pfad)));
+    }
+
+    /**
+     * Macht relative Bildpfade eines Dokuments fuer die Hilfeseite erreichbar.
+     *
+     * Ein Dokument bindet seine Bilder relativ zu sich selbst ein
+     * (`![Alt](screenshots/de/shot01-...-de.png)`), so wie DevFlow es vorgibt
+     * und wie es im Repository und in PluginFlow funktioniert. Auf der
+     * Hilfeseite liest der Browser denselben Pfad relativ zur Adresse von
+     * `help.php` -- dort fehlt `docs/`, und das Bild bricht. Darum wird jeder
+     * relative Pfad hier gegen den Ordner des Dokuments aufgeloest und als
+     * Adresse unter wwwroot geschrieben.
+     *
+     * Ein Bild, das es nicht gibt, faellt ganz heraus: Pakete wie das freie
+     * nehmen Bilder nur per Positivliste mit, und ein kaputtes Bild auf einer
+     * Hilfeseite ist schlimmer als keines. Der Text drumherum muss ohnehin ohne
+     * Bild verstaendlich sein. Dasselbe gilt fuer alles, was nicht unter dem
+     * Webroot liegt, keine Bilddatei ist oder mit `..` den Ordner verlaesst.
+     * Absolute Adressen, Wurzelpfade und Anker bleiben, wie sie sind.
+     *
+     * @param string $markdown
+     * @param string $verzeichnis Absoluter Ordner des Dokuments.
+     * @return string
+     */
+    public static function resolve_images(string $markdown, string $verzeichnis): string {
+        global $CFG;
+
+        $verzeichnis = rtrim(str_replace('\\', '/', $verzeichnis), '/');
+        $wurzeln = array_unique(array_filter([
+            rtrim(str_replace('\\', '/', (string) $CFG->dirroot), '/'),
+            rtrim(str_replace('\\', '/', (string) realpath($CFG->dirroot)), '/'),
+        ]));
+        $wurzel = null;
+        foreach ($wurzeln as $kandidat) {
+            if (str_starts_with($verzeichnis . '/', $kandidat . '/')) {
+                $wurzel = $kandidat;
+                break;
+            }
+        }
+
+        return (string) preg_replace_callback(
+            '~!\[([^\]\n]*)\]\(\s*([^)\s]+)(?:\s+"[^"\n]*")?\s*\)~u',
+            static function (array $treffer) use ($verzeichnis, $wurzel): string {
+                $ziel = $treffer[2];
+                if (preg_match('~^(?:[a-z][a-z0-9+.\-]*:|/|\#)~i', $ziel)) {
+                    return $treffer[0];
+                }
+                $pfad = rawurldecode((string) preg_replace('~[?\#].*$~', '', $ziel));
+                $teile = explode('/', $pfad);
+                $erlaubt = $wurzel !== null
+                    && !in_array('..', $teile, true)
+                    && preg_match('~\.(?:png|jpe?g|gif|webp|svg)$~i', $pfad)
+                    && is_file($verzeichnis . '/' . $pfad);
+                if (!$erlaubt) {
+                    return '';
+                }
+                $relativ = substr($verzeichnis . '/' . $pfad, strlen($wurzel));
+                $kodiert = implode('/', array_map('rawurlencode', explode('/', $relativ)));
+                $url = new \moodle_url($kodiert);
+                return '![' . $treffer[1] . '](' . $url->out(false) . ')';
+            },
+            $markdown
+        );
     }
 
     /**

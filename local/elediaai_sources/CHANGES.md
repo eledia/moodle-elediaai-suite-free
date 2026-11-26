@@ -10,6 +10,24 @@ Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 
 ## [Unreleased]
 
+## [1.6.3] – 2026-11-25
+
+### Hinzugefügt
+
+- **Bildschirmfotos in der Hilfe.** Sieben Aufnahmen unter
+  `docs/screenshots/de/` (`shot01`–`shot07`), eingebunden in
+  `docs/user_manual.md` (Hilfeseite) und `docs/02-user-doc.md`; Inventar und
+  Alt-Texte in `docs/screenshots.md`. In `shot04` (Probelauf) sind Quell-ID,
+  Mandant und Adressen geschwärzt.
+- `styles.css`: Bilder in `.rg-docs-content` werden nie breiter als der Text
+  und sind mit Rahmen abgesetzt.
+
+### Geändert
+
+- Abhängigkeit `local_elediaai_core` auf `2026112501` (1.4.3): Erst dieser
+  Kern löst relative Bildpfade auf der Hilfeseite auf. Mit einem älteren Kern
+  wären die Bilder dort kaputt.
+
 ## [1.6.2] – 2026-11-25
 
 ### Behoben

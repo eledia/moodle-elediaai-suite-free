@@ -6,6 +6,28 @@ Frühere Stände siehe git log.
 
 ## [Unreleased]
 
+## [1.4.3] – 2026-11-25
+
+### Behoben
+
+- **Bilder auf den Hilfeseiten der Suite.** Die Nutzerdokus binden ihre
+  Bildschirmfotos relativ zu sich selbst ein (`screenshots/de/...`), wie
+  DevFlow es vorgibt. Auf einer Hilfeseite löste der Browser diesen Pfad
+  gegen die Adresse von `help.php` auf, wo `docs/` fehlt, und das Bild brach.
+  Neu `help_document::resolve_images()`: `read()` und `section()` lösen jeden
+  relativen Bildpfad gegen den Ordner des Dokuments auf und schreiben ihn als
+  Adresse unter wwwroot. Ein Bild, das im Paket fehlt, nicht unter dem Webroot
+  liegt, keine Bilddatei ist oder mit `..` den Ordner verlässt, fällt ganz
+  heraus, statt kaputt angezeigt zu werden. Absolute Adressen, Wurzelpfade
+  und Anker bleiben unverändert. Anlass sind die ersten Screenshots von
+  Tutor-Block und KI Quellen.
+
+### Tests
+
+- `tests/help_document_test.php` um fünf Fälle erweitert (aufgelöstes Bild,
+  fehlendes Bild, Pfad mit `..` und Nicht-Bild, Ordner außerhalb des Webroots,
+  absolute Ziele). Neue Fixture unter `tests/fixtures/help_document/`.
+
 ## [1.4.2] – 2026-11-25
 
 ### Geändert

@@ -94,6 +94,7 @@ Der Workflow reicht nur noch Event, Input und die geaenderten Dateien durch;
 | `classes/hook_callbacks.php` | Launcher-Injektion ueber `before_standard_top_of_body_html_generation`. |
 | `classes/output/feature_grid.php` | Geteilter Renderer fuer Suite-Karten, Zielgruppenlegende und die aufgabenorientierten Teacher-Einstiege. |
 | `classes/output/section_nav.php` | Suite- und Feature-Section-Navigation (Tab-Renderer). |
+| `classes/output/help_document.php` | Bereitet ein `docs/`-Dokument für eine Hilfeseite auf (`read()`, `section()`): Meta-Block und Verweise auf Nachbardokumente fallen, Überschriften rutschen eine Ebene tiefer, und seit 1.4.3 löst `resolve_images()` relative Bildpfade gegen den Ordner des Dokuments in Adressen unter wwwroot auf. Ein Bild, das fehlt, nicht unter dem Webroot liegt, keine Bilddatei ist oder mit `..` den Ordner verlässt, fällt heraus. Genutzt von den `help.php` von Tutor, KI Quellen, LiteRAG, MCP und Übersetzung. |
 | `classes/local/audit_config.php` | Liest alle audit-bezogenen Plugin-Settings an einer Stelle. |
 | `classes/local/audit_page.php` | Geteilte Rendering-Helper fuer die Audit-Seiten (CSS, Metriken, Panels, Aggregate). |
 | `classes/local/stale_marker.php` | Gemeinsamer Stale/Regenerate-Fingerprint-Helper (Hash + Vergleich). |

@@ -4388,3 +4388,14 @@ body#page-admin-setting-blocksettingelediaai_tutor.eat-admin-settings-shell-page
     background-color: var(--eai-surface);
     box-shadow: var(--eai-shadow-raised);
 }
+
+/* Bildschirmfotos der Hilfeseite: mit doppelter Pixeldichte aufgenommen, also
+   nie breiter als der Text, und als Bild vom Text abgesetzt. */
+.path-block-elediaai_tutor .eat-help-doc img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 1rem 0;
+    border: 1px solid var(--eai-line);
+    border-radius: var(--eai-radius-sm);
+}

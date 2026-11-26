@@ -38,6 +38,8 @@ Die Einstellung **Aufnahmeziel** bietet:
 - **eLeDia.ai Ingestion-API (externer Dienst)** — der externe Aufnahmedienst.
 - **LiteRAG (auf dieser Website)** — die lokale Route im Plugin `local_literag`.
 
+![Einstellungsseite „eLeDia.ai | KI Quellen“ in der Suite-Verwaltung mit den Reitern Zustand, Tutor einrichten, LiteRAG, KI-Quellen (aktiv) und MCP. Die Statuskarte meldet „Freigegebene Kurse nur teilweise indexiert“ mit der Schaltfläche „Freigegebene Kurse jetzt indexieren“. Darunter der Abschnitt „Ziel“: „Aufnahmeziel“ steht auf „eLeDia.ai Ingestion-API (externer Dienst)“, Standard ist LiteRAG auf dieser Website; der Hilfetext sagt, dass immer genau ein Ziel aktiv ist.](screenshots/de/shot05-einstellungen-ziel-de.png)
+
 ### Ziel: eLeDia.ai Ingestion-API
 
 - **Basis-URL des Dienstes:** die Adresse des Dienstes ohne angehängten Pfad,
@@ -124,6 +126,12 @@ zur Freigabe, in dieser Reihenfolge geprüft:
 3. **Pilotkursliste und Kategorie-Freigabeliste** — Mehrfachauswahl mit Suche.
    Bei Kategorien zählen auch deren Unterkategorien.
 
+![Abschnitt „Kursauswahl“ der Einstellungen mit Erklärtexten: „Alle Kursbereiche einbeziehen“ ist ausgeschaltet, unter „Indexierte Kursbereiche“ ist ein Kursbereich gewählt, unter „Pilotkurse“ ein Demokurs, und „Aktivitäten ohne Entscheidung“ steht auf „Aufgenommen, bis die Lehrkraft sie ausschließt (Opt-out)“.](screenshots/de/shot06-einstellungen-kursauswahl-de.png)
+
+Das Kursfeld steht in den Kurseinstellungen im Abschnitt „KI-Tutor“:
+
+![Abschnitt „KI-Tutor“ der Kurseinstellungen: Das Feld „KI Quellen“ steht auf „Include“. Der Hilfetext darunter erklärt: „Default“ folgt den Kursbereichseinstellungen der Website, „Include“ sendet immer, „Exclude“ sendet nie.](screenshots/de/shot01-kursfeld-ki-quellen-de.png)
+
 ## Aktivitäten auswählen
 
 Innerhalb eines freigegebenen Kurses entscheiden Lehrkräfte je Aktivität, was
@@ -138,6 +146,10 @@ in die Wissensbasis gelangt. Zwei Wege, dieselbe Entscheidung:
   den Site-Standard, und oben ein Filterfeld für lange Kurse.
 - **Bearbeitungsformular der Aktivität**: Abschnitt „eLeDia.ai | KI Quellen"
   mit dem Haken „In die Wissensbasis des KI-Tutors aufnehmen".
+
+![Seite „KI Quellen – Aktivitätsauswahl“ im Kurs „Klimawandel verstehen“. Ein Hinweis sagt, dass neue Aktivitäten automatisch aufgenommen werden, bis sie ausgeschlossen werden. Darunter Kursstatus „Indexiert“ mit den Zählern Indexiert 5, In Verarbeitung 0, Fehler 0, der Zeitpunkt der letzten Prüfung und das Feld „Aktivitäten filtern“. Die Aktivitäten stehen nach Abschnitten: drei Textseiten, eine Datei und ein Test mit der Marke „Indexiert“ und eingeschaltetem Schalter, zwei Foren ausgegraut mit „Nicht unterstützt“ und „Nichts zu indizieren“. Jede Zeile hat den Link „Probelauf“, jeder Abschnitt mit Aktivitäten die Schaltflächen „Alle aufnehmen“ und „Alle ausschließen“.](screenshots/de/shot02-aktivitaetsauswahl-de.png)
+
+![Abschnitt „eLeDia.ai | KI Quellen“ im Bearbeitungsformular einer Aktivität mit dem angehakten Kästchen „In die Wissensbasis des KI-Tutors aufnehmen“ und einem Hilfesymbol.](screenshots/de/shot03-aktivitaet-bearbeiten-de.png)
 
 Beides erfordert die Capability `local/elediaai_sources:selectactivities`
 (standardmäßig editingteacher und manager) und ist während der
@@ -202,6 +214,10 @@ etwas gesendet wird. Die Seite zeigt:
 - die **mitgesendeten Metadaten** (Mandant, Kurs, Modul, Modul-URL);
 - das **Verhältnis zum Index**: nicht im Index, identisch, ältere Fassung,
   Eintrag des vorherigen Ziels, oder letzter Versuch fehlgeschlagen.
+
+![Probelauf der Textseite „Der Treibhauseffekt“: Urteil „Würde gesendet“, Ziel „eLeDia.ai Ingestion-API (externer Dienst)“, im Index „Identisch mit dem, was im Index liegt“ mit Sendezeitpunkt, der Inhalts-Fingerabdruck und der Hinweis, dass eine Neuindexierung die unveränderte Aktivität überspringt und „erzwingen“ sie trotzdem sendet. Darunter die Tabelle der mitgesendeten Metadaten (title, tenant_id, site_url, course_id, cmid, module_url, module_type) und das eine Dokument im Wortlaut als HTML-Quelltext mit Inhaltstyp text/html und 1,0 KB. Quell-ID, Mandant und Adressen sind grau geschwärzt.](screenshots/de/shot04-probelauf-de.png)
+
+In der Abbildung sind Quell-ID, Mandant und Adressen geschwärzt; der Probelauf zeigt sie vollständig.
 
 Bei Paketen mit Ton oder Video steht oben zusätzlich ein Befund zur
 **Barrierefreiheit**: wie viele Medien Untertitel haben, und welche nicht.
@@ -285,6 +301,8 @@ Die Reindex-Seite kennt zwei Aktionen:
   aufgenommenen Kurse ein.
 - **Manuelle Kurs-Neuindexierung** — nimmt gezielt einen Kurs anhand seiner
   numerischen Kurs-ID erneut auf.
+
+![Seite „Kursinhalte neu indexieren“ unter dem Reiter KI-Quellen: die Statuskarte „Freigegebene Kurse nur teilweise indexiert“ mit „Freigegebene Kurse jetzt indexieren“, der Bereich „Manuelle Kurs-Reindexierung“ mit dem Feld „Kurs-ID“ und der Schaltfläche „Kurs neu indexieren“ und darunter der Anfang des Bereichs „Probelauf für eine einzelne Aktivität“.](screenshots/de/shot07-reindex-seite-de.png)
 
 Dabei gilt: Unterstützte Aktivitäten werden neu ausgelesen, nicht unterstützte
 oder leere übersprungen. Fehler werden je Modul gemeldet, stoppen aber nicht den

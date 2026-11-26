@@ -5,6 +5,24 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 Bis 1.0.22 hieß diese Datei `CHANGELOG.md`; seit der DevFlow-Übernahme heißt
 sie `CHANGES.md`, wie es das Moodle Plugins Directory erwartet.
 
+## [1.0.25] – 2026-11-26
+
+### Hinzugefügt
+
+- **Bildschirmfotos in der Hilfe.** Zwölf Aufnahmen unter
+  `docs/screenshots/de/` (`shot01`–`shot12`), eingebunden in
+  `docs/02-user-doc.de.md` und `docs/02-user-doc.md` (dort mit dem Hinweis,
+  dass sie die deutsche Oberfläche zeigen); Inventar und Alt-Texte in
+  `docs/screenshots.md`. Die Nutzerdoku nennt dazu Quellenangabe,
+  KI-Kennzeichnung und den Aufbau der Einstellungsseite.
+- `styles.css`: Bilder auf der Hilfeseite (`.eat-help-doc`) werden nie
+  breiter als der Text und sind mit Rahmen abgesetzt.
+
+### Geändert
+
+- Abhängigkeit `local_elediaai_core` auf `2026112501` (1.4.3): Erst dieser
+  Kern löst relative Bildpfade auf der Hilfeseite auf.
+
 ## [1.0.24] – 2026-11-26
 
 ### Behoben
