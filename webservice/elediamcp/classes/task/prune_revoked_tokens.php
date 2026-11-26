@@ -57,6 +57,10 @@ class prune_revoked_tokens extends scheduled_task {
         $codes = oauth_store::gc_expired_codes();
         mtrace("webservice_elediamcp: pruned {$codes} expired OAuth authorization code(s).");
 
+        // Refresh tokens of families that are over, and of ended families after a day (#248).
+        $refresh = oauth_store::gc_refresh();
+        mtrace("webservice_elediamcp: pruned {$refresh} expired or ended OAuth refresh token(s).");
+
         // Dynamically registered clients that nobody ever used (#151); 0 keeps them all.
         $clientdays = security::oauth_client_retention_days();
         if ($clientdays > 0) {

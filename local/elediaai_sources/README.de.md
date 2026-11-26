@@ -187,9 +187,13 @@ bewusst aktiviert werden.
 Das Kursfeld **KI Quellen** (Shortname `aisources`) wird bei der Installation angelegt. Wenn die
 Kursmarkierung nicht gesperrt ist, gibt es:
 
-- `Default`: zentrale Pilot-/Kategorie-Regeln entscheiden.
-- `Include`: Kurs freigeben, auch wenn zentrale Regeln ihn nicht freigeben.
-- `Exclude`: Kurs ausschliessen, auch wenn zentrale Regeln ihn freigeben.
+- `Default` („Standard der Website“): zentrale Pilot-/Kategorie-Regeln entscheiden.
+- `Include` („Aufnehmen“): Kurs freigeben, auch wenn zentrale Regeln ihn nicht freigeben.
+- `Exclude` („Ausschließen“): Kurs ausschliessen, auch wenn zentrale Regeln ihn freigeben.
+
+Gespeichert wird die Position der Option (1, 2, 3), nicht ihr Text. Die
+Beschriftungen stehen in der Standardsprache der Website; das Kursformular
+zeigt sie in der Sprache der Person, die den Kurs bearbeitet.
 
 Wenn die Markierung gesperrt ist, bleiben bestehende Feldwerte erhalten, werden
 aber ignoriert, bis die Sperre wieder deaktiviert wird.

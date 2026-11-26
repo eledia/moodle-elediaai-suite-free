@@ -60,9 +60,10 @@ class setup {
      * Create or update the per-course AI Sources override field.
      *
      * Idempotent: safe to call from both install and upgrade. The field is a
-     * three-option select (Default / Include / Exclude) read by
-     * {@see course_gate::override()}; the option tokens are stable identifiers,
-     * not display strings, so they must not be translated.
+     * three-option select read by {@see course_gate::override()}. Moodle stores
+     * the 1-based position of the chosen option (1 Default, 2 Include,
+     * 3 Exclude), not its text, so the option texts are display labels and can
+     * be written in the site language without touching any course's value.
      *
      * @return void
      */
@@ -71,7 +72,7 @@ class setup {
 
         $fieldid = $DB->get_field('customfield_field', 'id', ['shortname' => course_gate::FIELD]);
         if ($fieldid) {
-            self::update_course_field_labels((int) $fieldid);
+            self::update_course_field_labels();
             return;
         }
 
@@ -92,19 +93,16 @@ class setup {
         $catcontroller = category_controller::create($categoryid);
         $field = field_controller::create(0, (object) ['type' => 'select'], $catcontroller);
 
+        $labels = self::labels(self::site_language());
         $record = (object) [
-            'name' => get_string('cffieldname', 'local_elediaai_sources'),
+            'name' => $labels['name'],
             'shortname' => course_gate::FIELD,
             'type' => 'select',
-            'description' => get_string('cffielddesc', 'local_elediaai_sources'),
+            'description' => $labels['description'],
             'descriptionformat' => FORMAT_HTML,
             'configdata' => [
-                'options' => implode("\n", [
-                    course_gate::OVERRIDE_DEFAULT,
-                    course_gate::OVERRIDE_INCLUDE,
-                    course_gate::OVERRIDE_EXCLUDE,
-                ]),
-                'defaultvalue' => course_gate::OVERRIDE_DEFAULT,
+                'options' => implode("\n", $labels['options']),
+                'defaultvalue' => $labels['options'][0],
                 'required' => 0,
                 'uniquevalues' => 0,
                 'locked' => 0,
@@ -116,33 +114,149 @@ class setup {
     }
 
     /**
-     * Update display labels for an existing course override field.
+     * Rewrite name, description and option labels of the existing field in the site language.
      *
-     * @param int $fieldid Custom field ID.
-     * @return void
+     * Only texts the plugin wrote itself are replaced: the English option
+     * tokens of earlier versions and the labels in any installed language, in
+     * their original order. Options an administrator has renamed, reordered or
+     * extended stay as they are, and so does the stored default. The value a
+     * course holds is the option position and is never touched.
+     *
+     * Idempotent: a second run finds the texts already in place and saves nothing.
+     *
+     * @return bool True when the field configuration was saved.
      */
-    private static function update_course_field_labels(int $fieldid): void {
-        $field = field_controller::create($fieldid);
-        $name = get_string('cffieldname', 'local_elediaai_sources');
-        $description = get_string('cffielddesc', 'local_elediaai_sources');
+    public static function update_course_field_labels(): bool {
+        global $DB;
 
-        if ($field->get('name') === $name && $field->get('description') === $description) {
-            return;
+        $fieldid = $DB->get_field('customfield_field', 'id', ['shortname' => course_gate::FIELD]);
+        if (!$fieldid) {
+            return false;
         }
 
+        $field = field_controller::create((int) $fieldid);
+        $labels = self::labels(self::site_language());
         $rawconfig = $field->get('configdata');
         $configdata = is_array($rawconfig) ? $rawconfig : (json_decode((string) $rawconfig, true) ?: []);
 
+        $changed = $field->get('name') !== $labels['name'] || $field->get('description') !== $labels['description'];
+
+        $options = self::option_lines((string) ($configdata['options'] ?? ''));
+        if ($options !== $labels['options'] && self::is_own_options($options)) {
+            $configdata['options'] = implode("\n", $labels['options']);
+            $configdata['defaultvalue'] = $labels['options'][0];
+            $changed = true;
+        }
+
+        if (!$changed) {
+            return false;
+        }
+
         $record = (object) [
-            'name' => $name,
+            'name' => $labels['name'],
             'shortname' => $field->get('shortname'),
             'type' => $field->get('type'),
-            'description' => $description,
+            'description' => $labels['description'],
             'descriptionformat' => FORMAT_HTML,
             'configdata' => $configdata,
         ];
 
         $field->get_handler()->save_field_configuration($field, $record);
+        return true;
+    }
+
+    /**
+     * Field name, description and the three option labels in one language.
+     *
+     * The options are ordered like {@see course_gate::OPTIONS}: Default,
+     * Include, Exclude.
+     *
+     * @param string $lang Language code.
+     * @return array{name: string, description: string, category: string, options: string[]}
+     */
+    public static function labels(string $lang): array {
+        $sm = get_string_manager();
+        $get = fn(string $key): string => $sm->get_string($key, 'local_elediaai_sources', null, $lang);
+        return [
+            'name' => $get('cffieldname'),
+            'description' => $get('cffielddesc'),
+            'category' => $get('cfcategory'),
+            'options' => [$get('cfoption_default'), $get('cfoption_include'), $get('cfoption_exclude')],
+        ];
+    }
+
+    /**
+     * Whether a stored text is one the plugin wrote for the given label.
+     *
+     * @param string $label One of the keys of {@see labels()} except `options`.
+     * @param string $text The stored text.
+     * @return bool
+     */
+    public static function is_own_text(string $label, string $text): bool {
+        foreach (self::known_languages() as $lang) {
+            if (self::labels($lang)[$label] === $text) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether stored option lines are the plugin's own, in the original order.
+     *
+     * Accepts the English tokens of earlier versions and the labels in any
+     * installed language.
+     *
+     * @param string[] $options Option lines as stored.
+     * @return bool
+     */
+    public static function is_own_options(array $options): bool {
+        if ($options === array_values(course_gate::OPTIONS)) {
+            return true;
+        }
+        foreach (self::known_languages() as $lang) {
+            if ($options === self::labels($lang)['options']) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Split the stored options text into lines the way the select field does.
+     *
+     * @param string $options The `options` value of the field configuration.
+     * @return string[]
+     */
+    public static function option_lines(string $options): array {
+        return preg_split("/\s*\n\s*/", trim($options), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+    }
+
+    /**
+     * The site's default language, in which the stored texts are written.
+     *
+     * Not the language of whoever runs the upgrade: the stored texts are what
+     * every place outside the course form shows (course listings, the custom
+     * field administration, the course overview grouping).
+     *
+     * @return string
+     */
+    private static function site_language(): string {
+        global $CFG;
+        return !empty($CFG->lang) ? (string) $CFG->lang : 'en';
+    }
+
+    /**
+     * Languages whose labels count as the plugin's own.
+     *
+     * @return string[]
+     */
+    private static function known_languages(): array {
+        $langs = array_keys(get_string_manager()->get_list_of_translations(true));
+        $langs[] = 'en';
+        $langs[] = self::site_language();
+        $langs[] = current_language();
+        return array_values(array_unique($langs));
     }
 
     /**

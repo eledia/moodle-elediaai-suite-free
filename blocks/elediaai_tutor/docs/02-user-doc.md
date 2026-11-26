@@ -273,7 +273,10 @@ The settings include, among others:
 - Launcher button, footer, logo and avatar. The launcher style **Floating
   button with label (bottom corner)** shows logo and text as a pill; the text
   comes from "Launcher label", and if that is empty the tutor's name is shown.
-  Below 768 pixels width it turns back into a circle.
+  Below 768 pixels width it turns back into a circle. On pages without a tutor
+  block (administration, profile, activities) the **pill**, **solid** and
+  **compact** styles appear as the floating button with label, because there is
+  no block region there to place them.
 - Chat window width: standard (380 / 640 px), wide (480 / 800 px) or extra wide
   (600 / 960 px) for the docked panel and the dialog. On small screens the
   window never gets wider than the screen.

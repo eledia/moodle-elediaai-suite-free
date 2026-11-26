@@ -182,5 +182,45 @@ function xmldb_webservice_elediamcp_upgrade($oldversion): bool {
         upgrade_plugin_savepoint(true, 2026112001, 'webservice', 'elediamcp');
     }
 
+    if ($oldversion < 2026112601) {
+        // OAuth refresh tokens (#248): client and family on the token row, and the refresh table.
+        $table = new xmldb_table('webservice_elediamcp_token');
+        $field = new xmldb_field('clientid', XMLDB_TYPE_CHAR, '64', null, null, null, null, 'scope');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $field = new xmldb_field('familyid', XMLDB_TYPE_CHAR, '32', null, null, null, null, 'clientid');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $index = new xmldb_index('familyid', XMLDB_INDEX_NOTUNIQUE, ['familyid']);
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        $table = new xmldb_table('webservice_elediamcp_refresh');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('tokenhash', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('familyid', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('clientid', XMLDB_TYPE_CHAR, '64', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('scope', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('familyexpires', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timeused', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('revoked', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, ['id']);
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, ['userid'], 'user', ['id']);
+        $table->add_index('tokenhash', XMLDB_INDEX_UNIQUE, ['tokenhash']);
+        $table->add_index('familyid', XMLDB_INDEX_NOTUNIQUE, ['familyid']);
+        $table->add_index('familyexpires', XMLDB_INDEX_NOTUNIQUE, ['familyexpires']);
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // MCP savepoint reached.
+        upgrade_plugin_savepoint(true, 2026112601, 'webservice', 'elediamcp');
+    }
+
     return true;
 }

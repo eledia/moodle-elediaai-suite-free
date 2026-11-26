@@ -5,6 +5,27 @@ Format angelehnt an Keep a Changelog. Frühere Stände siehe git log.
 Bis 1.0.22 hieß diese Datei `CHANGELOG.md`; seit der DevFlow-Übernahme heißt
 sie `CHANGES.md`, wie es das Moodle Plugins Directory erwartet.
 
+## [1.0.26] – 2026-11-26
+
+### Behoben
+
+- **Websiteweite Startschaltfläche oben links** (ai_suite#260). Auf Seiten
+  ohne Tutor-Block (Administration, Profil, Aktivitäten) stand die
+  Startschaltfläche im Stil Pille, Gefüllt oder Kompakt in der linken oberen
+  Ecke, halb unter der Navigationsleiste. Diese Stile sind Inline-Schaltflächen,
+  die der Blockbereich platziert; der websiteweite Tutor wird ohne
+  Blockbereich am Anfang des Body ausgegeben, und nur die schwebenden Stile
+  haben eine feste Position. `inject_sitewide_tutor()` setzt jetzt
+  `branding::OUTSIDE_BLOCK_REGION`; `branding::resolve()` macht daraus für die
+  Inline-Stile die schwebende Schaltfläche mit Beschriftung. Im Block selbst
+  bleibt der gewählte Stil.
+- **Websiteweiter Tutor auf den eigenen Seiten des Blocks** (ai_suite#260).
+  `sitewide_tutor_allowed_on_page()` verglich den URL-Pfad mit
+  `/blocks/elediaai_tutor/`. Liegt Moodle in einem Unterverzeichnis, beginnt
+  der Pfad mit diesem (`/test/blocks/...`), und der Tutor erschien z. B. auf
+  „KI-Deutung der Fragen“ (`report.php`). Verglichen wird jetzt mit dem Pfad
+  der Block-URL.
+
 ## [1.0.25] – 2026-11-26
 
 ### Hinzugefügt

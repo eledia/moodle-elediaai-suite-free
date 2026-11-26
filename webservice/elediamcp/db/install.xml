@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="webservice/elediamcp/db" VERSION="20260805" COMMENT="MCP web service plugin database schema."
+<XMLDB PATH="webservice/elediamcp/db" VERSION="20261126" COMMENT="MCP web service plugin database schema."
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -21,6 +21,8 @@
         <FIELD NAME="timerevoked" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Revocation timestamp."/>
         <FIELD NAME="revokedby" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="User who revoked the token, or null when revoked programmatically."/>
         <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Space-separated MCP scopes the token is limited to (OAuth tokens). Null means no limit: the token carries all rights of its user."/>
+        <FIELD NAME="clientid" TYPE="char" LENGTH="64" NOTNULL="false" SEQUENCE="false" COMMENT="OAuth client the token was issued to; null for tokens that did not come from the OAuth flow."/>
+        <FIELD NAME="familyid" TYPE="char" LENGTH="32" NOTNULL="false" SEQUENCE="false" COMMENT="Refresh token family of an OAuth sign-in; null while no refresh token was issued. The row stays the same when the family rotates its access token."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -32,6 +34,7 @@
         <INDEX NAME="tokenhash" UNIQUE="false" FIELDS="tokenhash" COMMENT="Used to correlate a presented token value with its metadata row."/>
         <INDEX NAME="externaltokenid" UNIQUE="false" FIELDS="externaltokenid"/>
         <INDEX NAME="userid-revoked" UNIQUE="false" FIELDS="userid,revoked" COMMENT="Used to list a user's active or revoked tokens."/>
+        <INDEX NAME="familyid" UNIQUE="false" FIELDS="familyid" COMMENT="Used to end a refresh token family together with its token."/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="webservice_elediamcp_oauth_client" COMMENT="OAuth 2.1 client registrations for the MCP authorization server. A client is a public (PKCE-only) MCP client, either dynamically registered (RFC 7591) or provisioned by an administrator. No client secret is stored: every client authenticates with PKCE.">
@@ -75,6 +78,29 @@
       <INDEXES>
         <INDEX NAME="codehash" UNIQUE="true" FIELDS="codehash" COMMENT="Unique lookup of an authorization code by hash."/>
         <INDEX NAME="expires" UNIQUE="false" FIELDS="expires" COMMENT="Used to prune expired codes."/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="webservice_elediamcp_refresh" COMMENT="OAuth 2.1 refresh tokens. Each use rotates the token: the used row is kept, marked used, and a new row of the same family is created. A used token that is presented again is reuse and ends the whole family. Only the SHA-256 hash of the value is stored.">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="tokenhash" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="SHA-256 hex digest of the refresh token value; the plaintext is never stored."/>
+        <FIELD NAME="familyid" TYPE="char" LENGTH="32" NOTNULL="true" SEQUENCE="false" COMMENT="Family of one sign-in; matches webservice_elediamcp_token.familyid."/>
+        <FIELD NAME="clientid" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="OAuth client the token is bound to."/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Person the token is bound to."/>
+        <FIELD NAME="scope" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Scope of the access token; a refresh may keep it or narrow it, never widen it."/>
+        <FIELD NAME="familyexpires" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Absolute end of the family; every token of the family is invalid from then on."/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Issuance timestamp."/>
+        <FIELD NAME="timeused" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="When the token was exchanged for a new pair; null while it is the current token of its family."/>
+        <FIELD NAME="revoked" TYPE="int" LENGTH="2" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="1 when the family was ended (reuse, revocation, rights lost)."/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="tokenhash" UNIQUE="true" FIELDS="tokenhash" COMMENT="Unique lookup of a refresh token by hash."/>
+        <INDEX NAME="familyid" UNIQUE="false" FIELDS="familyid"/>
+        <INDEX NAME="familyexpires" UNIQUE="false" FIELDS="familyexpires" COMMENT="Used to prune expired families."/>
       </INDEXES>
     </TABLE>
   </TABLES>

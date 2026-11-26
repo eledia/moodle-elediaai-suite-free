@@ -5,6 +5,27 @@ All notable changes to the **webservice_elediamcp** plugin are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.26.0] – 2026-11-26
+
+### Neu
+
+- OAuth, Refresh-Token (#248): Der Token-Endpunkt kennt `grant_type=refresh_token` (OAuth 2.1, RFC 9700 Abschnitt 4.14, öffentliche Clients). Einstellung `oauth_refresh_enabled`, **standardmäßig aus**, eine Einstellung für die ganze Website. Eingeschaltet gibt der Code-Austausch zu jedem ablaufenden Zugriffstoken (`oauth_token_ttl` größer 0) ein Refresh-Token aus; bei `oauth_token_ttl = 0` gibt es keines. Ohne die Einstellung verhält sich das Plugin wie 1.24.2.
+  - Rotation bei jeder Verwendung: neues Zugriffs- und Refresh-Token, das alte Paar ist danach ungültig. Das Refresh-Token ist an Client, Person, Dienst und Scope gebunden; der Scope darf beim Erneuern gleich bleiben oder kleiner werden.
+  - Wiederverwendung: Wird ein bereits benutztes Refresh-Token noch einmal vorgelegt, endet die ganze Anmeldung (Token-Familie, Zugriffstoken inklusive); Ereignis `oauth_refresh_reuse_detected`. Die Entscheidung fällt unter einer Sperre je Familie, von zwei gleichzeitigen Anfragen mit demselben Token gelingt höchstens eine.
+  - `oauth_refresh_ttl` (Höchstlaufzeit der Familie, Standard 30 Tage, 1 Stunde bis 365 Tage) und `oauth_refresh_grace` (Toleranzfenster für eine verlorene Antwort, Standard 0 = sofort widerrufen, höchstens 300 Sekunden). Innerhalb des Fensters erhält ein Client, der das zuletzt benutzte Token noch einmal sendet, ein neues Paar; das nie angekommene Paar wird verworfen.
+  - Bei jedem Erneuern werden Person (aktiv, nicht gesperrt, Anmeldung erlaubt), Dienst, Capability und Client erneut geprüft. Fällt eine Voraussetzung weg, endet die Anmeldung. Widerruf unter „Einstellungen → MCP-Tokens“, Abschalten von OAuth oder des Refresh-Grants beenden sie ebenso.
+  - Pro Anmeldung bleibt eine Zeile in der Token-Liste; die Rotation tauscht deren Token, ohne je Schritt `token_created`/`token_revoked` auszulösen. Eigenes Ereignis `oauth_token_refreshed` je Erneuerung.
+  - Metadaten (`grant_types_supported`) und Registrierung nennen `refresh_token` nur bei eingeschalteter Einstellung. Bereits registrierte Clients erhalten nach dem Einschalten ebenfalls ein Refresh-Token.
+  - Schema: neue Tabelle `webservice_elediamcp_refresh` (nur Hash, Familie, Client, Person, Scope, Ende, Nutzung), neue Felder `clientid` und `familyid` an `webservice_elediamcp_token` (Upgrade-Schritt 2026112601, bestehende Tokens bleiben ohne Familie). Privacy-Provider (Metadaten, Export, Löschung) und der Task `prune_revoked_tokens` (abgelaufene und beendete Familien) decken die Tabelle ab.
+
+### Geändert
+
+- Beim Erneuern eines Tokens wird zusätzlich geprüft, dass die Person nicht gesperrt ist und sich anmelden darf (beim Erzeugen eines Tokens bleibt es bei der bisherigen Prüfung).
+
+### Tests
+
+- `oauth_refresh_test` (31 Tests): Standard aus, Ausgabe nur mit Einstellung und ablaufendem Zugriffstoken, Rotation, Wiederverwendung, Client- und Scope-Bindung, Ablauf der Familie, Widerruf, gesperrte Person, verlorene Capability, abgeschalteter Dienst, OAuth oder Refresh-Grant, Toleranzfenster (nur das zuletzt benutzte Token, nicht ein älteres), Aufräumen, Privacy, Grenzwerte. Mutationsprobe: Ohne Familienende bei Wiederverwendung, Scope-Prüfung, Client-Bindung, Familienablauf oder die Beschränkung des Toleranzfensters schlagen die zugehörigen Tests fehl.
+
 ## [1.24.2] – 2026-11-25
 
 ### Behoben

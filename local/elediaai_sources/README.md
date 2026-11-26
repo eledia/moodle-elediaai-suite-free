@@ -183,6 +183,10 @@ install. When course marking is not locked, it supports:
 - `Include`: release this course even when central rules do not.
 - `Exclude`: prevent indexing even when central rules would release it.
 
+Moodle stores the position of the option (1, 2, 3), not its text. The labels
+are stored in the site's default language; the course form shows them in the
+language of the person editing the course.
+
 When marking is locked, existing field values are kept but ignored until the
 lock is disabled again.
 

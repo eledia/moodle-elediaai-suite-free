@@ -26,6 +26,7 @@ namespace block_elediaai_tutor;
 
 use core\hook\output\before_http_headers;
 use core\hook\output\before_standard_top_of_body_html_generation;
+use block_elediaai_tutor\local\branding;
 use block_elediaai_tutor\local\registry;
 use block_elediaai_tutor\local\security;
 use block_elediaai_tutor\local\widget;
@@ -100,6 +101,8 @@ final class hook_callbacks {
             $mode = 'docked';
         }
         $instance['displaymode'] = $mode;
+        // Outside a block region only a floating launcher has a place (#260).
+        $instance[branding::OUTSIDE_BLOCK_REGION] = true;
         $hook->add_html(widget::render($context, $courseid, $instance));
     }
 
@@ -189,8 +192,12 @@ final class hook_callbacks {
         if (!$PAGE->has_set_url()) {
             return false;
         }
-        // Avoid injecting into the block's own admin/standalone pages.
-        return strpos((string) $PAGE->url->get_path(), '/blocks/elediaai_tutor/') !== 0;
+        // Avoid injecting into the block's own admin/standalone pages. The path
+        // carries the wwwroot's own path when Moodle lives in a subdirectory
+        // (/test/blocks/...), so compare against the block's URL, not a bare
+        // '/blocks/' (#260).
+        $blockpath = (new moodle_url('/blocks/elediaai_tutor/'))->get_path();
+        return strpos((string) $PAGE->url->get_path(), $blockpath) !== 0;
     }
 
     /**

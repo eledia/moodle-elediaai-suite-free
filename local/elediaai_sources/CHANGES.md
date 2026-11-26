@@ -10,6 +10,34 @@ Einträge bis einschließlich 0.15.0 sind unter dem früheren Namen
 
 ## [Unreleased]
 
+## [1.6.4] – 2026-11-26
+
+### Behoben
+
+- **Kursfeld „KI Quellen“ in der Sprache der Person** (ai_suite#262). Die
+  Optionen standen auch in deutscher Oberfläche als „Default“, „Include“,
+  „Exclude“ da, der Hilfetext sprach vom „AI Tutor“. Das Kursformular
+  beschriftet Feld, Hilfetext, Optionen und Abschnitt jetzt mit den
+  Sprachstrings der Person (`cfoption_default`, `cfoption_include`,
+  `cfoption_exclude` neu; de „Standard der Website“, „Aufnehmen“,
+  „Ausschließen“). Gespeichert werden Name, Beschreibung und Optionen in der
+  Standardsprache der Website; so erscheinen sie in Kurslisten und in der
+  Feldverwaltung. Texte, die eine Administratorin selbst geändert hat,
+  bleiben stehen.
+- `course_gate::override()` las den formatierten Optionstext und verglich
+  ihn mit den englischen Kennworten. Es liest jetzt die gespeicherte Position
+  (`course_gate::OPTIONS`); trägt die Option noch ein altes Kennwort, gilt
+  dieses. Kein Kurs ändert dadurch seine Freigabe.
+- Beschreibung en/de: „Default“ folgt den zentralen Einstellungen, also
+  Kursbereichen **und** Pilotkursen (bisher nur „Kategorien“ genannt).
+
+### Upgrade
+
+- Schritt 2026112600: `setup::update_course_field_labels()` schreibt Name,
+  Beschreibung und Optionen des vorhandenen Felds in der Standardsprache der
+  Website neu, idempotent; `customfield_data` bleibt unberührt, ein fehlendes
+  Feld wird nicht angelegt.
+
 ## [1.6.3] – 2026-11-25
 
 ### Hinzugefügt

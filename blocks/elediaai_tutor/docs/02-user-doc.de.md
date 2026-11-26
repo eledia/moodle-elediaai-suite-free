@@ -176,7 +176,7 @@ Tutor-Profile beschreiben, wie ein Tutor wirkt und antwortet. Sie bündeln unter
 - Begrüßung und Einstiegsfragen, auf dem Dashboard getrennt nach Lernenden, Trainer/innen und Manager/innen.
 - System-Prompt und Antwortstil.
 - Farben, Avatar, Nachrichtenblasen und Startschaltfläche.
-- Stil der Startschaltfläche, darunter **Schwebende Schaltfläche mit Beschriftung (untere Ecke)**: Logo und Text als Pille. Der Text kommt aus „Beschriftung der Startschaltfläche“; ist sie leer, steht der Name des Tutors darauf. Unter 768 Pixel Breite wird die Schaltfläche wieder zum Kreis.
+- Stil der Startschaltfläche, darunter **Schwebende Schaltfläche mit Beschriftung (untere Ecke)**: Logo und Text als Pille. Der Text kommt aus „Beschriftung der Startschaltfläche“; ist sie leer, steht der Name des Tutors darauf. Unter 768 Pixel Breite wird die Schaltfläche wieder zum Kreis. Auf Seiten ohne Tutor-Block (Administration, Profil, Aktivitäten) erscheinen **Pille**, **Gefüllt** und **Kompakt** als schwebende Schaltfläche mit Beschriftung, weil es dort keinen Blockbereich gibt, der sie platziert.
 - Breite des Chatfensters: Standard (380 / 640 px), Breit (480 / 800 px) oder Sehr breit (600 / 960 px) für das angedockte Fenster bzw. den Dialog. Auf kleinen Bildschirmen wird das Fenster nie breiter als der Bildschirm.
 - Governance-Regeln, welche Werte pro Blockinstanz überschrieben werden dürfen.
 

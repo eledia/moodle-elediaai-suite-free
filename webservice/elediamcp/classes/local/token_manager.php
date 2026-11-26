@@ -26,6 +26,7 @@ use stdClass;
 use webservice;
 use webservice_elediamcp\event\token_created;
 use webservice_elediamcp\event\token_revoked;
+use webservice_elediamcp\local\oauth\store as oauth_store;
 
 /**
  * Lifecycle manager for MCP web service tokens.
@@ -46,6 +47,9 @@ use webservice_elediamcp\event\token_revoked;
  * @license     http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class token_manager {
+    /** @var string Metadata table of the tokens. */
+    public const TABLE = 'webservice_elediamcp_token';
+
     /** @var string Shortname of the default MCP external service. */
     public const DEFAULT_SERVICE_SHORTNAME = 'elediamcp';
 
@@ -181,6 +185,57 @@ class token_manager {
     }
 
     /**
+     * Check that a token may be issued to a user for a service.
+     *
+     * Used for a new token and for every rotation of an OAuth token: the service must be a
+     * configured, enabled MCP service, the person active and, for a restricted service,
+     * authorised. The capability the service requires is checked by core when the token
+     * is generated.
+     *
+     * @param int $userid Owner the token authenticates as.
+     * @param int $serviceid Configured MCP external service id.
+     * @param int $validuntil Expiry timestamp, or 0 for no expiry.
+     * @param bool $strict Also refuse a suspended person and one who may not sign in (rotation).
+     * @return stdClass The external service record.
+     * @throws moodle_exception When the token must not be issued.
+     */
+    protected static function assert_issuable(
+        int $userid,
+        int $serviceid,
+        int $validuntil,
+        bool $strict = false
+    ): stdClass {
+        global $CFG, $DB;
+
+        if (!self::is_mcp_service($serviceid)) {
+            throw new moodle_exception('error_service_not_mcp', 'webservice_elediamcp');
+        }
+
+        $service = $DB->get_record('external_services', ['id' => $serviceid], '*', MUST_EXIST);
+        if (empty($service->enabled)) {
+            throw new moodle_exception('error_service_disabled', 'webservice_elediamcp');
+        }
+
+        $user = core_user::get_user($userid, '*', MUST_EXIST);
+        core_user::require_active_user($user, $strict, $strict);
+
+        if ($validuntil > 0 && $validuntil < time()) {
+            throw new moodle_exception('error_expiry_in_past', 'webservice_elediamcp');
+        }
+
+        // Respect service membership for restricted services.
+        if (!empty($service->restrictedusers)) {
+            require_once($CFG->dirroot . '/webservice/lib.php');
+            $manager = new webservice();
+            if (empty($manager->get_ws_authorised_user($serviceid, $userid))) {
+                throw new moodle_exception('usernotallowed', 'webservice', '', $service->name);
+            }
+        }
+
+        return $service;
+    }
+
+    /**
      * Create a user- and service-scoped MCP token.
      *
      * Validation enforced here (applies to every caller, UI or internal API):
@@ -220,31 +275,7 @@ class token_manager {
             throw new moodle_exception('error_label_required', 'webservice_elediamcp');
         }
 
-        if (!self::is_mcp_service($serviceid)) {
-            throw new moodle_exception('error_service_not_mcp', 'webservice_elediamcp');
-        }
-
-        $service = $DB->get_record('external_services', ['id' => $serviceid], '*', MUST_EXIST);
-        if (empty($service->enabled)) {
-            throw new moodle_exception('error_service_disabled', 'webservice_elediamcp');
-        }
-
-        $user = core_user::get_user($userid, '*', MUST_EXIST);
-        core_user::require_active_user($user);
-
-        if ($validuntil > 0 && $validuntil < time()) {
-            throw new moodle_exception('error_expiry_in_past', 'webservice_elediamcp');
-        }
-
-        // Respect service membership for restricted services.
-        if (!empty($service->restrictedusers)) {
-            global $CFG;
-            require_once($CFG->dirroot . '/webservice/lib.php');
-            $manager = new webservice();
-            if (empty($manager->get_ws_authorised_user($serviceid, $userid))) {
-                throw new moodle_exception('usernotallowed', 'webservice', '', $service->name);
-            }
-        }
+        $service = self::assert_issuable($userid, $serviceid, $validuntil);
 
         // Delegate token generation to core. This also enforces the service's
         // requiredcapability against the target user and throws on failure.
@@ -296,6 +327,53 @@ class token_manager {
     }
 
     /**
+     * Replace the access token of an OAuth sign-in by a new one (refresh token rotation).
+     *
+     * The metadata row stays, so the token list keeps one row per sign-in; it gets the new
+     * token's hash and expiry. The new core token is generated first, the old one deleted
+     * after it, so a failure leaves the old token in place. No token_created and
+     * token_revoked event is raised for a rotation: the caller records the refresh itself.
+     *
+     * @param stdClass $record The {webservice_elediamcp_token} row of the sign-in.
+     * @param int $validuntil Expiry of the new access token, or 0 for none.
+     * @param string|null $scope Narrowed scope for the new token, or null to keep the row's scope.
+     * @return string The new plain access token (returned once).
+     * @throws moodle_exception When a token may no longer be issued to this person.
+     */
+    public static function rotate_token(stdClass $record, int $validuntil, ?string $scope = null): string {
+        global $DB;
+
+        $service = self::assert_issuable((int) $record->userid, (int) $record->externalserviceid, $validuntil, true);
+
+        $plaintoken = external_util::generate_token(
+            EXTERNAL_TOKEN_PERMANENT,
+            $service,
+            (int) $record->userid,
+            context_system::instance(),
+            $validuntil,
+            '',
+            (string) $record->name
+        );
+        $newcore = $DB->get_record('external_tokens', ['token' => $plaintoken], '*', MUST_EXIST);
+
+        if (!empty($record->externaltokenid)) {
+            $DB->delete_records('external_tokens', ['id' => $record->externaltokenid]);
+        }
+        $update = (object) [
+            'id' => $record->id,
+            'externaltokenid' => $newcore->id,
+            'tokenhash' => hash('sha256', $plaintoken),
+            'validuntil' => $validuntil ?: null,
+        ];
+        if ($scope !== null && trim($scope) !== '') {
+            $update->scope = trim($scope);
+        }
+        $DB->update_record('webservice_elediamcp_token', $update);
+
+        return $plaintoken;
+    }
+
+    /**
      * Revoke a token by its MCP metadata id.
      *
      * Deletes the backing core token (so it can no longer authenticate) and flags
@@ -337,6 +415,11 @@ class token_manager {
             'timerevoked' => time(),
             'revokedby' => $revokedby,
         ]);
+
+        // A token of an OAuth sign-in ends the whole refresh token family with it (#248).
+        if (!empty($record->familyid)) {
+            oauth_store::end_family((string) $record->familyid);
+        }
 
         token_revoked::create([
             'context' => context_system::instance(),

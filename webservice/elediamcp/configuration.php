@@ -218,6 +218,9 @@ $current = (object) [
     'oauth_client_retention_days' => security::oauth_client_retention_days(),
     'oauth_code_ttl' => get_config('webservice_elediamcp', 'oauth_code_ttl') ?: 300,
     'oauth_token_ttl' => (int) (get_config('webservice_elediamcp', 'oauth_token_ttl') ?: 0),
+    'oauth_refresh_enabled' => (int) security::oauth_refresh_enabled(),
+    'oauth_refresh_ttl' => security::oauth_refresh_ttl(),
+    'oauth_refresh_grace' => security::oauth_refresh_grace(),
 ];
 $mform->set_data($current);
 
@@ -257,6 +260,9 @@ if ($data = $mform->get_data()) {
     set_config('oauth_client_retention_days', max(0, (int) $data->oauth_client_retention_days), 'webservice_elediamcp');
     set_config('oauth_code_ttl', max(30, min(600, (int) $data->oauth_code_ttl)), 'webservice_elediamcp');
     set_config('oauth_token_ttl', max(0, (int) $data->oauth_token_ttl), 'webservice_elediamcp');
+    set_config('oauth_refresh_enabled', empty($data->oauth_refresh_enabled) ? 0 : 1, 'webservice_elediamcp');
+    set_config('oauth_refresh_ttl', max(HOURSECS, min(365 * DAYSECS, (int) $data->oauth_refresh_ttl)), 'webservice_elediamcp');
+    set_config('oauth_refresh_grace', max(0, min(300, (int) $data->oauth_refresh_grace)), 'webservice_elediamcp');
 
     redirect($url, get_string('configuration_saved', 'webservice_elediamcp'), null, notification::NOTIFY_SUCCESS);
 }

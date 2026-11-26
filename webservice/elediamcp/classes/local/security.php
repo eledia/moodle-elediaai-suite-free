@@ -157,6 +157,51 @@ class security {
     }
 
     /**
+     * Whether the OAuth refresh token grant is switched on (one setting for the whole site).
+     *
+     * Off by default. Refresh tokens are issued only together with an expiring access
+     * token, see {@see self::oauth_issues_refresh_tokens()}.
+     *
+     * @return bool
+     */
+    public static function oauth_refresh_enabled(): bool {
+        return (int) self::get_config('oauth_refresh_enabled', 0) === 1;
+    }
+
+    /**
+     * Whether the code exchange hands out a refresh token.
+     *
+     * Needs the setting and an access token that expires: a token without expiry
+     * has nothing to refresh.
+     *
+     * @return bool
+     */
+    public static function oauth_issues_refresh_tokens(): bool {
+        return self::oauth_refresh_enabled() && self::oauth_token_ttl() > 0;
+    }
+
+    /**
+     * Longest life of a refresh token family in seconds (clamped to one hour .. 365 days).
+     *
+     * @return int
+     */
+    public static function oauth_refresh_ttl(): int {
+        return max(HOURSECS, min(365 * DAYSECS, (int) self::get_config('oauth_refresh_ttl', 30 * DAYSECS)));
+    }
+
+    /**
+     * Seconds in which a refresh token that was already used is still accepted once more.
+     *
+     * 0 (the default) treats every second use as reuse and ends the family at once.
+     * The window lets a client recover when the response with the new pair got lost.
+     *
+     * @return int
+     */
+    public static function oauth_refresh_grace(): int {
+        return max(0, min(300, (int) self::get_config('oauth_refresh_grace', 0)));
+    }
+
+    /**
      * Return the configured list of allowed CORS origins.
      *
      * @return string[] Lower-cased origin URLs ("*" for wildcard).

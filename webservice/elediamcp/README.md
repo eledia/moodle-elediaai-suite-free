@@ -609,6 +609,27 @@ public (no client secret), and redirect URIs must be pre-registered. Tokens
 issued this way appear under **Preferences → MCP tokens** and can be revoked
 there. Existing bearer-token clients keep working regardless of the setting.
 
+### Refresh tokens (optional)
+
+With **Refresh tokens for OAuth sign-ins** (`oauth_refresh_enabled`, off by default, one
+setting for the whole site) and an **OAuth access token lifetime** above 0, the token
+endpoint accepts `grant_type=refresh_token` and hands out a refresh token with every access
+token. A client can then keep short-lived access tokens without a new sign-in.
+
+- Every refresh returns a new access token and a new refresh token; the old pair stops working.
+- A refresh token that was already used and is presented again ends the whole sign-in
+  (OAuth 2.1, RFC 9700). The event *MCP OAuth refresh token reused* records it.
+- A sign-in lasts at most **30 days** (`oauth_refresh_ttl`, 1 hour to 365 days), however
+  often the client refreshes.
+- *Grace window* (`oauth_refresh_grace`, default 0, at most 300 seconds): a client whose
+  response with the new pair got lost may send the token it used last once more within that
+  time and receives a new pair. With 0 a second use ends the sign-in at once.
+- The scope can stay or shrink on refresh, never grow. Person, service and capability are
+  checked on every refresh; revoking the token under **Preferences → MCP tokens**, switching
+  off OAuth or the service ends the sign-in.
+- The token list shows one row per sign-in. Without the setting nothing changes: no refresh
+  token is issued and the metadata lists only `authorization_code`.
+
 > The address announced in the `WWW-Authenticate` header (the Protected Resource
 > Metadata document, with `.php`) works without a web server rule. The
 > extensionless `/.well-known/*` discovery URLs at the root of the site, such as

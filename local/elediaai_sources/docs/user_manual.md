@@ -121,8 +121,11 @@ zur Freigabe, in dieser Reihenfolge geprüft:
 
 1. **Sperre der Kursmarkierung** — ist sie aktiv, zählen nur Pilotliste und
    Kategorien; das Kursfeld wird aus dem Kursformular entfernt.
-2. **Kursfeld „KI Quellen"** — `Include` nimmt den Kurs auf, `Exclude`
-   schließt ihn aus, `Default` überlässt die Entscheidung den zentralen Regeln.
+2. **Kursfeld „KI Quellen"** — „Aufnehmen“ nimmt den Kurs auf,
+   „Ausschließen“ schließt ihn aus, „Standard der Website“ überlässt die
+   Entscheidung den zentralen Regeln. In englischer Oberfläche heißen die
+   Werte „Include“, „Exclude“ und „Default“; bis Version 1.6.3 standen sie
+   auch in der deutschen Oberfläche so.
 3. **Pilotkursliste und Kategorie-Freigabeliste** — Mehrfachauswahl mit Suche.
    Bei Kategorien zählen auch deren Unterkategorien.
 

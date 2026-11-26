@@ -60,6 +60,12 @@ class branding {
     /** @var string Launcher style: floating button with the logo and a visible label (#234). */
     public const LAUNCHER_FABLABEL = 'fablabel';
 
+    /**
+     * @var string Internal instance key: the launcher stands outside any block
+     *      region (the site-wide tutor), so only a floating style has a place (#260).
+     */
+    public const OUTSIDE_BLOCK_REGION = 'outsideblockregion';
+
     /** @var string File area for the site-level brand logo (tutor logo). */
     public const LOGO_FILEAREA = 'brandlogo';
 
@@ -83,7 +89,8 @@ class branding {
      * defaults, driven entirely by the {@see registry}.
      *
      * @param array $instance Per-instance overrides keyed by
-     *        registry key (e.g. 'brandaccent', 'launcherstyle', 'persona').
+     *        registry key (e.g. 'brandaccent', 'launcherstyle', 'persona'), and
+     *        optionally {@see self::OUTSIDE_BLOCK_REGION}.
      * @param \context|null $context Context the widget is shown in, for the
      *        language filters of the texts (see {@see text}); system when null.
      * @return array{tokens: array<string,string>, accent: string, bubble: string,
@@ -114,6 +121,14 @@ class branding {
         $launcherstyle = (string) self::effective_value('launcherstyle', $instance);
         if (!isset(registry::get('launcherstyle')['options'][$launcherstyle])) {
             $launcherstyle = (string) registry::default_for('launcherstyle');
+        }
+        // Pill, solid and compact are inline buttons: they sit where the block
+        // region puts them. The site-wide tutor has no block region, it is
+        // written at the top of the body, and an inline button lands in the
+        // top left corner under the navbar (#260). There it floats instead,
+        // with its label, as the floating button with label does.
+        if (!empty($instance[self::OUTSIDE_BLOCK_REGION]) && !self::is_floating($launcherstyle)) {
+            $launcherstyle = self::LAUNCHER_FABLABEL;
         }
 
         // 4. Launcher label: instance → site → built-in default string. The

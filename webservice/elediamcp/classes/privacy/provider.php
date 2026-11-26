@@ -35,7 +35,7 @@ use core_privacy\local\request\writer;
  * feature persists MCP token metadata (owner, service, label, timestamps and
  * revocation state) in {webservice_elediamcp_token}, and the OAuth flow persists
  * short-lived authorization codes bound to a user in
- * {webservice_elediamcp_oauth_code}. Both are declared and exported/erased here.
+ * {webservice_elediamcp_oauth_code} and {webservice_elediamcp_refresh}. All are declared and exported/erased here.
  * Neither the token secret nor the authorization code plaintext is ever stored.
  * OAuth client registrations ({webservice_elediamcp_oauth_client}) carry no user
  * identity and are therefore not personal data.
@@ -79,6 +79,16 @@ class provider implements
             'expires' => 'privacy:metadata:webservice_elediamcp_oauth_code:expires',
         ], 'privacy:metadata:webservice_elediamcp_oauth_code');
 
+        $collection->add_database_table('webservice_elediamcp_refresh', [
+            'userid' => 'privacy:metadata:webservice_elediamcp_refresh:userid',
+            'clientid' => 'privacy:metadata:webservice_elediamcp_refresh:clientid',
+            'scope' => 'privacy:metadata:webservice_elediamcp_refresh:scope',
+            'timecreated' => 'privacy:metadata:webservice_elediamcp_refresh:timecreated',
+            'timeused' => 'privacy:metadata:webservice_elediamcp_refresh:timeused',
+            'familyexpires' => 'privacy:metadata:webservice_elediamcp_refresh:familyexpires',
+            'revoked' => 'privacy:metadata:webservice_elediamcp_refresh:revoked',
+        ], 'privacy:metadata:webservice_elediamcp_refresh');
+
         return $collection;
     }
 
@@ -101,6 +111,11 @@ class provider implements
         }
         $codesql = "SELECT id FROM {webservice_elediamcp_oauth_code} WHERE userid = :userid";
         if (self::record_exists_sql($codesql, ['userid' => $userid])) {
+            $contextlist->add_system_context();
+            return $contextlist;
+        }
+        $refreshsql = "SELECT id FROM {webservice_elediamcp_refresh} WHERE userid = :userid";
+        if (self::record_exists_sql($refreshsql, ['userid' => $userid])) {
             $contextlist->add_system_context();
         }
         return $contextlist;
@@ -125,6 +140,7 @@ class provider implements
             []
         );
         $userlist->add_from_sql('userid', 'SELECT userid FROM {webservice_elediamcp_oauth_code}', []);
+        $userlist->add_from_sql('userid', 'SELECT userid FROM {webservice_elediamcp_refresh}', []);
     }
 
     /**
@@ -186,6 +202,25 @@ class provider implements
                 (object) ['authorization_codes' => $codedata]
             );
         }
+
+        $refreshes = $DB->get_records('webservice_elediamcp_refresh', ['userid' => $userid], 'timecreated ASC');
+        if (!empty($refreshes)) {
+            $refreshdata = [];
+            foreach ($refreshes as $refresh) {
+                $refreshdata[] = (object) [
+                    'clientid' => $refresh->clientid,
+                    'scope' => $refresh->scope,
+                    'timecreated' => transform::datetime($refresh->timecreated),
+                    'timeused' => $refresh->timeused ? transform::datetime($refresh->timeused) : null,
+                    'familyexpires' => transform::datetime($refresh->familyexpires),
+                    'revoked' => transform::yesno($refresh->revoked),
+                ];
+            }
+            writer::with_context(context_system::instance())->export_data(
+                [get_string('oauth_privacy_refresh_heading', 'webservice_elediamcp')],
+                (object) ['refresh_tokens' => $refreshdata]
+            );
+        }
     }
 
     /**
@@ -209,6 +244,7 @@ class provider implements
         }
         $DB->delete_records('webservice_elediamcp_token');
         $DB->delete_records('webservice_elediamcp_oauth_code');
+        $DB->delete_records('webservice_elediamcp_refresh');
     }
 
     /**
@@ -271,6 +307,7 @@ class provider implements
             ['userid' => $userid]
         );
         $db->delete_records('webservice_elediamcp_oauth_code', ['userid' => $userid]);
+        $db->delete_records('webservice_elediamcp_refresh', ['userid' => $userid]);
     }
 
     /**

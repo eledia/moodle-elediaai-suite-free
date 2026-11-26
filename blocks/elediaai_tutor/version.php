@@ -26,12 +26,12 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->version = 2026112601;
+$plugin->version = 2026112602;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 502];
 $plugin->component = 'block_elediaai_tutor';
 $plugin->maturity = MATURITY_STABLE;
-$plugin->release = '1.0.25';
+$plugin->release = '1.0.26';
 $plugin->dependencies = [
     // The block always talks to the backend through a user-scoped Moodle MCP
     // token, on grounded and model-only turns alike, so the connector is

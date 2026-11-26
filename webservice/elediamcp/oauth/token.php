@@ -17,7 +17,8 @@
 /**
  * OAuth 2.1 token endpoint for the MCP authorization server.
  *
- * Exchanges an authorization code + PKCE verifier for a Moodle MCP access token.
+ * Exchanges an authorization code + PKCE verifier for a Moodle MCP access token and, when
+ * the refresh token grant is switched on, a refresh token for a new pair (#248).
  * Public endpoint (no cookies, no login): the code and PKCE binding are the proof
  * of authorisation. Errors are returned as RFC 6749 §5.2 JSON error objects.
  *
@@ -87,7 +88,7 @@ if (!$limit['allowed']) {
  * @return array<string, string>
  */
 function webservice_elediamcp_oauth_token_params(): array {
-    $fields = ['grant_type', 'code', 'redirect_uri', 'client_id', 'code_verifier'];
+    $fields = ['grant_type', 'code', 'redirect_uri', 'client_id', 'code_verifier', 'refresh_token', 'scope'];
     $params = [];
     foreach ($fields as $field) {
         $value = optional_param($field, '', PARAM_RAW);
@@ -114,7 +115,7 @@ function webservice_elediamcp_oauth_token_params(): array {
 }
 
 try {
-    $response = service::exchange_code(webservice_elediamcp_oauth_token_params());
+    $response = service::handle_token_request(webservice_elediamcp_oauth_token_params());
     http_response_code(200);
     echo json_encode($response, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 } catch (oauth_exception $ex) {

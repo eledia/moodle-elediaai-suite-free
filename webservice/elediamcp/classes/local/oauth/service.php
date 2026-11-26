@@ -18,12 +18,19 @@ declare(strict_types=1);
 
 namespace webservice_elediamcp\local\oauth;
 
+use context_system;
 use stdClass;
+use webservice_elediamcp\event\oauth_refresh_reuse_detected;
+use webservice_elediamcp\event\oauth_token_refreshed;
 use webservice_elediamcp\local\security;
 use webservice_elediamcp\local\token_manager;
 
 /**
  * OAuth 2.1 Authorization Code + PKCE authorization server for the MCP endpoint.
+ *
+ * With the refresh token grant switched on (#248) a sign-in can keep short-lived access
+ * tokens: every refresh gives a new access and refresh token, a used refresh token that
+ * comes back ends the whole family of that sign-in, and the family has a latest end.
  *
  * The server issues Moodle external tokens (the same bearer credentials the MCP
  * endpoint already accepts) at the end of an Authorization Code + PKCE exchange,
@@ -124,6 +131,19 @@ class service {
     }
 
     /**
+     * The grant types the server offers: the refresh token grant only when it is switched on.
+     *
+     * @return string[]
+     */
+    public static function supported_grant_types(): array {
+        $grants = ['authorization_code'];
+        if (security::oauth_refresh_enabled()) {
+            $grants[] = 'refresh_token';
+        }
+        return $grants;
+    }
+
+    /**
      * Build the RFC 8414 authorization server metadata document.
      *
      * @return array<string, mixed>
@@ -136,7 +156,7 @@ class service {
             'scopes_supported' => self::supported_scopes(),
             'response_types_supported' => ['code'],
             'response_modes_supported' => ['query'],
-            'grant_types_supported' => ['authorization_code'],
+            'grant_types_supported' => self::supported_grant_types(),
             'token_endpoint_auth_methods_supported' => ['none'],
             'code_challenge_methods_supported' => [self::PKCE_METHOD],
             'service_documentation' => self::issuer() . '/configuration.php',
@@ -228,7 +248,12 @@ class service {
         $record->clientid = self::generate_client_id();
         $record->clientname = $clientname;
         $record->redirecturis = implode("\n", $clean);
-        $record->granttypes = 'authorization_code';
+        // With the refresh token grant switched on, a client that asked for it is registered with it.
+        $registered = ['authorization_code'];
+        if (security::oauth_refresh_enabled() && in_array('refresh_token', $granttypes, true)) {
+            $registered[] = 'refresh_token';
+        }
+        $record->granttypes = implode(' ', $registered);
         $record->responsetypes = 'code';
         $record->tokenendpointauthmethod = 'none';
         $record->scope = ($scope === null || $scope === '') ? null : \core_text::substr($scope, 0, 255);
@@ -240,7 +265,7 @@ class service {
             'client_id_issued_at' => (int) $stored->timecreated,
             'client_name' => $stored->clientname,
             'redirect_uris' => $clean,
-            'grant_types' => ['authorization_code'],
+            'grant_types' => $registered,
             'response_types' => ['code'],
             'token_endpoint_auth_method' => 'none',
             'scope' => $stored->scope ?? implode(' ', self::supported_scopes()),
@@ -523,6 +548,8 @@ class service {
      * @throws oauth_exception When no MCP service is available to issue against.
      */
     protected static function mint_token_response(stdClass $record, stdClass $client): array {
+        global $DB;
+
         $serviceid = self::resolve_service_id();
         if ($serviceid === 0) {
             throw new oauth_exception(
@@ -536,6 +563,9 @@ class service {
         $ttl = security::oauth_token_ttl();
         $validuntil = $ttl > 0 ? time() + $ttl : 0;
 
+        $withrefresh = security::oauth_issues_refresh_tokens();
+        $refreshtoken = null;
+        $transaction = $DB->start_delegated_transaction();
         try {
             $result = token_manager::create_token(
                 (int) $record->userid,
@@ -546,7 +576,33 @@ class service {
                 (int) $record->userid,
                 !empty($record->scope) ? (string) $record->scope : null
             );
+            $familyid = null;
+            if ($withrefresh) {
+                $familyid = bin2hex(random_bytes(16));
+                $refreshtoken = self::random_secret();
+                store::create_refresh(
+                    store::hash($refreshtoken),
+                    $familyid,
+                    (string) $client->clientid,
+                    (int) $record->userid,
+                    !empty($record->scope) ? (string) $record->scope : null,
+                    time() + security::oauth_refresh_ttl()
+                );
+            }
+            // The sign-in belongs to the client; with a refresh token it also belongs to a family.
+            $DB->update_record(token_manager::TABLE, (object) [
+                'id' => $result->record->id,
+                'clientid' => (string) $client->clientid,
+                'familyid' => $familyid,
+            ]);
+            $transaction->allow_commit();
         } catch (\moodle_exception $ex) {
+            try {
+                $transaction->rollback($ex);
+            } catch (\Throwable $rolledback) {
+                // The rollback rethrows; the error is reported as invalid_grant below.
+                unset($rolledback);
+            }
             // The user no longer satisfies the service's required capability, etc.
             // Surface as invalid_grant without leaking Moodle internals.
             throw new oauth_exception(
@@ -563,10 +619,263 @@ class service {
         if ($ttl > 0) {
             $response['expires_in'] = $ttl;
         }
+        if ($refreshtoken !== null) {
+            $response['refresh_token'] = $refreshtoken;
+        }
         if (!empty($record->scope)) {
             $response['scope'] = $record->scope;
         }
         return $response;
+    }
+
+    // Refresh token grant (#248).
+
+    /**
+     * Answer a request at the token endpoint, whichever grant it uses.
+     *
+     * @param array $params The POSTed token request parameters.
+     * @return array<string, mixed> The token response (RFC 6749 section 5.1).
+     * @throws oauth_exception
+     */
+    public static function handle_token_request(array $params): array {
+        $granttype = isset($params['grant_type']) ? (string) $params['grant_type'] : '';
+        if ($granttype === 'refresh_token') {
+            return self::refresh_tokens($params);
+        }
+        return self::exchange_code($params);
+    }
+
+    /**
+     * Exchange a refresh token for a new access token and a new refresh token.
+     *
+     * Rotation: the presented token is used up. Presenting a used token again is reuse and ends
+     * the whole family of the sign-in (RFC 9700 section 4.14), unless the grace window allows a
+     * client to retry after a lost response. The decision runs under a lock per family, so of two
+     * parallel requests with the same token at most one succeeds.
+     *
+     * @param array $params The POSTed token request parameters.
+     * @return array<string, mixed> The token response.
+     * @throws oauth_exception On any validation failure.
+     */
+    public static function refresh_tokens(array $params): array {
+        if (!security::oauth_refresh_enabled()) {
+            throw new oauth_exception(
+                'unsupported_grant_type',
+                get_string('oauth_err_grant_type', 'webservice_elediamcp'),
+                400
+            );
+        }
+
+        $clientid = isset($params['client_id']) ? (string) $params['client_id'] : '';
+        $presented = isset($params['refresh_token']) ? (string) $params['refresh_token'] : '';
+        if ($clientid === '' || $presented === '') {
+            throw new oauth_exception(
+                'invalid_request',
+                get_string('oauth_err_missing_refresh_params', 'webservice_elediamcp'),
+                400
+            );
+        }
+        if (store::get_client($clientid) === null) {
+            throw new oauth_exception(
+                'invalid_client',
+                get_string('oauth_err_unknown_client', 'webservice_elediamcp'),
+                401
+            );
+        }
+
+        $hash = store::hash($presented);
+        $row = store::get_refresh($hash);
+        if ($row === null || (string) $row->clientid !== $clientid) {
+            throw self::invalid_refresh();
+        }
+
+        $lock = \core\lock\lock_config::get_lock_factory('webservice_elediamcp_refresh')
+            ->get_lock('family_' . $row->familyid, 10);
+        if (!$lock) {
+            throw new oauth_exception(
+                'temporarily_unavailable',
+                get_string('oauth_err_refresh_busy', 'webservice_elediamcp'),
+                503
+            );
+        }
+        try {
+            // Read again under the lock: a parallel request may have used the token meanwhile.
+            $row = store::get_refresh($hash);
+            if ($row === null) {
+                throw self::invalid_refresh();
+            }
+            return self::refresh_family_token($row, $params);
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Decide and carry out a refresh for a token row; the caller holds the family lock.
+     *
+     * @param stdClass $row The presented refresh token row.
+     * @param array $params The token request parameters.
+     * @return array<string, mixed>
+     * @throws oauth_exception
+     */
+    protected static function refresh_family_token(stdClass $row, array $params): array {
+        global $DB;
+
+        $now = time();
+        $familyid = (string) $row->familyid;
+
+        if (!empty($row->revoked)) {
+            throw self::invalid_refresh();
+        }
+        if ((int) $row->familyexpires <= $now || !self::is_enabled() || !security::oauth_refresh_enabled()) {
+            self::end_sign_in($familyid);
+            throw self::invalid_refresh();
+        }
+
+        $meta = $DB->get_record(token_manager::TABLE, ['familyid' => $familyid, 'revoked' => 0]);
+        if (!$meta || (int) $meta->userid !== (int) $row->userid) {
+            store::end_family($familyid);
+            throw self::invalid_refresh();
+        }
+
+        if ($row->timeused !== null) {
+            // Used before. Within the grace window the client may have lost the response: its
+            // newer token (never used) is retired and the client gets a fresh pair.
+            // Only the token used last qualifies: an older one is replayed, not lost.
+            $grace = security::oauth_refresh_grace();
+            $current = store::get_current_refresh($familyid);
+            if (
+                $grace > 0 && $current !== null && ($now - (int) $row->timeused) <= $grace
+                && store::is_last_used_refresh($row)
+            ) {
+                $DB->set_field(store::REFRESH_TABLE, 'revoked', 1, ['id' => $current->id]);
+            } else {
+                oauth_refresh_reuse_detected::create([
+                    'context' => context_system::instance(),
+                    'objectid' => $meta->id,
+                    'relateduserid' => $meta->userid,
+                    'other' => ['clientid' => (string) $row->clientid],
+                ])->trigger();
+                self::end_sign_in($familyid);
+                throw self::invalid_refresh();
+            }
+        }
+
+        $scope = self::narrow_scope($row, $params);
+
+        $ttl = security::oauth_token_ttl();
+        $transaction = $DB->start_delegated_transaction();
+        try {
+            // Person, service and required capability are checked again, as at the first issue.
+            $access = token_manager::rotate_token($meta, $ttl > 0 ? $now + $ttl : 0, $scope);
+            $refresh = null;
+            if (security::oauth_issues_refresh_tokens()) {
+                $refresh = self::random_secret();
+                store::create_refresh(
+                    store::hash($refresh),
+                    $familyid,
+                    (string) $row->clientid,
+                    (int) $row->userid,
+                    $scope,
+                    (int) $row->familyexpires
+                );
+            }
+            if ($row->timeused === null) {
+                store::mark_refresh_used((int) $row->id, $now);
+            }
+            if ($refresh === null) {
+                // The access token no longer expires: there is nothing left to refresh.
+                store::end_family($familyid);
+            }
+            $transaction->allow_commit();
+        } catch (\moodle_exception $ex) {
+            try {
+                $transaction->rollback($ex);
+            } catch (\Throwable $rolledback) {
+                unset($rolledback);
+            }
+            self::end_sign_in($familyid);
+            throw new oauth_exception(
+                'invalid_grant',
+                get_string('oauth_err_token_issue', 'webservice_elediamcp'),
+                400
+            );
+        }
+
+        oauth_token_refreshed::create([
+            'context' => context_system::instance(),
+            'objectid' => $meta->id,
+            'relateduserid' => $meta->userid,
+            'other' => ['clientid' => (string) $row->clientid],
+        ])->trigger();
+
+        $response = ['access_token' => $access, 'token_type' => 'Bearer'];
+        if ($ttl > 0) {
+            $response['expires_in'] = $ttl;
+        }
+        if ($refresh !== null) {
+            $response['refresh_token'] = $refresh;
+        }
+        if ($scope !== null) {
+            $response['scope'] = $scope;
+        }
+        return $response;
+    }
+
+    /**
+     * The scope of a refreshed token: the old one, or a part of it when the client asks for less.
+     *
+     * @param stdClass $row The refresh token row holding the current scope.
+     * @param array $params The token request parameters.
+     * @return string|null
+     * @throws oauth_exception With invalid_scope when the client asks for more.
+     */
+    protected static function narrow_scope(stdClass $row, array $params): ?string {
+        $current = !empty($row->scope) ? (string) $row->scope : null;
+        $asked = isset($params['scope']) ? trim((string) $params['scope']) : '';
+        if ($asked === '') {
+            return $current;
+        }
+        $allowed = $current === null
+            ? self::supported_scopes()
+            : (preg_split('/\s+/', $current, -1, PREG_SPLIT_NO_EMPTY) ?: []);
+        $wanted = array_values(array_unique(preg_split('/\s+/', $asked, -1, PREG_SPLIT_NO_EMPTY) ?: []));
+        if ($wanted === [] || array_diff($wanted, $allowed) !== []) {
+            throw new oauth_exception(
+                'invalid_scope',
+                get_string('oauth_err_invalid_scope', 'webservice_elediamcp'),
+                400
+            );
+        }
+        return implode(' ', $wanted);
+    }
+
+    /**
+     * End the sign-in of a family: its token is revoked and no refresh token works any more.
+     *
+     * @param string $familyid Family id.
+     * @return void
+     */
+    protected static function end_sign_in(string $familyid): void {
+        global $DB;
+        $meta = $DB->get_record(token_manager::TABLE, ['familyid' => $familyid, 'revoked' => 0]);
+        if ($meta) {
+            token_manager::revoke_token((int) $meta->id);
+        }
+        store::end_family($familyid);
+    }
+
+    /**
+     * The error for a refresh token that cannot be used. One message for every reason.
+     *
+     * @return oauth_exception
+     */
+    protected static function invalid_refresh(): oauth_exception {
+        return new oauth_exception(
+            'invalid_grant',
+            get_string('oauth_err_invalid_refresh', 'webservice_elediamcp'),
+            400
+        );
     }
 
     /**

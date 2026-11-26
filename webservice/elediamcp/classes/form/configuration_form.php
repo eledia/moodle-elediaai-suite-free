@@ -334,6 +334,40 @@ class configuration_form extends moodleform {
             get_string('setting_oauth_token_ttl_desc', 'webservice_elediamcp')
         );
 
+        $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-oauth_refresh_enabled']));
+        $mform->addElement(
+            'advcheckbox',
+            'oauth_refresh_enabled',
+            get_string('setting_oauth_refresh_enabled', 'webservice_elediamcp'),
+            get_string('setting_oauth_refresh_enabled_desc', 'webservice_elediamcp'),
+            null,
+            [0, 1]
+        );
+        $mform->addHelpButton('oauth_refresh_enabled', 'setting_oauth_refresh_enabled', 'webservice_elediamcp');
+        $mform->disabledIf('oauth_refresh_enabled', 'oauth_enabled', 'notchecked');
+
+        $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-oauth_refresh_ttl']));
+        $mform->addElement(
+            'text',
+            'oauth_refresh_ttl',
+            get_string('setting_oauth_refresh_ttl', 'webservice_elediamcp'),
+            ['size' => 8]
+        );
+        $mform->setType('oauth_refresh_ttl', PARAM_INT);
+        $mform->addHelpButton('oauth_refresh_ttl', 'setting_oauth_refresh_ttl', 'webservice_elediamcp');
+        $mform->disabledIf('oauth_refresh_ttl', 'oauth_refresh_enabled', 'notchecked');
+
+        $mform->addElement('html', \html_writer::span('', '', ['id' => 'admin-oauth_refresh_grace']));
+        $mform->addElement(
+            'text',
+            'oauth_refresh_grace',
+            get_string('setting_oauth_refresh_grace', 'webservice_elediamcp'),
+            ['size' => 8]
+        );
+        $mform->setType('oauth_refresh_grace', PARAM_INT);
+        $mform->addHelpButton('oauth_refresh_grace', 'setting_oauth_refresh_grace', 'webservice_elediamcp');
+        $mform->disabledIf('oauth_refresh_grace', 'oauth_refresh_enabled', 'notchecked');
+
         $this->add_action_buttons(true, get_string('savechanges'));
         $mform->addElement('html', \html_writer::end_tag('section'));
         $mform->addElement('html', \html_writer::end_div());
@@ -350,11 +384,25 @@ class configuration_form extends moodleform {
         $errors = parent::validation($data, $files);
         foreach (
             ['token_retention_days', 'rate_limit_per_minute', 'rate_limit_per_hour',
-                'max_request_size', 'tools_page_size', 'oauth_code_ttl', 'oauth_token_ttl', 'oauth_client_retention_days'] as $field
+                'max_request_size', 'tools_page_size', 'oauth_code_ttl', 'oauth_token_ttl',
+                'oauth_client_retention_days', 'oauth_refresh_grace'] as $field
         ) {
             if ((int) ($data[$field] ?? 0) < 0) {
                 $errors[$field] = get_string('configuration_error_nonnegative', 'webservice_elediamcp');
             }
+        }
+        $refreshttl = (int) ($data['oauth_refresh_ttl'] ?? 0);
+        if ($refreshttl < HOURSECS || $refreshttl > 365 * DAYSECS) {
+            $errors['oauth_refresh_ttl'] = get_string('configuration_error_range', 'webservice_elediamcp', (object) [
+                'min' => HOURSECS,
+                'max' => 365 * DAYSECS,
+            ]);
+        }
+        if ((int) ($data['oauth_refresh_grace'] ?? 0) > 300) {
+            $errors['oauth_refresh_grace'] = get_string('configuration_error_range', 'webservice_elediamcp', (object) [
+                'min' => 0,
+                'max' => 300,
+            ]);
         }
         $maxchars = (int) ($data['response_max_chars'] ?? response_budget::DEFAULT_MAX_CHARS);
         if ($maxchars < response_budget::MIN_MAX_CHARS || $maxchars > response_budget::MAX_MAX_CHARS) {

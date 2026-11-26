@@ -393,5 +393,17 @@ function xmldb_local_elediaai_sources_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026112501, 'local', 'elediaai_sources');
     }
 
+    if ($oldversion < 2026112600) {
+        // The course field "AI Sources" showed English options and an outdated
+        // German description (ai_suite#262). Rewrite name, description and the
+        // option labels in the site language; the course form shows them in
+        // each user's language. Courses store the option position, which stays
+        // as it is, so no course changes its marking. Options an administrator
+        // edited are left alone. No-op when the field does not exist.
+        \local_elediaai_sources\setup::update_course_field_labels();
+
+        upgrade_plugin_savepoint(true, 2026112600, 'local', 'elediaai_sources');
+    }
+
     return true;
 }

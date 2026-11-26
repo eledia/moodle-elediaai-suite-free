@@ -30,7 +30,9 @@ namespace local_elediaai_sources;
  *    specific set of courses is selected centrally.
  * 3. **Per-course override** (the `aisources` course custom field): `Include`
  *    forces ingestion regardless of the above; `Exclude` forbids it regardless
- *    of the above; `Default` defers to the admin lists. During a pilot phase the
+ *    of the above; `Default` defers to the admin lists. The field shows these
+ *    three options under translated labels; what counts is their position
+ *    (see {@see self::OPTIONS}). During a pilot phase the
  *    field can be locked so only managers/admins set it (see settings.php).
  *
  * @package    local_elediaai_sources
@@ -49,6 +51,18 @@ class course_gate {
 
     /** @var string Override option: never ingest. */
     public const OVERRIDE_EXCLUDE = 'Exclude';
+
+    /**
+     * @var string[] Override per stored option position (customfield_select keeps 1-based positions).
+     *
+     * The texts are the option labels written up to 1.6.3. From 1.6.4 the
+     * field shows translated labels in the same order (ai_suite#262).
+     */
+    public const OPTIONS = [
+        1 => self::OVERRIDE_DEFAULT,
+        2 => self::OVERRIDE_INCLUDE,
+        3 => self::OVERRIDE_EXCLUDE,
+    ];
 
     /**
      * Whether the given course is marked for ingestion.
@@ -116,13 +130,40 @@ class course_gate {
             if ($datum->get_field()->get('shortname') !== self::FIELD) {
                 continue;
             }
-            $value = (string) $datum->export_value();
-            if ($value === self::OVERRIDE_INCLUDE || $value === self::OVERRIDE_EXCLUDE) {
-                return $value;
-            }
-            return self::OVERRIDE_DEFAULT;
+            return self::override_from_position(
+                (int) $datum->get_value(),
+                (string) $datum->get_field()->get_configdata_property('options')
+            );
         }
 
+        return self::OVERRIDE_DEFAULT;
+    }
+
+    /**
+     * Map a stored option position to an override.
+     *
+     * The select field stores the position of the chosen option, not its text,
+     * and its texts are translated labels since ai_suite#262. Until then this
+     * class compared the formatted text with the English tokens. To keep every
+     * stored value meaning what it meant, a position whose option still carries
+     * one of those tokens resolves by the token (this covers a field whose
+     * options an administrator reordered). A position resolves by position
+     * only while the options are the plugin's own labels; texts an
+     * administrator wrote count as Default, exactly as they did before.
+     *
+     * @param int $position Stored value: 1-based option position, 0 when empty.
+     * @param string $options The raw `options` text of the field configuration.
+     * @return string One of the OVERRIDE_* constants.
+     */
+    public static function override_from_position(int $position, string $options): string {
+        $lines = setup::option_lines($options);
+        $text = $lines[$position - 1] ?? null;
+        if ($text !== null && in_array($text, self::OPTIONS, true)) {
+            return $text;
+        }
+        if ($text !== null && setup::is_own_options($lines)) {
+            return self::OPTIONS[$position] ?? self::OVERRIDE_DEFAULT;
+        }
         return self::OVERRIDE_DEFAULT;
     }
 
